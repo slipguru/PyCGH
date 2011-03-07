@@ -2,50 +2,76 @@
 
 import numpy as np
 
+# Utility functions -----------------------------------------------------------
+            # Agilent -> (conversion, dtype)
+TYPE_MAP = {'text': (unicode, unicode),
+            'float': (float, float),
+            'integer': (int, int),
+            'boolean': (lambda x: bool(int(x)), bool)}
+
+def _read_info_line(acgh, delimiter='\t'):
+    out = dict()
+    types, info = _return_headers(acgh, delimiter)
+
+    data = acgh.readline().strip().split(delimiter)[1:]
+    for i, t, d in zip(info, types, data):
+        out[i] = TYPE_MAP[t][0](d)
+    separator = acgh.readline().strip()
+    assert separator == '*'
+
+    return out
+
+def _read_info_block(acgh, delimiter='\t'):
+    out = dict()
+    types, info = _return_headers(acgh, delimiter)
+
+    for line in acgh:
+        data = line.strip().split(delimiter)[1:]
+        for i, t, d in zip(info, types, data):
+            out.setdefault(i, []).append(TYPE_MAP[t][0](d))
+
+    # Conversion in numpy array
+    for i, t in zip(info, types):
+        out[i] = np.asarray(out[i], dtype=TYPE_MAP[t][1])
+
+    return out
+
+def _return_headers(acgh, delimiter='\t'):
+    types = acgh.readline().strip().split(delimiter)[1:]
+    info = acgh.readline().strip().split(delimiter)[1:]
+    return types, info
+
+
+# Main Class ------------------------------------------------------------------
 class AgilentReader(object):
 
     def __init__(self, path, delimiter='\t'):
+
         self.TYPE_MAP = {'text': unicode,
-                         'float': float,
-                         'integer': int,
-                         'boolean': lambda x: bool(int(x))}
+            'float': float,
+            'integer': int,
+            'boolean': lambda x: bool(int(x))}
 
         self.delimiter = delimiter
         self.path = path
 
         with open(path, 'r') as acgh:
             # Reading FEPARAMS
-            self.FEPARAMS = dict()
-            self._extract_info(self.FEPARAMS, acgh)
+            self._params = _read_info_line(acgh, self.delimiter)
             # Reading STATS
-            self.STATS = dict()
-            self._extract_info(self.STATS, acgh)
-
+            self._stats = _read_info_line(acgh, self.delimiter)
             # Reading FEATURES
-            self.FEATURES = dict()
-            self._extract_info(self.FEATURES, acgh, while_eol=True)
+            self._features = _read_info_block(acgh, self.delimiter)
 
-    def _extract_info(self, info_dict, acgh, while_eol=False):
-        types = acgh.readline().strip().split(self.delimiter)[1:]
-        info = acgh.readline().strip().split(self.delimiter)[1:]
+    def param(self, key=None):
+        if key is None:
+            return self._params
+        return self._params[key]
 
-        if not while_eol:
-            data = acgh.readline().strip().split(self.delimiter)[1:]
-            for i, t, d in zip(info, types, data):
-                info_dict[i] = self.TYPE_MAP[t](d)
-            self._skip_separator(acgh, check='*')
-        else:
-            for line in acgh:
-                data = line.strip().split(self.delimiter)[1:]
-                for i, t, d in zip(info, types, data):
-                    info_dict.setdefault(i, []).append(self.TYPE_MAP[t](d))
+    def stat(self, key=None):
+        if key is None:
+            return self._stats
+        return self._stats[key]
 
-            # Conversion in numpy array
-            for i, t in zip(info, types):
-                conv = bool if t == 'boolean' else self.TYPE_MAP[t]
-                info_dict[i] = np.asarray(info_dict[i], dtype=conv)
-
-    def _skip_separator(self, acgh, check=None):
-        separator = acgh.readline().strip()
-        if not check is None:
-            assert separator == check
+    def feature(self, key):
+        return self._features[key]

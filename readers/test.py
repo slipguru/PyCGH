@@ -7,34 +7,39 @@ class TestCGHReader(object):
         self.reader = AgilentReader('test_agilent.txt')
 
     def test_acces_FEPARAMS(self):
-        value = self.reader.FEPARAMS['Protocol_Name']
+        value = self.reader.param('Protocol_Name')
         assert_equals('CGH-v4_95_Feb07 (Read Only)', value)
 
-        value = self.reader.FEPARAMS['Scan_NumChannels']
+        value = self.reader.param('Scan_NumChannels')
         assert_equals(2, value)
 
-        value = self.reader.FEPARAMS['Scan_MicronsPerPixelY']
+        value = self.reader.param('Scan_MicronsPerPixelY')
         assert_equals(5.0, value)
 
-        assert_raises(KeyError, self.reader.STATS.__getitem__, 'fake')
+        assert_raises(KeyError, self.reader.param, 'fake')
 
-        assert_equals(34, len(self.reader.FEPARAMS))
+        all_params = self.reader.param()
+        assert_equals(34, len(all_params))
+        assert_equals(self.reader.param('Protocol_Name'),
+                      all_params['Protocol_Name'])
 
     def test_access_STATS(self):
-        value = self.reader.STATS['gDarkOffsetAverage']
+        value = self.reader.stat('gDarkOffsetAverage')
         assert_equals(20.185, value)
 
-        value = self.reader.STATS['rLocalBGInlierNum']
+        value = self.reader.stat('rLocalBGInlierNum')
         assert_equals(45140, value)
 
-        assert_raises(KeyError, self.reader.STATS.__getitem__, 'fake')
+        assert_raises(KeyError, self.reader.stat, 'fake')
 
-        assert_equals(143, len(self.reader.STATS))
+        all_stats = self.reader.stat()
+        assert_equals(143, len(all_stats))
+        assert_equals(self.reader.stat('gDarkOffsetAverage'),
+                      all_stats['gDarkOffsetAverage'])
 
     def test_access_FEATURES(self):
-        value = self.reader.FEATURES['LogRatio']
+        value = self.reader.feature('LogRatio')
         assert_equals(4460, len(value))
 
-        assert_raises(KeyError, self.reader.FEATURES.__getitem__, 'fake')
-
-        assert_equals(40, len(self.reader.FEATURES))
+        #assert_raises(KeyError, self.reader.FEATURES.__getitem__, 'fake')
+        #assert_equals(40, len(self.reader.FEATURES))
