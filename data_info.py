@@ -8,7 +8,7 @@ from cghreader import CGHReader
 
 DATA_PATH = './aCGH/'
 
-def main():
+def _main():
     info_csv = DictReader(open('info_Row_aCGH.csv', 'rb'), dialect='excel')
 
     for sample in info_csv:

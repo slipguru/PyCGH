@@ -63,15 +63,20 @@ class AgilentReader(object):
             # Reading FEATURES
             self._features = _read_info_block(acgh, self.delimiter)
 
-    def param(self, key=None):
-        if key is None:
-            return self._params
+    def param(self, key):
         return self._params[key]
 
-    def stat(self, key=None):
-        if key is None:
-            return self._stats
+    def params_list(self):
+        return self._params.keys()
+
+    def stat(self, key):
         return self._stats[key]
+
+    def stats_list(self):
+        return self._stats.keys()
 
     def feature(self, key):
         return self._features[key]
+
+    def features_list(self):
+        return self._features.keys()
