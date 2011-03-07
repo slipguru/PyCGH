@@ -1,10 +1,12 @@
 from nose.tools import *
+import os
 
-from agilentreader import AgilentReader
+from cghutils.readers import AgilentReader
 
 class TestCGHReader(object):
     def setup(self):
-        self.reader = AgilentReader('test_agilent.txt')
+        par_dir = os.path.split(os.path.abspath(__file__))[0]
+        self.reader = AgilentReader(os.path.join(par_dir, 'test_agilent.txt'))
 
     def test_acces_FEPARAMS(self):
         value = self.reader.param('Protocol_Name')
