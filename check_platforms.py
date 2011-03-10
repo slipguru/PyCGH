@@ -3,7 +3,7 @@ from csv import DictReader
 
 import numpy as np
 
-from cghutils.readers import AgilentReader
+from cghutils.readers import AgilentReader, GPLReader
 from cghutils.filters import probes_filter, split_locus_mapping
 
 DATA_PATH = '/home/sabba/Phd/Tonini_IST/'
@@ -18,15 +18,13 @@ for sample in samples_info:
 
     if sample['Sample name'] == 'Sample 21':
         continue
-    if sample['platform'] != 'GPL5477':
-        continue
 
     platform = sample['platform']
     print
     print '*'*80
     print '%s (%s)...' % (sample['Sample name'], platform)
 
-    # Reading agilent result
+    # Reading agilent result --------------------------------------------------
     aCGH_path = os.path.join(CGH_PATH,
                              sample['Agilent Feature Extraction file'])
     acgh = AgilentReader(aCGH_path)
@@ -34,29 +32,17 @@ for sample in samples_info:
     probe_name = acgh.feature('ProbeName')
     systematic_name = acgh.feature('SystematicName')
 
-    # Reading platform informations ------------------------------------------
-    id = list()
-    spots_id = list()
-    locations = list()
+    # Reading platform informations -------------------------------------------
     platform_path = os.path.join(PLATFORM_PATH, '%s.txt' % platform)
-    with open(platform_path) as platform_file:
-        for line in platform_file:
-            split_line = line.split('\t')
-            if len(split_line) >= 12:
-                id.append(split_line[0])
-                spots_id.append(split_line[3])
+    platform = GPLReader(platform_path)
+    id = platform.field('ID')
+    spots_id = platform.field('SPOT_ID')
+    locations = platform.field('CHROMOSOMAL_LOCATION')
 
-                if split_line[9]: #mapped
-                    locations.append(split_line[9])
-                else:
-                    locations.append(split_line[3]) # to simulate agilent
-            else:
-                print split_line
-
-        id = np.asarray(id[1:], dtype=int)
-        spots_id = np.asarray(spots_id[1:])
-        locations = np.asarray(locations[1:])
-    # -------------------------------------------------------------------------
+    # to simulate agilent
+    for i, (spot, loc) in enumerate(zip(spots_id, locations)):
+        if loc == u'':
+            locations[i] = spots_id[i]
 
     agilent_dict = dict(zip(feature_num, zip(systematic_name, probe_name)))
     platform_dict = dict(zip(id, zip(locations, spots_id)))
