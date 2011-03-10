@@ -1,11 +1,10 @@
 import numpy as np
 
 # Probes filtering ------------------------------------------------------------
-def probes_filter(acgh, filter_controls=True, filter_unmapped=True,
-                        filter_strange_chr=True):
+def probes_filter(acgh, filter_controls=True, filter_unmapped=True):
 
     size = acgh.stat('TotalNumFeatures')
-    controls = unmapped = strange_chr = np.zeros(size, dtype=bool) # no filtering
+    controls = unmapped = np.zeros(size, dtype=bool) # no filtering
 
     if filter_controls:
         controls = np.logical_not(acgh.feature('ControlType') == 0)
@@ -13,16 +12,8 @@ def probes_filter(acgh, filter_controls=True, filter_unmapped=True,
     if filter_unmapped:
         unmapped = (acgh.feature('SystematicName') == 'unmapped')
 
-
-    # Probabilmente possiamo mantenere questi cromosomi eliminando
-    # il suffisso. Questo si riferisce al mapping della sequenza con il
-    # relativo gene che nelle nostre analisi p un problema secondario!
-    if filter_strange_chr: #e.g. _random
-        strange_chr = (np.char.find(acgh.feature('SystematicName'), '_') != -1)
-
-    # meaning -> NOT (controls OR unmapped OR strange_cgh)
-    return np.logical_not(np.logical_or(np.logical_or(controls, unmapped),
-                                        strange_chr))
+    # meaning -> NOT (controls OR unmapped)
+    return np.logical_not(np.logical_or(controls, unmapped))
 
 
 # Conversions algoritm --------------------------------------------------------
@@ -30,7 +21,11 @@ def _split_locus(location):
     chr, interval = location.split(':')
     start, end = (int(x) for x in interval.split('-'))
 
-    chr = chr.replace('chr', '')
+    # in some files the range is swapped :-/
+    if start > end:
+        start, end = end, start
+
+    chr = chr.split('_', 1)[0].replace('chr', '') # from chrXX_bla_bla to XX
     if chr.isdigit():
         chr = chr.zfill(2)
 
