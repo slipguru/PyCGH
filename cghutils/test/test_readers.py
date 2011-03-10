@@ -3,7 +3,7 @@ import os
 
 from cghutils.readers import AgilentReader
 
-class TestCGHReader(object):
+class TestAgilentReader(object):
     def setup(self):
         par_dir = os.path.split(os.path.abspath(__file__))[0]
         self.reader = AgilentReader(os.path.join(par_dir, 'test_agilent.txt'))
@@ -48,3 +48,6 @@ class TestCGHReader(object):
         assert_equals(40, len(features))
 
 
+class TestGPLReader(object):
+    def test_foo(self):
+        pass
