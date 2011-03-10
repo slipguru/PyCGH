@@ -50,6 +50,8 @@ for sample in samples_info:
                     locations.append(split_line[9])
                 else:
                     locations.append(split_line[3]) # to simulate agilent
+            else:
+                print split_line
 
         id = np.asarray(id[1:], dtype=int)
         spots_id = np.asarray(spots_id[1:])
@@ -82,9 +84,3 @@ for sample in samples_info:
                              probe.ljust(12),
                              plat_mapping.ljust(25),
                              plat_probe.ljust(12)))
-
-
-
-
-
-

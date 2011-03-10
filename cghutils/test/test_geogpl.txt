@@ -1,0 +1,46 @@
+#ID = Agilent feature number
+#COL = Column
+#ROW = Row
+#SPOT_ID = Spot identifier
+#CONTROL_TYPE = Control type
+#GB_ACC = GenBankAccession
+#GENE_SYMBOL = Gene Symbol
+#GENE_NAME = Gene Name
+#ACCESSION_STRING = Accession String
+#CHROMOSOMAL_LOCATION = Chromosomal Location
+#CYTOBAND = Cytoband
+#DESCRIPTION = Description
+#GB_RANGE = NCBI Build 35.1 Accession.Version[start..end]
+ID	COL	ROW	SPOT_ID	CONTROL_TYPE	GB_ACC	GENE_SYMBOL	GENE_NAME	ACCESSION_STRING	CHROMOSOMAL_LOCATION	CYTOBAND	DESCRIPTION	GB_RANGE
+1	103	430	BrightCorner	pos								
+2	103	428	NegativeControl	neg								
+3	103	426	A_14_P122148	FALSE	NM_014932	NLGN1	neuroligin 1	ref|NM_014932	chr3:175483690-175483749	hs|q26.31	Homo sapiens neuroligin 1 (NLGN1), mRNA.	NC_000003.9[175483690..175483749]
+4	103	424	A_14_P113625	FALSE	BC038110			gb|BC038110	chr14:037557242-037557301	hs|q21.1	Homo sapiens chromosome 14 open reading frame 25, mRNA (cDNA clone IMAGE:5268731), partial cds.	NC_000014.7[037557242..037557301]
+5	103	422	A_14_P103559	FALSE	NM_000348	SRD5A2	steroid-5-alpha-reductase, alpha polypeptide 2 (3-oxo-5 alpha-steroid delta 4-dehydrogenase alpha 2)	ref|NM_000348	chr2:031698424-031698483	hs|p23.1	Homo sapiens steroid-5-alpha-reductase, alpha polypeptide 2 (3-oxo-5 alpha-steroid delta 4-dehydrogenase alpha 2) (SRD5A2), mRNA.	NC_000002.9[031698424..031698483]
+6	103	420	A_14_P129762	FALSE	NM_018092	NETO2	neuropilin (NRP) and tolloid (TLL)-like 2	ref|NM_018092	chr16:045682211-045682270	hs|q12.1	Homo sapiens neuropilin (NRP) and tolloid (TLL)-like 2 (NETO2), mRNA.	NC_000016.8[045682211..045682270]
+7	103	418	Pro25G	pos								
+8	103	416	A_14_P123995	FALSE	NM_173825	RABL3	RAB, member of RAS oncogene family-like 3	ref|NM_173825	chr3:121903263-121903322	hs|q13.33	Homo sapiens RAB, member of RAS oncogene family-like 3 (RABL3), mRNA.	NC_000003.9[121903263..121903322]
+9	103	414	A_14_P137812	FALSE	NM_152683	FLJ33167		ref|NM_152683	chr4:185987795-185987854	hs|q35.1	Homo sapiens hypothetical protein FLJ33167 (FLJ33167), mRNA.	NC_000004.9[185987795..185987854]
+10	103	412	A_14_P121658	FALSE	NM_001008239	C18orf25	chromosome 18 open reading frame 25	ref|NM_001008239|ref|NM_145055	chr18:042067848-042067907	hs|q21.1	Homo sapiens chromosome 18 open reading frame 25 (C18orf25), transcript variant 2, mRNA.	NC_000018.8[042067848..042067907]
+11	103	410	E1A_r60_a20	pos								
+12	103	408	A_14_P122919	FALSE	NM_018473	THEM2	thioesterase superfamily member 2	ref|NM_018473	chr6:024806112-024806169	hs|p22.2	Homo sapiens thioesterase superfamily member 2 (THEM2), mRNA.	NC_000006.9[024806112..024806169]
+13	103	406	A_14_P130374	FALSE	NM_013377	PDZRN4	PDZ domain containing RING finger 4	ref|NM_013377	chr12:040254224-040254283	hs|q12	Homo sapiens PDZ domain containing RING finger 4 (PDZRN4), mRNA.	NC_000012.9[040254224..040254283]
+14	103	404	Pro25G	pos								
+15	103	402	A_14_P124952	FALSE	NM_014786	ARHGEF17	Rho guanine nucleotide exchange factor (GEF) 17	ref|NM_014786	chr11:072757694-072757753	hs|q13.4	Homo sapiens Rho guanine nucleotide exchange factor (GEF) 17 (ARHGEF17), mRNA.	NC_000011.8[072757694..072757753]
+636	102	20	NA	ignore								
+8808	83	16	A_14_P138283	FALSE					chr16:049675725-049675784	hs|q12.1		NC_000016.8[049675725..049675784]
+8809	83	14	A_14_P101060	FALSE	NM_003047	SLC9A1	solute carrier family 9 (sodium/hydrogen exchanger), member 1 (antiporter, Na+/H+, amiloride sensitive)	ref|NM_003047	chr1:027110165-027110223	hs|p36.11	Homo sapiens solute carrier family 9 (sodium/hydrogen exchanger), member 1 (antiporter, Na+/H+, amiloride sensitive) (SLC9A1), mRNA.	NC_000001.8[027110165..027110223]
+8810	83	12	A_14_P111270	FALSE	NM_005680	TAF1B	TATA box binding protein (TBP)-associated factor, RNA polymerase I, B, 63kDa	ref|NM_005680	chr2:009973481-009973540	hs|p25.1	Homo sapiens TATA box binding protein (TBP)-associated factor, RNA polymerase I, B, 63kDa (TAF1B), mRNA.	NC_000002.9[009973481..009973540]
+8811	83	10	A_14_P134951	FALSE	NM_005436	CCDC6	coiled-coil domain containing 6	ref|NM_005436	chr10:061335091-061335148	hs|q21.2	Homo sapiens coiled-coil domain containing 6 (CCDC6), mRNA.	NC_000010.8[061335091..061335148]
+8812	83	8	A_14_P131711	FALSE	NM_014800	ELMO1	engulfment and cell motility 1	ref|NM_014800	chr7:036819123-036819182	hs|p14.2	Homo sapiens engulfment and cell motility 1 (ELMO1), transcript variant 1, mRNA.	NC_000007.11[036819123..036819182]
+8813	83	6	A_14_P104595	FALSE	NM_017677	MTMR8	myotubularin related protein 8	ref|NM_017677	chrX:063293040-063293099	hs|q11.2	Homo sapiens myotubularin related protein 8 (MTMR8), mRNA.	NC_000023.8[063293040..063293099]
+8814	83	4	A_14_P100598	FALSE	NM_000869	HTR3A	5-hydroxytryptamine (serotonin) receptor 3A	ref|NM_000869|ref|NM_213621	chr11:113362073-113362132	hs|q23.2	Homo sapiens 5-hydroxytryptamine (serotonin) receptor 3A (HTR3A), transcript variant 2, mRNA.	NC_000011.8[113362073..113362132]
+8815	83	2	A_14_P115561	FALSE					chrX:025269608-025269667	hs|p21.3		NC_000023.8[025269608..025269667]
+8816	83	429	A_14_P102456	FALSE	NM_012249	RHOQ	ras homolog gene family, member Q	ref|NM_012249	chr2:046694326-046694385	hs|p21	Homo sapiens ras homolog gene family, member Q (RHOQ), mRNA.	NC_000002.9[046694326..046694385]
+8817	83	427	A_14_P113344	FALSE					chr21:032379083-032379142	hs|q22.11		NC_000021.7[032379083..032379142]
+8818	83	425	A_14_P133835	FALSE	NM_138381	OXNAD1	oxidoreductase NAD-binding domain containing 1	ref|NM_138381	chr3:016297413-016297472	hs|p25.1	Homo sapiens oxidoreductase NAD-binding domain containing 1 (OXNAD1), mRNA.	NC_000003.9[016297413..016297472]
+8819	83	423	A_14_P111236	FALSE	NM_032242	PLXNA1	plexin A1	ref|NM_032242	chr3:128197182-128197241	hs|q21.2	Homo sapiens plexin A1 (PLXNA1), mRNA.	NC_000003.9[128197182..128197241]
+8820	83	421	A_14_P128319	FALSE	NM_033085	FATE1	fetal and adult testis expressed 1	ref|NM_033085	chrX:150559159-150559215	hs|q28	Homo sapiens fetal and adult testis expressed 1 (FATE1), mRNA.	NC_000023.8[150559159..150559215]
+8821	83	419	EQC	pos								
+
+
