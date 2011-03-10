@@ -42,7 +42,7 @@ def _return_headers(acgh, delimiter='\t'):
     return types, info
 
 
-# Main Class ------------------------------------------------------------------
+# Main Classes ------------------------------------------------------------------
 class AgilentReader(object):
 
     def __init__(self, path, delimiter='\t'):

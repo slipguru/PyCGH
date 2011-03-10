@@ -4,7 +4,7 @@ import numpy as np
 def probes_filter(acgh, filter_controls=True, filter_unmapped=True,
                         filter_strange_chr=True):
 
-    size = acgh.feature('FeatureNum').size
+    size = acgh.stat('TotalNumFeatures')
     controls = unmapped = strange_chr = np.zeros(size, dtype=bool) # no filtering
 
     if filter_controls:
@@ -13,6 +13,10 @@ def probes_filter(acgh, filter_controls=True, filter_unmapped=True,
     if filter_unmapped:
         unmapped = (acgh.feature('SystematicName') == 'unmapped')
 
+
+    # Probabilmente possiamo mantenere questi cromosomi eliminando
+    # il suffisso. Questo si riferisce al mapping della sequenza con il
+    # relativo gene che nelle nostre analisi p un problema secondario!
     if filter_strange_chr: #e.g. _random
         strange_chr = (np.char.find(acgh.feature('SystematicName'), '_') != -1)
 
