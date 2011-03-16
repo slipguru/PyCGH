@@ -32,8 +32,10 @@ def _split_locus(location):
     return chr, start, end
 
 def split_locus_mapping(locations):
+    """ Converts a list of locations strings in a numpy record array
+    indexed by 'chromosome', 'start', 'end' """
     loc_tuples = [_split_locus(x) for x in locations]
-    rec_type = np.dtype([('chromosome', 'U20'),
+    rec_type = np.dtype([('chromosome', 'U2'),
                          ('start', np.int),
                          ('end', np.int),
                         ])
