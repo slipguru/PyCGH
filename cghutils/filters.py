@@ -3,7 +3,10 @@ import numpy as np
 # Probes filtering ------------------------------------------------------------
 def probes_filter(acgh, filter_controls=True, filter_unmapped=True):
 
-    size = acgh.stat('TotalNumFeatures')
+    try:
+        size = acgh.stat('TotalNumFeatures')
+    except:
+        size = acgh.feature('SystematicName').size
     controls = unmapped = np.zeros(size, dtype=bool) # no filtering
 
     if filter_controls:
@@ -17,7 +20,7 @@ def probes_filter(acgh, filter_controls=True, filter_unmapped=True):
 
 
 # Conversions algoritm --------------------------------------------------------
-def _split_locus(location):
+def _split_mapping(location):
     chr, interval = location.split(':')
     start, end = (int(x) for x in interval.split('-'))
 
@@ -31,10 +34,10 @@ def _split_locus(location):
 
     return chr, start, end
 
-def split_locus_mapping(locations):
+def split_mappings(locations):
     """ Converts a list of locations strings in a numpy record array
     indexed by 'chromosome', 'start', 'end' """
-    loc_tuples = [_split_locus(x) for x in locations]
+    loc_tuples = [_split_mapping(x) for x in locations]
     rec_type = np.dtype([('chromosome', 'U2'),
                          ('start', np.int),
                          ('end', np.int),

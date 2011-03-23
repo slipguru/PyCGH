@@ -1,56 +1,107 @@
 import os
 from collections import defaultdict
+from csv import DictReader
 
 import numpy as np
 from matplotlib import pylab as plt
 from matplotlib import mlab
 
 from cghutils.readers import AgilentReader, GPLReader
-from cghutils.filters import probes_filter, split_locus_mapping
+from cghutils.filters import probes_filter, split_mappings
 from cghutils.plots import array_image, MA_plot, cgh_profile
 
-ABS_DIR = '/home/sabba/Phd/Tonini_IST/Group1/'
-FILE_NAME = '1115_G1_251495014936_1_2.txt'          # GPL5477
-#FILE_NAME = '1431_G1_251495014937_1_1.txt'
-#FILE_NAME = '1912_G1_251495014704_1_2.txt'
-#FILE_NAME = '2024_G1_251495014939_1_2.txt'
-#FILE_NAME = '2216_G1_251495014704_1_3.txt'
-#FILE_NAME = '2717_G1_251495014464_1_2.txt'
-#FILE_NAME = '17869_G1_Cologne_251469812733_1_2.txt' # GPL 4093
-ABS_PATH = os.path.join(ABS_DIR, FILE_NAME)
+ROOT_DIR = '/home/sabba/Phd/Tonini_IST'
+SAMPLES_DIR = os.path.join(ROOT_DIR, 'Group1')
+CLINICAL_INFO_PATH = os.path.join(ROOT_DIR, 'info_Row_aCGH.csv')
 
-acgh = AgilentReader(ABS_PATH)
 
-# GEO GPL reading
-#gpl = GPLReader('/home/sabba/Phd/Tonini_IST/Platforms/GPL5477.txt')
-#gpl = GPLReader('/home/sabba/Phd/Tonini_IST/Platforms/GPL4093.txt')
+# As example we pick the first GPL5477 sample reading the clinical data -------
+clinical_info = DictReader(open(CLINICAL_INFO_PATH, 'rb'), dialect='excel')
+for sample in clinical_info:
+    #if sample['platform'] == 'GPL5477': break
+    if sample['Sample name'] == 'Sample 3': break
+
+# Sample reading --------------------------------------------------------------
+# We assume red=ch1=cy5='reference' and green=ch2=cy3='tumor sample'
+swap = False if sample['ch1: source name'] == 'reference' else True
+FILE_NAME = sample['Agilent Feature Extraction file']
+FILE_PATH = os.path.join(SAMPLES_DIR, FILE_NAME)
+acgh = AgilentReader(FILE_PATH)
 
 # Remove controls and unmapped chr and extract data ---------------------------
 valid_probes = probes_filter(acgh)
 locations = acgh.feature('SystematicName')[valid_probes]
 probes = acgh.feature('ProbeName')[valid_probes]
 
-#green = acgh.feature('gMedianSignal')[valid_probes]
-#red = acgh.feature('rMedianSignal')[valid_probes]
-#green = acgh.feature('gBGSubSignal')[valid_probes]
-#red = acgh.feature('rBGSubSignal')[valid_probes]
-red = acgh.feature('rProcessedSignal')[valid_probes]
-green = acgh.feature('gProcessedSignal')[valid_probes]
-ratio = np.log2(red/green)
+# Default: sample on the green=ch2=cy3 channel
+ch1_signal = acgh.feature('rMedianSignal')[valid_probes]
+ch2_signal = acgh.feature('gMedianSignal')[valid_probes]
+if sample['ch1: source name'] == 'reference':
+    reference_signal, sample_signal = ch1_signal, ch2_signal
+else:
+    reference_signal, sample_signal = ch2_signal, ch1_signal
 
 # Extact locus and sort by them -----------------------------------------------
-locus = split_locus_mapping(locations) # locus is a record array
-locus_order = np.argsort(locus) # sort by 'chromosome' and (if equal) by 'start'
-                                # (then, eventually, 'end')
+mappings = split_mappings(locations) # locus is a record array
+mappings_order = np.argsort(mappings) # sort by 'chromosome' and (if equal) by 'start'
+                                    # (then, eventually, 'end')
 
-# Print a chromosome summary of the start end interval ------------------------
-# Locus fields are: 'chrmosome', 'start', 'end'
-summary = mlab.rec_groupby(locus,
+# Print Sample informations -------------------------------------------------
+print
+print '\n'.join(('Sample name: %(Sample name)s',
+                 'Platform: %(platform)s')) % sample
+
+# Mappings fields are: 'chrmosome', 'start', 'end'
+summary = mlab.rec_groupby(mappings,
                            groupby=('chromosome',),
-                           stats=(('start', np.min, 'from'),
+                           stats=(('chromosome', len, 'num_probes'),
+                                  ('start', np.min, 'from'),
                                   ('end', np.max, 'to'),
                                   ))
-print summary
+rjusts = (6, 10, 10, 10)
+print 'Chr # | # probes |   from   |    to    '
+print '------+----------+----------+----------'
+for record in summary:
+    formatted = "|".join(str(val).rjust(just) for val, just in zip(record, rjusts))
+    print formatted
+
+
+# M-A plot --------------------------------------------------------------------
+plt.figure()
+A = 0.5 * (np.log2(sample_signal) + np.log2(reference_signal))
+M = np.log2(sample_signal) - np.log2(reference_signal)
+M_norm = MA_plot(A, M, lowess=True, label='Raw Signal')
+
+# Profile plot ----------------------------------------------------------------
+ratio = M_norm
+
+# Questo plotta senza badare alla distanza fisica tra le probe
+plt.figure()
+positions = np.arange(len(ratio))
+separators = np.concatenate(([0], np.cumsum(summary['num_probes'])))
+cgh_profile(positions, ratio[mappings_order], separators=separators)
+
+# In questo modo invece la distanza sulle x e' proporzionale alla distanza fisica
+# Nota pero' che la distanza tra cromosomi non ha senso!
+plt.figure()
+positions = np.empty_like(ratio)
+separators = np.concatenate(([0], np.cumsum(summary['to'])))
+
+# Dobbiamo shiftare tutti i valori rispetto alla fine del cromosoma precedente
+starting_locations = dict(zip(summary['chromosome'], separators[:-1]))
+for i, (chr, start, end) in enumerate(mappings):
+    shifted_start = start + starting_locations[chr]
+    shifted_end = end + starting_locations[chr]
+    pos = int((shifted_start + shifted_end)/2) # punto mediano della probe
+
+    positions[i] = pos
+
+cgh_profile(positions, ratio, separators=separators)
+
+plt.show()
+
+
+exit()
 
 # Replicates statistics -------------------------------------------------------
 probe_positions = defaultdict(list)
@@ -77,18 +128,7 @@ print 'aCGH sigma (agilent log ratios): %f' % sigma
 # Spatial plot ---------------------------------------------------------------
 rows = acgh.feature('Row')[valid_probes]
 cols = acgh.feature('Col')[valid_probes]
-fig = array_image(rows, cols, ratio, num=1)
-
-# M-A plot --------------------------------------------------------------------
-fig = MA_plot(red, green, num=2)
-
-# Profile plot ----------------------------------------------------------------
-fig = cgh_profile(locus[locus_order]['start'], ratio[locus_order])
-
-#print xmin, xmax
-#plt.axis([xmin, xmax, 0.5, 1.5])
-plt.show()
-
+#fig = array_image(rows, cols, ratio, num=1)
 
 
 ## Proviamo con la griglia GEO
