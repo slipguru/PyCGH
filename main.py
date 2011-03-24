@@ -18,8 +18,8 @@ CLINICAL_INFO_PATH = os.path.join(ROOT_DIR, 'info_Row_aCGH.csv')
 # As example we pick the first GPL5477 sample reading the clinical data -------
 clinical_info = DictReader(open(CLINICAL_INFO_PATH, 'rb'), dialect='excel')
 for sample in clinical_info:
-    #if sample['platform'] == 'GPL5477': break
-    if sample['Sample name'] == 'Sample 3': break
+    if sample['platform'] == 'GPL5477': break
+    #if sample['Sample name'] == 'Sample 3': break
 
 # Sample reading --------------------------------------------------------------
 # We assume red=ch1=cy5='reference' and green=ch2=cy3='tumor sample'
@@ -75,24 +75,24 @@ M_norm = MA_plot(A, M, lowess=True, label='Raw Signal')
 # Profile plot ----------------------------------------------------------------
 ratio = M_norm
 
-# Questo plotta senza badare alla distanza fisica tra le probe
+# Version 1: only ordering of the positions
 plt.figure()
 positions = np.arange(len(ratio))
 separators = np.concatenate(([0], np.cumsum(summary['num_probes'])))
 cgh_profile(positions, ratio[mappings_order], separators=separators)
 
-# In questo modo invece la distanza sulle x e' proporzionale alla distanza fisica
-# Nota pero' che la distanza tra cromosomi non ha senso!
+# Version 2: ordering and proportional distance between probes
+# Note: the "zero" for each chromosome is the last position of the previous one
 plt.figure()
 positions = np.empty_like(ratio)
 separators = np.concatenate(([0], np.cumsum(summary['to'])))
 
-# Dobbiamo shiftare tutti i valori rispetto alla fine del cromosoma precedente
+# Shifting...
 starting_locations = dict(zip(summary['chromosome'], separators[:-1]))
 for i, (chr, start, end) in enumerate(mappings):
     shifted_start = start + starting_locations[chr]
     shifted_end = end + starting_locations[chr]
-    pos = int((shifted_start + shifted_end)/2) # punto mediano della probe
+    pos = int((shifted_start + shifted_end)/2) # median point of the probe
 
     positions[i] = pos
 
