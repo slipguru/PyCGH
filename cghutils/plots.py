@@ -8,35 +8,39 @@ import rpy2.robjects.numpy2ri
 
 from matplotlib import pylab as plt
 
-def array_image(rows, cols, signals, *args, **kwargs):
-    fig = plt.figure(*args, **kwargs)
+def array_image(rows, cols, signals, vmin=-1, vmax=1, median_center=True):
     plt.title('CGH Spatial plot')
 
-    # np.inf is masked ad showed as white
-    array_image = np.ones((rows.max(), cols.max())) * np.inf
+    # np.nan is masked ad showed as white
+    array_image = np.ones((rows.max(), cols.max())) * np.nan
     for r, c, sig in zip(rows, cols, signals):
         array_image[r-1, c-1] = sig
 
-    print rows.max()
+    if median_center:
+        array_image -= np.median(array_image)
 
-    plt.imshow(array_image.T, cmap=plt.cm.jet,
-                              aspect='equal',
-                              interpolation='nearest',
-                              norm=None)
-    #plt.xticks(range(0, rows.max(), 10))
-    #plt.grid(True)
-    plt.xlabel('Rows')
-    plt.ylabel('Columns')
-    plt.colorbar(orientation='horizontal')
+    plt.xticks(range(0, cols.max(), cols.max()/4)[1:], [])
+    plt.yticks(range(0, rows.max(), rows.max()/4)[1:], [])
+    plt.tick_params(axis='x', direction='out', length=3, colors='black',
+                    labelsize='small', labelbottom='on')
+    plt.grid(True)
 
-    return fig
+    plt.imshow(array_image,
+               cmap=plt.cm.jet,
+               aspect='equal',
+               interpolation='nearest',
+               norm=None, vmin=vmin, vmax=vmax)
+
+    plt.xlabel('Columns')
+    plt.ylabel('Rows')
+    plt.colorbar(orientation='vertical')
 
 def MA_plot(A, M, lowess=True, label='Input Signal'):
     plt.title('CGH M-A plot')
 
     plt.scatter(A, M, label=label, s=4, edgecolors='none', c='y')
-    plt.xlabel(r'$A = \frac{log_2(r \cdot g)}{2}$')
-    plt.ylabel(r'$M = log_2(\frac{r}{g})$')
+    plt.xlabel('A')
+    plt.ylabel('M')
     plt.axhline(np.median(M), lw=2, c='y', label='%s Median' % label)
 
     # Manual lowess normalization
@@ -74,8 +78,8 @@ def cgh_profile(positions, signal, separators):
     plt.scatter(positions, signal, c=signal, cmap=cmap,
                 s=8, edgecolors='none')
 
-    plt.axis([separators.min(), separators.max(),
-              signal.min(), signal.max()])
+    plt.axis([positions.min(), positions.max(),
+              np.nanmin(signal), np.nanmax(signal)])
     plt.colorbar()
 
     for sep in separators:
