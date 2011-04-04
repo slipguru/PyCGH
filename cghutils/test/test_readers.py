@@ -39,7 +39,8 @@ class TestAgilentReader(object):
 
     def test_access_features(self):
         value = self.reader.feature('LogRatio')
-        assert_equals(4460, len(value))
+        assert_equals(45220, len(value))
+        #assert_equals(4460, len(value))
 
         assert_raises(KeyError, self.reader.feature, 'fake')
 

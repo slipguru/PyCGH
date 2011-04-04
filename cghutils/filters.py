@@ -9,7 +9,7 @@ def probes_filter(acgh, filter_controls=True, filter_unmapped=True):
         size = acgh.feature('SystematicName').size
     controls = unmapped = np.zeros(size, dtype=bool) # no filtering
 
-    if filter_controls:
+    if filter_controls: #also filter missing values
         controls = np.logical_not(acgh.feature('ControlType') == 0)
 
     if filter_unmapped:

@@ -74,7 +74,7 @@ def MA_plot(A, M, lowess=True, label='Input Signal'):
 def cgh_profile(positions, signal, separators):
     plt.title('CGH profile')
 
-    cmap = plt.get_cmap('jet')
+    cmap = plt.get_cmap('jet') #cool
     plt.scatter(positions, signal, c=signal, cmap=cmap,
                 s=8, edgecolors='none')
 

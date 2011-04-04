@@ -22,13 +22,26 @@ def _read_info_line(acgh, delimiter='\t'):
 
     return out
 
-def _read_info_block(acgh, delimiter='\t'):
+def _read_info_block(acgh, num_cols, num_rows, delimiter='\t'):
     out = dict()
     types, info = _return_headers(acgh, delimiter)
 
+    import itertools as it
+    expexted_coords = it.product(xrange(1, num_rows+1), xrange(1, num_cols+1))
+
+    found_coords = set()
     for line in acgh:
         data = line.strip().split(delimiter)[1:]
         for i, t, d in zip(info, types, data):
+            out.setdefault(i, []).append(TYPE_MAP[t][0](d))
+        found_coords.add((out['Row'][-1], out['Col'][-1]))
+
+    #Filling missing values, only cols and rows has valid values
+    missing_coords = set(expexted_coords) - found_coords
+    missing_data = np.ones(len(info))*-1
+    for coord in missing_coords:
+        missing_data[1:3] = coord
+        for i, t, d in zip(info, types, missing_data):
             out.setdefault(i, []).append(TYPE_MAP[t][0](d))
 
     # Conversion in numpy array
@@ -56,8 +69,12 @@ class AgilentReader(object):
             self._params = _read_info_line(acgh, self.delimiter)
             # Reading STATS
             self._stats = _read_info_line(acgh, self.delimiter)
+
+            num_cols = self._params['Grid_NumCols']
+            num_rows = self._params['Grid_NumRows']
+
             # Reading FEATURES
-            self._features = _read_info_block(acgh, self.delimiter)
+            self._features = _read_info_block(acgh, num_cols, num_rows, self.delimiter)
 
     def param(self, key):
         return self._params[key]
