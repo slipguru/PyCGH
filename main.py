@@ -31,6 +31,10 @@ for sample in clinical_info:
         FILE_PATH = os.path.join(SAMPLES_DIR, FILE_NAME)
         acgh = AgilentReader(FILE_PATH)
 
+        print acgh.feature('Col')[-5:-1]
+        print acgh.feature('Row')[-5:-1]
+        exit()
+
         # Remove controls and unmapped chr and extract data -------------------
         valid_probes = probes_filter(acgh)
         locations = acgh.feature('SystematicName')[valid_probes]

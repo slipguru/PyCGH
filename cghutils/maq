@@ -1,0 +1,72 @@
+[1;31mType:		[0mbuiltin_function_or_method
+[1;31mBase Class:	[0m<type 'builtin_function_or_method'>
+[1;31mString Form:[0m	<built-in method view of numpy.ndarray object at 0x3805650>
+[1;31mNamespace:	[0mInteractive
+[1;31mDocstring:
+[0m    a.view(dtype=None, type=None)
+    
+    New view of array with the same data.
+    
+    Parameters
+    ----------
+    dtype : data-type, optional
+        Data-type descriptor of the returned view, e.g., float32 or int16.
+        The default, None, results in the view having the same data-type
+        as `a`.
+    type : Python type, optional
+        Type of the returned view, e.g., ndarray or matrix.  Again, the
+        default None results in type preservation.
+    
+    Notes
+    -----
+    ``a.view()`` is used two different ways:
+    
+    ``a.view(some_dtype)`` or ``a.view(dtype=some_dtype)`` constructs a view
+    of the array's memory with a different data-type.  This can cause a
+    reinterpretation of the bytes of memory.
+    
+    ``a.view(ndarray_subclass)`` or ``a.view(type=ndarray_subclass)`` just
+    returns an instance of `ndarray_subclass` that looks at the same array
+    (same shape, dtype, etc.)  This does not cause a reinterpretation of the
+    memory.
+    
+    
+    Examples
+    --------
+    >>> x = np.array([(1, 2)], dtype=[('a', np.int8), ('b', np.int8)])
+    
+    Viewing array data using a different type and dtype:
+    
+    >>> y = x.view(dtype=np.int16, type=np.matrix)
+    >>> y
+    matrix([[513]], dtype=int16)
+    >>> print type(y)
+    <class 'numpy.matrixlib.defmatrix.matrix'>
+    
+    Creating a view on a structured array so it can be used in calculations
+    
+    >>> x = np.array([(1, 2),(3,4)], dtype=[('a', np.int8), ('b', np.int8)])
+    >>> xv = x.view(dtype=np.int8).reshape(-1,2)
+    >>> xv
+    array([[1, 2],
+           [3, 4]], dtype=int8)
+    >>> xv.mean(0)
+    array([ 2.,  3.])
+    
+    Making changes to the view changes the underlying array
+    
+    >>> xv[0,1] = 20
+    >>> print x
+    [(1, 20) (3, 4)]
+    
+    Using a view to convert an array to a record array:
+    
+    >>> z = x.view(np.recarray)
+    >>> z.a
+    array([1], dtype=int8)
+    
+    Views share data:
+    
+    >>> x[0] = (9, 10)
+    >>> z[0]
+    (9, 10)
