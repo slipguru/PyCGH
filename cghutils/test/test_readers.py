@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 
+import cghutils.readers as cghr
 from cghutils.readers import AgilentReader, GPLReader
 
 class TestAgilentReader(object):
@@ -52,11 +53,18 @@ class TestAgilentReader(object):
     def test_toarray(self):
         value = self.reader.toarray()
         assert_equals(45220, len(value))
-        assert_equals(10, len(value[0]))
+        assert_equals(11, len(value[0]))
 
         # Find present data
         present = np.logical_and(value['row'] == 19, value['col'] == 64)
+        assert_equals(19, value['row'][present])
+        assert_equals(64, value['col'][present])
         assert_equals('A_14_P102318', value['id'][present])
+        assert_equals(19, value['chromosome'][present])
+        assert_equals(11455241, value['start_base'][present])
+        assert_equals(11455291, value['end_base'][present])
+        assert_true(~np.isnan(value['ref_signal'][present]))
+        assert_true(~np.isnan(value['sample_bg'][present]))
 
         # Find missing data
         missing = np.logical_and(value['row'] == 18, value['col'] == 64)
@@ -65,7 +73,45 @@ class TestAgilentReader(object):
         assert_equals('N/A', value['id'][missing])
         assert_true(np.isnan(value['ref_signal'][missing]))
         assert_true(np.isnan(value['sample_bg'][missing]))
-        assert_equals(-9999, value['chromosome'][missing])
+        assert_equals(cghr.INVALID_INT, value['chromosome'][missing])
+
+        # Chromosomes convertions
+        Xprobe = (value['id'] == 'A_14_P119856')
+        assert_equals(23, value['chromosome'][Xprobe]) # X
+
+    def test_toarray_fields(self):
+        value = self.reader.toarray(fields=('row', 'col', 'chromosome'))
+        assert_equals(45220, len(value))
+        assert_equals(3, len(value[0]))
+
+    def test_toarray_order(self):
+        value = self.reader.toarray(order=('chromosome', 'start_base'))
+        assert_equals(45220, len(value))
+        assert_equals(11, len(value[0]))
+
+        assert_equals(cghr.INVALID_INT, value[0]['chromosome'])
+        assert_equals(24, value[-1]['chromosome'])
+
+        # Order with filter
+        value = self.reader.toarray(fields=('chromosome',),
+                                    order=('chromosome', 'start_base'))
+        assert_equals(cghr.INVALID_INT, value[0]['chromosome'])
+        assert_equals(24, value[-1]['chromosome'])
+        assert_raises(ValueError, value.__getitem__, 'id')
+
+    def test_lazyness(self):
+        value1 = self.reader.toarray()
+        assert_not_equals(cghr.INVALID_STRING, value1['id'][0])
+
+        value1['id'][0] = cghr.INVALID_STRING
+        assert_equals(cghr.INVALID_STRING, value1['id'][0])
+
+        value2 = self.reader.toarray()
+        assert_equals(cghr.INVALID_STRING, value2['id'][0])
+
+        value2 = self.reader.toarray(fields=('id',))
+        assert_equals(cghr.INVALID_STRING, value2['id'][0])
+
 
 
 class TestGPLReader(object):

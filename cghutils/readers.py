@@ -10,6 +10,10 @@ TYPE_MAP = {'text': (unicode, unicode),
             'integer': (int, int),
             'boolean': (lambda x: bool(int(x)), bool)}
 
+INVALID_INT = -9999
+INVALID_FLOAT = np.nan
+INVALID_STRING = 'N/A'
+
 def _read_info_line(acgh, delimiter='\t'):
     out = dict()
     types, info = _return_headers(acgh, delimiter)
@@ -43,6 +47,26 @@ def _return_headers(acgh, delimiter='\t'):
     return types, info
 
 
+# Conversions algoritm --------------------------------------------------------
+def _split_mapping(location):
+    try:
+        chr, interval = location.split(':')
+        start, end = (int(x) for x in interval.split('-'))
+    except ValueError: # unmapped/control probe
+        return (INVALID_INT,INVALID_INT, INVALID_INT, False)
+
+    # in some files the range is swapped :-/
+    if start > end:
+        start, end = end, start
+
+    chr = chr.split('_', 1)[0].replace('chr', '') # from chrXX_bla_bla to XX
+    if chr == 'X':
+        return 23, start, end, True
+    elif chr=='Y':
+        return 24, start, end, True
+    else:
+        return int(chr), start, end, True
+
 # Main Classes ------------------------------------------------------------------
 class AgilentReader(object):
 
@@ -50,6 +74,7 @@ class AgilentReader(object):
 
         self.delimiter = delimiter
         self.path = path
+        self._full_rdata = None
 
         with open(path, 'r') as acgh:
             # Reading FEPARAMS
@@ -77,14 +102,29 @@ class AgilentReader(object):
     def features_list(self):
         return self._features.keys()
 
-    def toarray(self):
+    def toarray(self, fields=None, order=None):
+
+        if self._full_rdata is None:
+            self._full_rdata = self._extract_array()
+
+        # Ordering (as is or sorted)
+        out = (self._full_rdata if order is None
+                                else np.sort(self._full_rdata, order=order))
+        # Filtering (filtering of fields used to sort is possible)
+        return out if fields is None else out[list(fields)]
+
+    def _extract_array(self):
         agilent_names = ['Row', 'Col', 'ProbeName',
                          'rMedianSignal', 'gMedianSignal',
                          'rBGMedianSignal', 'gBGMedianSignal']
+
         array_names = ['row', 'col', 'id',
                        'ref_signal', 'sample_signal',
                        'ref_bg', 'sample_bg',
-                       'chromosome', 'start_base', 'end_base'] # extract from SystematicName
+                       'chromosome', 'start_base', 'end_base',
+                       # last 3: extracted from SystematicName
+                       'valid']
+                       # unmapped and controls
 
         # Data lenght
         data_len = len(self._features['Row'])
@@ -97,23 +137,22 @@ class AgilentReader(object):
         full_data_len = num_rows*num_cols
 
         # Chromosome Position extraction (X=23, Y=24)
-        loc_buff = [np.array([0]*data_len, dtype=int),
-                    np.array([0]*data_len, dtype=int),
-                    np.array([0]*data_len, dtype=int)]
+        locations = self._features['SystematicName']
+        loc_buff = it.izip(*(_split_mapping(x) for x in locations))
 
         # Data extraction
-        data = [self._features[k] for k in agilent_names] + loc_buff
+        data = it.chain([self._features[k] for k in agilent_names], loc_buff)
         rdata = np.rec.fromarrays(data, names=array_names).view(np.ndarray)
 
         # Missing data
-        import itertools as it
         found_coords = set(tuple(x) for x in rdata[['row', 'col']])
         expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
         missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
 
-        missing_float = [np.nan]*len(missing_rows)
-        missing_str = ['N/A']*len(missing_rows)
-        missing_int = [-9999]*len(missing_rows)
+        missing_float = [INVALID_FLOAT]*len(missing_rows)
+        missing_str = [INVALID_STRING]*len(missing_rows)
+        missing_int = [INVALID_INT]*len(missing_rows)
+        missing_bool = [False]*len(missing_rows)
         missing_data = [np.asarray(x) for x in (missing_rows,
                                                 missing_cols,
                                                 missing_str,    #id
@@ -123,14 +162,15 @@ class AgilentReader(object):
                                                 missing_float,  #sample_bg
                                                 missing_int,    #chromosome
                                                 missing_int,    #start_base
-                                                missing_int)]   #end_base
+                                                missing_int,    #end_base
+                                                missing_bool)]  #valid
 
         missing_rdata = np.rec.fromarrays(missing_data,
                                           names=array_names,
                                           dtype=rdata.dtype).view(np.ndarray)
 
         full_rdata = np.r_[rdata, missing_rdata]
-        full_rdata.sort(order=('row', 'col'))
+        full_rdata.sort(order=('row', 'col')) # Default ordering
 
         return full_rdata
 
