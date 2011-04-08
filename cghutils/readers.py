@@ -22,26 +22,13 @@ def _read_info_line(acgh, delimiter='\t'):
 
     return out
 
-def _read_info_block(acgh, num_cols, num_rows, delimiter='\t'):
+def _read_info_block(acgh, delimiter='\t'):
     out = dict()
     types, info = _return_headers(acgh, delimiter)
 
-    import itertools as it
-    expexted_coords = it.product(xrange(1, num_rows+1), xrange(1, num_cols+1))
-
-    found_coords = set()
     for line in acgh:
         data = line.strip().split(delimiter)[1:]
         for i, t, d in zip(info, types, data):
-            out.setdefault(i, []).append(TYPE_MAP[t][0](d))
-        found_coords.add((out['Row'][-1], out['Col'][-1]))
-
-    #Filling missing values, only cols and rows has valid values
-    missing_coords = set(expexted_coords) - found_coords
-    missing_data = np.ones(len(info))*-1
-    for coord in missing_coords:
-        missing_data[1:3] = coord
-        for i, t, d in zip(info, types, missing_data):
             out.setdefault(i, []).append(TYPE_MAP[t][0](d))
 
     # Conversion in numpy array
@@ -69,12 +56,8 @@ class AgilentReader(object):
             self._params = _read_info_line(acgh, self.delimiter)
             # Reading STATS
             self._stats = _read_info_line(acgh, self.delimiter)
-
-            num_cols = self._params['Grid_NumCols']
-            num_rows = self._params['Grid_NumRows']
-
             # Reading FEATURES
-            self._features = _read_info_block(acgh, num_cols, num_rows, self.delimiter)
+            self._features = _read_info_block(acgh, self.delimiter)
 
     def param(self, key):
         return self._params[key]
@@ -93,6 +76,63 @@ class AgilentReader(object):
 
     def features_list(self):
         return self._features.keys()
+
+    def toarray(self):
+        agilent_names = ['Row', 'Col', 'ProbeName',
+                         'rMedianSignal', 'gMedianSignal',
+                         'rBGMedianSignal', 'gBGMedianSignal']
+        array_names = ['row', 'col', 'id',
+                       'ref_signal', 'sample_signal',
+                       'ref_bg', 'sample_bg',
+                       'chromosome', 'start_base', 'end_base'] # extract from SystematicName
+
+        # Data lenght
+        data_len = len(self._features['Row'])
+        try:
+            num_rows = self._params['Grid_NumRows']
+            num_cols = self._params['Grid_NumCols']
+        except KeyError:
+            num_rows = self._features['Row'].max()
+            num_cols = self._features['Col'].max()
+        full_data_len = num_rows*num_cols
+
+        # Chromosome Position extraction (X=23, Y=24)
+        loc_buff = [np.array([0]*data_len, dtype=int),
+                    np.array([0]*data_len, dtype=int),
+                    np.array([0]*data_len, dtype=int)]
+
+        # Data extraction
+        data = [self._features[k] for k in agilent_names] + loc_buff
+        rdata = np.rec.fromarrays(data, names=array_names).view(np.ndarray)
+
+        # Missing data
+        import itertools as it
+        found_coords = set(tuple(x) for x in rdata[['row', 'col']])
+        expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
+        missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
+
+        missing_float = [np.nan]*len(missing_rows)
+        missing_str = ['N/A']*len(missing_rows)
+        missing_int = [-9999]*len(missing_rows)
+        missing_data = [np.asarray(x) for x in (missing_rows,
+                                                missing_cols,
+                                                missing_str,    #id
+                                                missing_float,  #ref_signal
+                                                missing_float,  #sample_signal
+                                                missing_float,  #ref_bg
+                                                missing_float,  #sample_bg
+                                                missing_int,    #chromosome
+                                                missing_int,    #start_base
+                                                missing_int)]   #end_base
+
+        missing_rdata = np.rec.fromarrays(missing_data,
+                                          names=array_names,
+                                          dtype=rdata.dtype).view(np.ndarray)
+
+        full_rdata = np.r_[rdata, missing_rdata]
+        full_rdata.sort(order=('row', 'col'))
+
+        return full_rdata
 
 
 class GPLReader(object):

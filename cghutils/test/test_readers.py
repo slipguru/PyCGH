@@ -1,6 +1,8 @@
 from nose.tools import *
 import os
 
+import numpy as np
+
 from cghutils.readers import AgilentReader, GPLReader
 
 class TestAgilentReader(object):
@@ -39,14 +41,31 @@ class TestAgilentReader(object):
 
     def test_access_features(self):
         value = self.reader.feature('LogRatio')
-        assert_equals(45220, len(value))
-        #assert_equals(4460, len(value))
+        assert_equals(4460, len(value))
 
         assert_raises(KeyError, self.reader.feature, 'fake')
 
     def test_features_keys(self):
         features = self.reader.features_list()
         assert_equals(40, len(features))
+
+    def test_toarray(self):
+        value = self.reader.toarray()
+        assert_equals(45220, len(value))
+        assert_equals(10, len(value[0]))
+
+        # Find present data
+        present = np.logical_and(value['row'] == 19, value['col'] == 64)
+        assert_equals('A_14_P102318', value['id'][present])
+
+        # Find missing data
+        missing = np.logical_and(value['row'] == 18, value['col'] == 64)
+        assert_equals(18, value['row'][missing])
+        assert_equals(64, value['col'][missing])
+        assert_equals('N/A', value['id'][missing])
+        assert_true(np.isnan(value['ref_signal'][missing]))
+        assert_true(np.isnan(value['sample_bg'][missing]))
+        assert_equals(-9999, value['chromosome'][missing])
 
 
 class TestGPLReader(object):
