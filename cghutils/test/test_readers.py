@@ -8,8 +8,8 @@ from cghutils.readers import AgilentReader, GPLReader
 
 class TestAgilentReader(object):
     def setup(self):
-        par_dir = os.path.split(os.path.abspath(__file__))[0]
-        self.reader = AgilentReader(os.path.join(par_dir, 'test_agilent.txt'))
+        self.par_dir = os.path.split(os.path.abspath(__file__))[0]
+        self.reader = AgilentReader(os.path.join(self.par_dir, 'test_agilent.txt'))
 
     def test_acces_params(self):
         value = self.reader.param('Protocol_Name')
@@ -64,7 +64,7 @@ class TestAgilentReader(object):
         assert_equals(11455241, value['start_base'][present])
         assert_equals(11455291, value['end_base'][present])
         assert_true(~np.isnan(value['ref_signal'][present]))
-        assert_true(~np.isnan(value['sample_bg'][present]))
+        assert_true(~np.isnan(value['test_bg'][present]))
 
         # Find missing data
         missing = np.logical_and(value['row'] == 18, value['col'] == 64)
@@ -72,7 +72,7 @@ class TestAgilentReader(object):
         assert_equals(64, value['col'][missing])
         assert_equals('N/A', value['id'][missing])
         assert_true(np.isnan(value['ref_signal'][missing]))
-        assert_true(np.isnan(value['sample_bg'][missing]))
+        assert_true(np.isnan(value['test_bg'][missing]))
         assert_equals(cghr.INVALID_INT, value['chromosome'][missing])
 
         # Chromosomes convertions
@@ -112,31 +112,24 @@ class TestAgilentReader(object):
         value2 = self.reader.toarray(fields=('id',))
         assert_equals(cghr.INVALID_STRING, value2['id'][0])
 
+    def test_swapping(self):
+        reader2 = AgilentReader(os.path.join(self.par_dir, 'test_agilent.txt'),
+                                test_channel='g')
 
+        value1 = self.reader.toarray()
+        value2 = reader2.toarray()
 
-class TestGPLReader(object):
-    def setup(self):
-        par_dir = os.path.split(os.path.abspath(__file__))[0]
-        self.reader = GPLReader(os.path.join(par_dir, 'test_geogpl.txt'))
+        ref1 = value1['ref_signal'][value1['valid']]
+        refbg1 = value1['ref_bg'][value1['valid']]
+        test1 = value1['test_signal'][value1['valid']]
+        testbg1 = value1['test_bg'][value1['valid']]
 
-    def test_fields(self):
-        fields = self.reader.fields_list()
-        assert_equals(13, len(fields))
+        ref2 = value2['ref_signal'][value1['valid']]
+        refbg2 = value2['ref_bg'][value1['valid']]
+        test2 = value2['test_signal'][value1['valid']]
+        testbg2 = value2['test_bg'][value1['valid']]
 
-    def test_fields_description(self):
-        value = self.reader.field_description('ID')
-        assert_equals("Agilent feature number", value)
-
-    def test_field_value(self):
-        values = self.reader.field('ID')
-        assert_equals(30, len(values))
-
-        missing_values = self.reader.field('GENE_SYMBOL')
-        assert_equals(30, len(missing_values))
-
-    def test_fields_types(self):
-        id_sum = self.reader.field('ID').sum()
-        assert_equals(124159, id_sum)
-
-        gene_symbols = self.reader.field('GENE_SYMBOL')
-        assert_raises(TypeError, gene_symbols.sum)
+        assert_true(np.allclose(ref1, test2))
+        assert_true(np.allclose(test1, ref2))
+        assert_true(np.allclose(refbg1, testbg2))
+        assert_true(np.allclose(testbg1, refbg2))

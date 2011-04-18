@@ -70,11 +70,18 @@ def _split_mapping(location):
 # Main Classes ------------------------------------------------------------------
 class AgilentReader(object):
 
-    def __init__(self, path, delimiter='\t'):
+    def __init__(self, path, delimiter='\t', test_channel='r'):
 
         self.delimiter = delimiter
         self.path = path
         self._full_rdata = None
+
+        if test_channel == 'g':
+            self._swap_channels = True
+        elif test_channel == 'r':
+            self._swap_channels = False
+        else:
+            raise ValueError("test_channel must be 'r' (default) or 'g'")
 
         with open(path, 'r') as acgh:
             # Reading FEPARAMS
@@ -110,6 +117,7 @@ class AgilentReader(object):
         # Ordering (as is or sorted)
         out = (self._full_rdata if order is None
                                 else np.sort(self._full_rdata, order=order))
+
         # Filtering (filtering of fields used to sort is possible)
         return out if fields is None else out[list(fields)]
 
@@ -118,13 +126,18 @@ class AgilentReader(object):
                          'rMedianSignal', 'gMedianSignal',
                          'rBGMedianSignal', 'gBGMedianSignal']
 
-        array_names = ['row', 'col', 'id',
-                       'ref_signal', 'sample_signal',
-                       'ref_bg', 'sample_bg',
-                       'chromosome', 'start_base', 'end_base',
-                       # last 3: extracted from SystematicName
-                       'valid']
-                       # unmapped and controls
+        if self._swap_channels:
+            array_names =  ['row', 'col', 'id',
+                            'test_signal', 'ref_signal',
+                            'test_bg', 'ref_bg']
+        else:
+            array_names =  ['row', 'col', 'id',
+                            'ref_signal', 'test_signal',
+                            'ref_bg', 'test_bg']
+
+        # (chr, start, end) extracted from SystematicName
+        # valid: not (unmapped , controls, OL, poor quality)
+        array_names.extend(['chromosome', 'start_base', 'end_base', 'valid'])
 
         # Data lenght
         data_len = len(self._features['Row'])
@@ -143,6 +156,20 @@ class AgilentReader(object):
         # Data extraction
         data = it.chain([self._features[k] for k in agilent_names], loc_buff)
         rdata = np.rec.fromarrays(data, names=array_names).view(np.ndarray)
+
+        # Agilent: outliers
+        for flag in ('gIsFeatNonUnifOL', 'rIsFeatNonUnifOL',
+                     'gIsFeatPopnOL', 'rIsFeatPopnOL',
+                     'gIsBGNonUnifOL', 'rIsBGNonUnifOL',
+                     'gIsBGPopnOL', 'rIsBGPopnOL'):
+            # in-place update
+            np.logical_and(rdata['valid'], ~self._features[flag], rdata['valid'])
+
+        # Agilent: good quality probes
+        np.logical_and(rdata['valid'],
+                       np.logical_and(self._features['gIsWellAboveBG'],
+                                      self._features['rIsWellAboveBG']),
+                       rdata['valid'])
 
         # Missing data
         found_coords = set(tuple(x) for x in rdata[['row', 'col']])

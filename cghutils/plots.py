@@ -12,28 +12,32 @@ def array_image(rows, cols, signals, vmin=-1, vmax=1, median_center=True):
     plt.title('CGH Spatial plot')
 
     # np.nan is masked ad showed as white
-    array_image = np.ones((rows.max(), cols.max())) * np.nan
-    for r, c, sig in zip(rows, cols, signals):
-        array_image[r-1, c-1] = sig
+    #array_image = np.ones((rows.max(), cols.max())) * np.nan
+    #for r, c, sig in zip(rows, cols, signals):
+        #array_image[r-1, c-1] = sig
+    try:
+        array_image = signals.reshape((rows.max(), cols.max()))
+    except ValueError:
+        array_image = np.ones((rows.max(), cols.max())) * np.nan
+        for r, c, sig in zip(rows, cols, signals):
+            array_image[r-1, c-1] = sig
 
     if median_center:
         array_image -= np.median(array_image)
 
-    plt.xticks(range(0, cols.max(), cols.max()/4)[1:], [])
-    plt.yticks(range(0, rows.max(), rows.max()/4)[1:], [])
-    plt.tick_params(axis='x', direction='out', length=3, colors='black',
+    plt.tick_params(axis='both', direction='out', length=3, colors='black',
                     labelsize='small', labelbottom='on')
-    plt.grid(True)
 
-    plt.imshow(array_image,
+    plt.imshow(array_image.T,
                cmap=plt.cm.jet,
                aspect='equal',
                interpolation='nearest',
-               norm=None, vmin=vmin, vmax=vmax)
+               norm=None,
+               vmin=vmin, vmax=vmax)
 
-    plt.xlabel('Columns')
-    plt.ylabel('Rows')
-    plt.colorbar(orientation='vertical')
+    plt.ylabel('Columns')
+    plt.xlabel('Rows')
+    plt.colorbar(orientation='horizontal')#, ticks=range(1, 301))
 
 def MA_plot(A, M, lowess=True, label='Input Signal'):
     plt.title('CGH M-A plot')
@@ -46,7 +50,7 @@ def MA_plot(A, M, lowess=True, label='Input Signal'):
     # Manual lowess normalization
     if lowess:
         rlowess = robjects.r['lowess'] # Lowess from R
-        lowess_curve = rlowess(A, M, f=2./3, iter=3) #std params
+        lowess_curve = rlowess(A, M, f=0.4, iter=3) #std params 2/3
         x = np.asarray(lowess_curve[0])
         y = np.asarray(lowess_curve[1])
         plt.plot(x, y, 'r-', lw=2, label='%s Lowess Curve' % label) # Lowess Line
@@ -71,11 +75,11 @@ def MA_plot(A, M, lowess=True, label='Input Signal'):
 
         return M_norm
 
-def cgh_profile(positions, signal, separators):
+def cgh_profile(positions, signal, separators, vmin=-1, vmax=1):
     plt.title('CGH profile')
 
-    cmap = plt.get_cmap('jet') #cool
-    plt.scatter(positions, signal, c=signal, cmap=cmap,
+    cmap = plt.get_cmap('jet') #cool, jet
+    plt.scatter(positions, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
                 s=8, edgecolors='none')
 
     plt.axis([positions.min(), positions.max(),

@@ -10,15 +10,14 @@ import rpy2.robjects.numpy2ri
 
 from matplotlib import pylab as plt
 from cghutils.plots import array_image, MA_plot, cgh_profile
+from cghutils import readers
 
 # Importazione dati
 importr('MANOR')
 robjects.r('data(spatial)')
 
 
-def manor_normalization(acgh, valid_probes, probes, reference_signal,
-                        reference_bg, sample_signal, sample_bg, ratio,
-                        mappings, positions):
+def manor_normalization(acgh, ratio, positions):
     # ArrayValues -----------------------------------------------------------------
     spot_names = ["Col", "Row", "ProbeID",
                   "Ref_MedianSignal", "Ref_BGMedianSignal",
@@ -38,20 +37,23 @@ def manor_normalization(acgh, valid_probes, probes, reference_signal,
     def convert_float(indexes, values):
         return _convert(indexes, values, robjects.NA_real, robjects.FloatVector)
 
-    cols = acgh.feature('Col')
-    rows = acgh.feature('Row')
+    def convert_int(indexes, values):
+        return _convert(indexes, values, robjects.NA_integer, robjects.IntVector)
+
+    cols = acgh['col']#.feature('Col')
+    rows = acgh['row']#.feature('Row')
     cols_max = cols.max()
     rows_max = rows.max()
 
     spot_values = [robjects.IntVector(cols),
                    robjects.IntVector(rows),
-                   convert_string(valid_probes, probes),
-                   convert_float(valid_probes, reference_signal),
-                   convert_float(valid_probes, reference_bg),
-                   convert_float(valid_probes, sample_signal),
-                   convert_float(valid_probes, sample_bg),
-                   convert_float(valid_probes, ratio),
-                   convert_string(valid_probes, mappings['chromosome'])]
+                   convert_string(acgh['valid'], acgh['id']),
+                   convert_float(acgh['valid'], acgh['ref_signal']),
+                   convert_float(acgh['valid'], acgh['ref_bg']),
+                   convert_float(acgh['valid'], acgh['test_signal']),
+                   convert_float(acgh['valid'], acgh['test_bg']),
+                   convert_float(acgh['valid'], ratio),
+                   convert_int(acgh['valid'], acgh['chromosome'])]
 
     arrayValues = robjects.DataFrame(dict(zip(spot_names, spot_values)))
 
@@ -59,11 +61,13 @@ def manor_normalization(acgh, valid_probes, probes, reference_signal,
         print k, len(arrayValues.rx2(k))
 
     # CloneValues -----------------------------------------------------------------
+    probes = acgh['id'][acgh['valid']]
+    chromosomes = acgh['chromosome'][acgh['valid']]
     clone_names = ["ProbeID", "Position", "Chromosome"]
     unique_probes, unique_index = np.unique(probes, return_index=True)
     clone_values = [robjects.FactorVector(unique_probes),
                     robjects.IntVector(positions[unique_index]),
-                    robjects.FactorVector(mappings['chromosome'][unique_index])]
+                    robjects.IntVector(chromosomes[unique_index])]
     cloneValues = robjects.DataFrame(dict(zip(clone_names, clone_values)))
 
     for k in clone_names:
