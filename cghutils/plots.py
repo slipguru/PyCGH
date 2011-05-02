@@ -3,18 +3,14 @@ from itertools import chain
 import numpy as np
 
 # Rpy2 must be imported befor matplotlib to avoid a segmentation fault!
-from rpy2 import robjects
-import rpy2.robjects.numpy2ri
+from r_functions import lowess, loess
 
 from matplotlib import pylab as plt
 
-def array_image(rows, cols, signals, vmin=-1, vmax=1, median_center=True):
-    plt.title('CGH Spatial plot')
+def array_image(signals, rows, cols, title=None, median_center=False,
+                cmap=None, cbticks=None):
+    plt.title('CGH Spatial plot' if title is None else title)
 
-    # np.nan is masked ad showed as white
-    #array_image = np.ones((rows.max(), cols.max())) * np.nan
-    #for r, c, sig in zip(rows, cols, signals):
-        #array_image[r-1, c-1] = sig
     try:
         array_image = signals.reshape((rows.max(), cols.max()))
     except ValueError:
@@ -23,57 +19,62 @@ def array_image(rows, cols, signals, vmin=-1, vmax=1, median_center=True):
             array_image[r-1, c-1] = sig
 
     if median_center:
-        array_image -= np.median(array_image)
+        array_image -= np.median(array_image[~np.isnan(array_image)])
+    vmin = np.nanmin(array_image)
+    vmax = np.nanmax(array_image)
+
+    xlabel, ylabel = 'columns', 'rows'
+    r, c = array_image.shape
+    if r > c:
+        array_image = array_image.T
+        xlabel, ylabel = ylabel, xlabel
 
     plt.tick_params(axis='both', direction='out', length=3, colors='black',
                     labelsize='small', labelbottom='on')
-
-    plt.imshow(array_image.T,
-               cmap=plt.cm.jet,
+    plt.imshow(array_image,
+               cmap=plt.cm.jet if cmap is None else cmap,
                aspect='equal',
                interpolation='nearest',
                norm=None,
                vmin=vmin, vmax=vmax)
 
-    plt.ylabel('Columns')
-    plt.xlabel('Rows')
-    plt.colorbar(orientation='horizontal')#, ticks=range(1, 301))
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
 
-def MA_plot(A, M, lowess=True, label='Input Signal'):
-    plt.title('CGH M-A plot')
+    ticks = np.linspace(vmin, vmax, 10) if cbticks is None else np.asarray(cbticks)
+    fmt = '%d' if ticks.dtype == np.int else '%.2f'
+    cb = plt.colorbar(orientation='horizontal',
+                      ticks=ticks, boundaries=cbticks,
+                      aspect=40, format=fmt, spacing='proportional')
+    cb.ax.tick_params(axis='x', direction='out', length=3, colors='black',
+                      labelsize='small')
 
-    plt.scatter(A, M, label=label, s=4, edgecolors='none', c='y')
+def MA_plot(test, reference, title=None,
+            points_color='k', median_color='b', lowess_color='r'):
+    plt.title('CGH M-A plot' if title is None else title)
+
+    nan_values = np.logical_or(np.isnan(test), np.isnan(reference))
+    test = test[~nan_values]
+    reference = reference[~nan_values]
+
+    M = np.log2(test) - np.log2(reference)
+    A = 0.5 * (np.log2(test) + np.log2(reference))
+
+    plt.scatter(A, M, label='Data', s=2, edgecolors='none', c=points_color)
     plt.xlabel('A')
     plt.ylabel('M')
-    plt.axhline(np.median(M), lw=2, c='y', label='%s Median' % label)
+    plt.axhline(0, lw=1, c=points_color, ls='--')
+    plt.axhline(np.median(M), lw=2, c=median_color, label='Data Median')
 
-    # Manual lowess normalization
-    if lowess:
-        rlowess = robjects.r['lowess'] # Lowess from R
-        lowess_curve = rlowess(A, M, f=0.4, iter=3) #std params 2/3
-        x = np.asarray(lowess_curve[0])
-        y = np.asarray(lowess_curve[1])
-        plt.plot(x, y, 'r-', lw=2, label='%s Lowess Curve' % label) # Lowess Line
+    lowess_curve = lowess(A, M)
+    x = np.asarray(lowess_curve[0])
+    y = np.asarray(lowess_curve[1])
 
-        # M must be updated sorted
-        assert np.allclose(x, np.sort(A))
-        sorted_idxs = np.argsort(A) # as 'x' in lowess_curve
-        M_norm = np.empty_like(M)
-        M_norm[sorted_idxs] = M[sorted_idxs] - y
+    plt.plot(x, y, '%s-' % lowess_color,
+             lw=2, label='Data Lowess Curve') # Lowess Line
 
-        plt.scatter(A, M_norm, label='Lowess-Normalized %s' % label,
-                    s=4, edgecolors='none', c='c')
-        plt.axhline(np.median(M_norm), lw=2, c='c',
-                    label='Lowess-Normalized %s Median' % label)
+    plt.legend()
 
-        lowess_curve = rlowess(A, M_norm, f=2./3, iter=3) #std params
-        x = np.asarray(lowess_curve[0])
-        y = np.asarray(lowess_curve[1])
-        plt.plot(x, y, 'b-', lw=2,
-                 label='Lowess-Normalized %s Lowess Curve' % label)
-        plt.legend()
-
-        return M_norm
 
 def cgh_profile(positions, signal, separators, vmin=-1, vmax=1):
     plt.title('CGH profile')

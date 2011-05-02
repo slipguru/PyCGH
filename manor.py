@@ -16,7 +16,6 @@ from cghutils import readers
 importr('MANOR')
 robjects.r('data(spatial)')
 
-
 def manor_normalization(acgh, ratio, positions):
     # ArrayValues -----------------------------------------------------------------
     spot_names = ["Col", "Row", "ProbeID",

@@ -6,9 +6,9 @@ import numpy as np
 from matplotlib import pylab as plt
 from matplotlib import mlab as ml
 
-from cghutils.readers import AgilentReader, GPLReader
-from cghutils.filters import probes_filter, split_mappings
+from cghutils.readers import AgilentReader
 from cghutils.plots import array_image, MA_plot, cgh_profile
+from cghutils.r_functions import loess
 
 ROOT_DIR = '/home/sabba/Phd/Tonini_IST'
 SAMPLES_DIR = os.path.join(ROOT_DIR, 'Group1')
@@ -16,53 +16,130 @@ SAMPLES_OUT_DIR = os.path.join(ROOT_DIR, 'Group1_extracted')
 CLINICAL_INFO_PATH = os.path.join(ROOT_DIR, 'info_Row_aCGH.csv')
 
 
-out_replicated = list()
-out_names = list()
-
 # As example we pick the first GPL5477 sample reading the clinical data -------
 clinical_info = DictReader(open(CLINICAL_INFO_PATH, 'rb'), dialect='excel')
 for sample in clinical_info:
 
-    if sample['Sample name'] == 'Sample 35': # 35, 44: spatial bias
-    #if sample['platform'] == 'GPL5477':
-        # Sample reading ------------------------------------------------------
-        # We assume red=ch1=cy5='reference' and green=ch2=cy3='tumor sample'
-        swap = False if sample['ch1: source name'] == 'reference' else True
+# TODO: trend senza filtrare.
+# visualizzare ma senza e con filtro
+# visualizzare i 4 trend
+# visualizzare tren log ratio con e senza filtro
+# STOP!
+# Calcolare metriche
+# Generare report con box plot.
+# Tutto questo ci da un sistema automatico di analisi dei vetrini
+# tipo agilent.
+# si potrebbe plottare anche R vs G con e senza filtro
+
+    #if sample['platform'] == 'GPLd5477':
+    if sample['Sample name'] == 'Sample 22':
+        # Sample reading ======================================================
+        # We have red=ch1=cy5 and green=ch2=cy3
+        test_channel = 'r' if sample['ch1: source name'] != 'reference' else 'g'
         FILE_NAME = sample['Agilent Feature Extraction file']
         FILE_PATH = os.path.join(SAMPLES_DIR, FILE_NAME)
-        acgh_r = AgilentReader(FILE_PATH)
-        acgh_full = acgh_r.toarray(order=('row', 'col')) # def
-        acgh = acgh_full[acgh_full['valid']]
+        reader = AgilentReader(FILE_PATH, test_channel=test_channel)
+        acgh = reader.toarray(order=('row', 'col')) # default ordering
+        acgh_valid = acgh[acgh['valid']]
 
-        #=======================================
-        #from mlabwrap import mlab
-        #mlab.addpath('chen/')
-        #mlab.addpath('chen/stprtool/')
-        #mlab.stprpath('chen/stprtool/')
-        #data = mlab.ReadAgilentResult(FILE_PATH)
-        #aCGHdata, model = mlab.aCGHNormalization3(data, 1, (0 if swap else 1), 1, nout=2)
-        #plt.scatter(np.arange(len(aCGHdata.nRatioAdj)),
-        #            aCGHdata.nRatioAdj.flatten(),
-        #            c=aCGHdata.nRatioAdj.flatten(),
-        #            cmap=plt.get_cmap('jet'),
-        #            vmin=-1, vmax=1, s=8, edgecolors='none')
-        #plt.show()
+        # Step 1: show raw data ===============================================
+        # -- Array Design (chr positions) -------------------------------------
+        #from matplotlib.backends.backend_pdf import PdfPages
+        #pp = PdfPages('multipage.pdf')
+        #for i in range(1, 25):
+        #    plt.figure()
+        #    only_one = acgh_valid['chromosome']==i
+        #    array_image(acgh_valid['chromosome'][only_one],
+        #                acgh_valid['row'][only_one], acgh_valid['col'][only_one])
+        #    plt.title('Chromosome position on the glass')
+        #    pp.savefig()
+        #pp.close()
         #exit()
-        #=======================================
+
+        # -- M-A plot ---------------------------------------------------------
+        fig = plt.figure()
+        fig.add_subplot(211)
+        MA_plot(acgh['test_signal'], acgh['ref_signal'],
+                title='MA plot - raw signals')
+        fig.add_subplot(212)
+        MA_plot(acgh_valid['test_signal'], acgh_valid['ref_signal'],
+                title='MA plot - raw signals agilent filtered')
+
+        # -- Array Image: ref, test, ref_bg, ref_test -------------------------
+        fig = plt.figure()
+        fig.subplots_adjust(left=0.05, right=0.95)
+        loess_params = {'span': 1e-1, 'degree': 1, 'normalize': False,
+                        'family': 'symmetric', 'iterations': 4}
+        for i, k in enumerate(('test_signal', 'ref_signal', 'test_bg', 'ref_bg')):
+            fig.add_subplot('32%d' % (i+1))
+            out =  loess(acgh[k], acgh['row'], acgh['col'], **loess_params)
+            array_image(out, acgh['row'], acgh['col'], title=k)
+
+        fig.add_subplot('325')
+        out =  loess(acgh['test_signal'] - acgh['test_bg'],
+                     acgh['row'], acgh['col'], **loess_params)
+        array_image(out, acgh['row'], acgh['col'], title='test-bg')
+        fig.add_subplot('326')
+        out =  loess(acgh['ref_signal'] - acgh['ref_bg'],
+                     acgh['row'], acgh['col'], **loess_params)
+        array_image(out, acgh['row'], acgh['col'], title='ref-bg')
+
+        # -- Array Image: raw ratio -------------------------------------------
+        fig = plt.figure()
+        raw_ratio = np.log2(acgh['test_signal']) - np.log2(acgh['ref_signal'])
+        out =  loess(raw_ratio, acgh['row'], acgh['col'], **loess_params)
+        fig.add_subplot('221')
+        array_image(out, acgh['row'], acgh['col'],
+                    title='raw log ratio (median centered)',
+                    median_center=True)
+        fig.add_subplot('222')
+        array_image(out[acgh['valid']], acgh_valid['row'], acgh_valid['col'],
+                    title='raw log ratio (median centered) - agilent filtered',
+                    median_center=True)
+        fig.add_subplot('223')
+        array_image(raw_ratio-out, acgh['row'], acgh['col'],
+                    title='raw log ratio (median centered)',
+                    median_center=True)
+        fig.add_subplot('224')
+        array_image((raw_ratio-out)[acgh['valid']], acgh_valid['row'], acgh_valid['col'],
+                    title='raw log ratio (median centered) - agilent filtered',
+                    median_center=True)
 
 
-        if swap:
-            test_signal, reference_signal = acgh['ref_signal'], acgh['test_signal']
-        else:
-            test_signal, reference_signal = acgh['test_signal'], acgh['ref_signal']
-        M = np.log2(test_signal) - np.log2(reference_signal)
+        # -- Chromosome profile -----------------------------------------------
+        #raw_ratio = np.log2(acgh['test_signal']) - np.log2(acgh['ref_signal'])
+        #raw_ratio = acgh['ratio']
+        summary = ml.rec_groupby(acgh_valid,
+                           groupby=('chromosome',),
+                           stats=(('chromosome', len, 'num_probes'),
+                                  ('start_base', np.min, 'from'),
+                                  ('end_base', np.max, 'to'),
+                                  ))
+        positions = np.empty_like(raw_ratio[acgh['valid']])
+        separators = np.concatenate(([0], np.cumsum(summary['to'])))
+
+        # Shifting...
+        mappings = acgh_valid[['chromosome', 'start_base', 'end_base']]
+        starting_locations = dict(zip(summary['chromosome'], separators[:-1]))
+        for i, (chr, start, end) in enumerate(mappings):
+            shifted_start = start + starting_locations[chr]
+            shifted_end = end + starting_locations[chr]
+            pos = int((shifted_start + shifted_end)/2) # median point of the probe
+            positions[i] = pos
+
         plt.figure()
-        array_image(acgh['row'], acgh['col'], M, median_center=True)
+        #array_image(acgh['row'], acgh['col'], M, median_center=True)
+        out = (raw_ratio-out)[acgh['valid']]
+        out -= np.median(out)
+        cgh_profile(positions, out, separators=separators)
+        plt.title('Raw Signal Profile no trend (after Median and agilent)')
 
-        #plt.figure()
-        #A = reference_signal
-        #M = test_signal
-        #lws_ratio = MA_plot(A, M, lowess=True, label='Raw Signal')
+        plt.figure()
+        #array_image(acgh['row'], acgh['col'], M, median_center=True)
+        out = acgh_valid['ratio']
+        #out -= np.median(out)
+        cgh_profile(positions, out, separators=separators)
+        plt.title('Raw Signal Profile (after Median and agilent)')
 
         plt.show()
         exit()

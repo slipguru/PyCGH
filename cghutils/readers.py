@@ -75,12 +75,9 @@ class AgilentReader(object):
         self.delimiter = delimiter
         self.path = path
         self._full_rdata = None
+        self._test_channel = test_channel
 
-        if test_channel == 'g':
-            self._swap_channels = True
-        elif test_channel == 'r':
-            self._swap_channels = False
-        else:
+        if not self._test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
 
         with open(path, 'r') as acgh:
@@ -124,16 +121,17 @@ class AgilentReader(object):
     def _extract_array(self):
         agilent_names = ['Row', 'Col', 'ProbeName',
                          'rMedianSignal', 'gMedianSignal',
-                         'rBGMedianSignal', 'gBGMedianSignal']
+                         'rBGMedianSignal', 'gBGMedianSignal',
+                         'LogRatio']
 
-        if self._swap_channels:
+        if self._test_channel == 'r':
             array_names =  ['row', 'col', 'id',
                             'test_signal', 'ref_signal',
-                            'test_bg', 'ref_bg']
-        else:
+                            'test_bg', 'ref_bg', 'ratio']
+        elif self._test_channel == 'g':
             array_names =  ['row', 'col', 'id',
                             'ref_signal', 'test_signal',
-                            'ref_bg', 'test_bg']
+                            'ref_bg', 'test_bg', 'ratio']
 
         # (chr, start, end) extracted from SystematicName
         # valid: not (unmapped , controls, OL, poor quality)
@@ -187,6 +185,7 @@ class AgilentReader(object):
                                                 missing_float,  #sample_signal
                                                 missing_float,  #ref_bg
                                                 missing_float,  #sample_bg
+                                                missing_float,  #ratio
                                                 missing_int,    #chromosome
                                                 missing_int,    #start_base
                                                 missing_int,    #end_base
