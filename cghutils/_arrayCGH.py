@@ -1,20 +1,50 @@
+import itertools as it
+
 import numpy as np
 from numpy import ma
 
 # This class represent only a useful way to read and manipulate
 # the values associated with an aCGH
 
-# The functionalities of the class are limited to reading and filtering data
-# Is possible to serialize/deserialize the class in a readble tab separated
-# format
+# Class construction
+#   1. Mandatory informations: id, row, col,
+#                              reference_signal, test_signal
+#                              chromosome, start_base, end_base
+#   2. The init accept a list of 8 structures which can be converted
+#     to an ndarray
+#   3. Optionally the class accept a filtering array, which indicates
+#      probes that should be filtered during the analysis
+#      and a list (or a matrix-like object) of additional columns paired
+#      with a list of names for that columns
 
-# Moreover, giving a reader class is possible to initialize
-# the class from other formats (e.g. Agilent Scanner output file)
 
-# The class automatically deal with missing data using numpy masked array
+class ArrayCGH(object):
 
-# The standard constructor accept a dictionary with all the needed values
-# The class was thought as a read-only structure
+    COL_NAMES = ('id', 'row', 'col',
+                 'reference_signal', 'test_signal',
+                 'chromosome', 'start_base', 'end_base')
+
+    def __init__(self, input, mask=None, **kwargs):
+
+        # Default: no optional inputs
+        buffer = input
+        names = list(self.COL_NAMES)
+
+        # Read mask as a standard optional parameter
+        if mask:
+            kwargs['mask'] = mask
+
+        # Extend the list of inputs
+        if kwargs:
+            kwnames, kwvalues = zip(*kwargs.items())
+            buffer = it.chain(input, kwvalues)
+            names.extend(kwnames)
+
+        if len(set(names)) < len(names):
+            raise ValueError('optional parameters name duplication')
+        self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
+
+
 
 TYPES = [('row', np.int16),             # no missing
          ('col', np.int16),             # //
@@ -27,7 +57,7 @@ TYPES = [('row', np.int16),             # no missing
          ('start_base', np.int_),
          ('end_base', np.int_)]
 
-class ArrayCGH(object):
+class oldArrayCGH(object):
 
     def __init__(self, input_dict, filter=None):
         # Ordered list to record array

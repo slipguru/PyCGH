@@ -22,52 +22,26 @@ class TestArrayCGH(object):
                        'end_base': [x+10 for x in range(1, len(row)+1)]
                     }
 
-    def test_subscription(self):
-        acgh = ArrayCGH(self.input)
-        for k in self.input:
-            assert_equals(len(self.input[k]), len(acgh[k]))
+        self.input = [['Probe%d' % x for x in range(1, len(row)+1)],    #ID
+                      list(row),                                        #Row
+                      list(col),                                        #Col
+                      [10]*len(row),                                    #Ref
+                      [20]*len(row),                                    #Test
+                      (range(1, 25)*5)[:len(row)],                      #Chr
+                      range(1, len(row)+1),                             #Start
+                      [x+10 for x in range(1, len(row)+1)]]             #End
 
-    def test_ratios(self):
-        acgh = ArrayCGH(self.input)
-        ratios = acgh.compute_ratios()
+    def test_simple_creation(self):
+        aCGh = ArrayCGH(self.input)
 
-        assert_equals(self.ROW_NUM*self.COL_NUM, len(ratios))
+    def test_optional_inputs(self):
+        mask = [True]*(self.ROW_NUM*self.COL_NUM)
+        aCGH = ArrayCGH(self.input, mask=mask)
 
-        expected_ratios = np.log2(acgh['sample_signal'] /
-                                  acgh['ref_signal'])
-        assert_true(np.allclose(expected_ratios, ratios))
+        optional = [30]*(self.ROW_NUM*self.COL_NUM)
+        aCGH = ArrayCGH(self.input, optional_signal=optional)
 
-    def test_ratios_bg(self):
-        acgh = ArrayCGH(self.input)
-        ratios = acgh.compute_ratios(bg_subtracted=True)
+        aCGH = ArrayCGH(self.input, mask=mask, optional_signal=optional)
 
-        expected_ratios = np.log2(
-                            (acgh['sample_signal'] - acgh['sample_bg']) /
-                            (acgh['ref_signal'] - acgh['ref_bg']))
-        assert_true(np.allclose(expected_ratios, ratios))
-
-    def test_ids(self):
-        acgh = ArrayCGH(self.input)
-        assert_equals(np.dtype('|S8'), acgh['id'].dtype)
-
-    def test_wrong_shape(self):
-        for k in self.input:
-            input = dict(self.input) # copy
-            input[k] = input[k][1:] # removing one element
-
-            try:
-                ArrayCGH(self.input)
-            except ValueError, e:
-                assert_equals("array-shape mismatch in '%s'" % k, str(e))
-
-    def test_filtered_data(self):
-        filter = np.array([True]*len(self.input['row']))
-        filter[10] = False #masking one element
-
-        acgh = ArrayCGH(self.input, filter=filter)
-        for k in self.input:
-            assert_equals(len(self.input[k])-1, len(acgh[k].compressed()))
-
-    #def test_ratios_ordered(self):
-        #acgh = ArrayCGH(self.input)
-        #ratios = acgh.compute_ratios(ordered=True)
+        # name duplication
+        assert_raises(ValueError, ArrayCGH, self.input, chromosome=optional)
