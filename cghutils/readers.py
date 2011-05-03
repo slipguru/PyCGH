@@ -3,6 +3,8 @@ import itertools as it
 
 import numpy as np
 
+from cghutils import ArrayCGH
+
 # Utility functions -----------------------------------------------------------
             # Agilent -> (conversion, dtype)
 TYPE_MAP = {'text': (unicode, unicode),
@@ -53,7 +55,7 @@ def _split_mapping(location):
         chr, interval = location.split(':')
         start, end = (int(x) for x in interval.split('-'))
     except ValueError: # unmapped/control probe
-        return (INVALID_INT,INVALID_INT, INVALID_INT, False)
+        return (INVALID_INT,INVALID_INT, INVALID_INT, True)
 
     # in some files the range is swapped :-/
     if start > end:
@@ -61,62 +63,57 @@ def _split_mapping(location):
 
     chr = chr.split('_', 1)[0].replace('chr', '') # from chrXX_bla_bla to XX
     if chr == 'X':
-        return 23, start, end, True
+        return 23, start, end, False
     elif chr=='Y':
-        return 24, start, end, True
+        return 24, start, end, False
     else:
-        return int(chr), start, end, True
+        return int(chr), start, end, False
 
 # Main Classes ------------------------------------------------------------------
-class AgilentReader(object):
+class AgilentCGH(ArrayCGH):
 
-    def __init__(self, path, delimiter='\t', test_channel='r'):
+    def __init__(self, *args, **kwargs):
+        return super(AgilentCGH, self).__init__(*args, **kwargs)
 
-        self.delimiter = delimiter
-        self.path = path
-        self._full_rdata = None
-        self._test_channel = test_channel
+    @staticmethod
+    def load(path, delimiter='\t', test_channel='r'):
 
-        if not self._test_channel in ('r', 'g'):
+        if not test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
 
         with open(path, 'r') as acgh:
             # Reading FEPARAMS
-            self._params = _read_info_line(acgh, self.delimiter)
+            params = _read_info_line(acgh, delimiter)
             # Reading STATS
-            self._stats = _read_info_line(acgh, self.delimiter)
+            stats = _read_info_line(acgh, delimiter)
             # Reading FEATURES
-            self._features = _read_info_block(acgh, self.delimiter)
+            features = _read_info_block(acgh, delimiter)
 
-    def param(self, key):
-        return self._params[key]
+        # Mapping between Agilent Names and aCGH.COL_NAMES
+        agilent_names = ['ProbeName', 'Row', 'Col']
+        if test_channel == 'r':
+            agilent_names.extend(['gMedianSignal', 'rMedianSignal'])
+        elif test_channel == 'g':
+            agilent_names.extend(['rMedianSignal', 'gMedianSignal'])
 
-    def params_list(self):
-        return self._params.keys()
+        # Chromosome Position extraction (X=23, Y=24)
+        locations = features['SystematicName']
+        loc_buff = zip(*(_split_mapping(x) for x in locations))
 
-    def stat(self, key):
-        return self._stats[key]
+        # Data extraction
+        data = it.chain([features[k] for k in agilent_names], loc_buff[:-1])
 
-    def stats_list(self):
-        return self._stats.keys()
+        aCGH = AgilentCGH(data, mask=loc_buff[-1])
 
-    def feature(self, key):
-        return self._features[key]
+        # Dinamyc attachment of useful informations
+        aCGH.TEST_CHANNEL = test_channel
+        aCGH.PARAMS = params
+        aCGH.STATS = stats
+        aCGH.FEATURES = features
+        aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6], agilent_names))
 
-    def features_list(self):
-        return self._features.keys()
+        return aCGH
 
-    def toarray(self, fields=None, order=None):
-
-        if self._full_rdata is None:
-            self._full_rdata = self._extract_array()
-
-        # Ordering (as is or sorted)
-        out = (self._full_rdata if order is None
-                                else np.sort(self._full_rdata, order=order))
-
-        # Filtering (filtering of fields used to sort is possible)
-        return out if fields is None else out[list(fields)]
 
     def _extract_array(self):
         agilent_names = ['Row', 'Col', 'ProbeName',
@@ -199,56 +196,3 @@ class AgilentReader(object):
         full_rdata.sort(order=('row', 'col')) # Default ordering
 
         return full_rdata
-
-
-class GPLReader(object):
-    def __init__(self, path, delimiter='\t'):
-
-        self.delimiter = delimiter
-        self.path = path
-
-        self._fields = dict()
-        self._fields_values = dict()
-
-        with open(path, 'r') as gplfile:
-            # Reading headers descriptions
-            for line in gplfile:
-                if line.startswith('#'):
-                    field, description = [x.strip() for x in line.split('=')]
-                    self._fields[field[1:]] = description
-                else:
-                    header = [x.strip() for x in line.split(delimiter)]
-                    assert list(sorted(header)) == list(sorted(self._fields.keys()))
-                    break
-
-            # Reading columns
-            for line in gplfile:
-                values = [x.strip() for x in line.split(delimiter)]
-
-                if values == ['']: continue # skip empty lines
-
-                # until shortest iterable is exausted
-                for k, v in it.izip(header, values):
-                    self._fields_values.setdefault(k, []).append(v)
-
-        # Convertion in numpy objects
-        # Try int, then float and then unicode
-        for k in self._fields_values:
-            try:
-                out = np.asarray(self._fields_values[k], dtype=int)
-            except ValueError:
-                try:
-                    out = np.asarray(self._fields_values[k], dtype=float)
-                except ValueError:
-                    out = np.asarray(self._fields_values[k], dtype=unicode)
-
-            self._fields_values[k] = out
-
-    def fields_list(self):
-        return self._fields
-
-    def field_description(self, key):
-        return self._fields[key]
-
-    def field(self, key):
-        return self._fields_values[key]
