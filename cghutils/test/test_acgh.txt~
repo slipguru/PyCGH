@@ -1,5 +1,0 @@
-id	col	Row	reference_signal	test_signal	chromosome	start_base	end_base	mask	myflag
-Probe01	1	1	10	10	1	10	20	0	1
-Probe02	2	1	10	10	2	10	20	0	1
-Probe 03	1	2	10	10	3	10	20	0	1
-Control 	2	2	10	10	nan	nan	nan	1	1
