@@ -72,11 +72,15 @@ def _split_mapping(location):
 # Main Classes ------------------------------------------------------------------
 class AgilentCGH(ArrayCGH):
 
+    INVALID_INT = -9999
+    INVALID_FLOAT = np.nan
+    INVALID_STRING = 'N/A'
+
     def __init__(self, *args, **kwargs):
         return super(AgilentCGH, self).__init__(*args, **kwargs)
 
     @staticmethod
-    def load(path, delimiter='\t', test_channel='r'):
+    def load(path, delimiter='\t', test_channel='r', fill_missing=False):
 
         if not test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
@@ -88,6 +92,15 @@ class AgilentCGH(ArrayCGH):
             stats = _read_info_line(acgh, delimiter)
             # Reading FEATURES
             features = _read_info_block(acgh, delimiter)
+
+        # Data lenght
+        data_len = len(features['Row'])
+        try:
+            num_rows = params['Grid_NumRows']
+            num_cols = params['Grid_NumCols']
+        except KeyError:
+            num_rows = features['Row'].max()
+            num_cols = features['Col'].max()
 
         # Mapping between Agilent Names and aCGH.COL_NAMES
         agilent_names = ['ProbeName', 'Row', 'Col']
@@ -102,10 +115,36 @@ class AgilentCGH(ArrayCGH):
 
         # Data extraction
         data = it.chain([features[k] for k in agilent_names], loc_buff[:-1])
+        mask = loc_buff[-1]
 
-        aCGH = AgilentCGH(data, mask=loc_buff[-1])
+        # Fill missing data
+        if fill_missing:
+            # Missing data
+            found_coords = set(zip(features['Row'], features['Col']))
+            expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
+            missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
+            missing_len = len(missing_rows)
 
-        # Dinamyc attachment of useful informations
+            missing_data = (
+                [AgilentCGH.INVALID_STRING]*missing_len,    #id
+                list(missing_rows),
+                list(missing_cols),
+                [AgilentCGH.INVALID_FLOAT]*missing_len,     #reference_signal
+                [AgilentCGH.INVALID_FLOAT]*missing_len,     #test_signal
+                [AgilentCGH.INVALID_INT]*missing_len,       #chromosome
+                [AgilentCGH.INVALID_INT]*missing_len,       #start_base
+                [AgilentCGH.INVALID_INT]*missing_len,       #end_base
+            )
+
+            # Merging
+            full_data = list()
+            for d, md in zip(data, missing_data):
+                full_data.append(np.r_[d, md])
+            data = full_data
+            mask += (True,)*missing_len
+
+        # Creation and dinamyc attachment of useful informations
+        aCGH = AgilentCGH(data, mask=mask)
         aCGH.TEST_CHANNEL = test_channel
         aCGH.PARAMS = params
         aCGH.STATS = stats
@@ -113,6 +152,31 @@ class AgilentCGH(ArrayCGH):
         aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6], agilent_names))
 
         return aCGH
+
+    @staticmethod
+    def _foo(names, num_rows, num_cols, features, params):
+
+        # Missing data
+        found_coords = set(tuple(x) for x in rdata[['row', 'col']])
+        expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
+        missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
+        missing_len = len(missing_rows)
+
+        missing_data = (
+            [AgilentCGH.INVALID_STRING]*missing_len,    #id
+            missing_rows,
+            missing_cols,
+            [AgilentCGH.INVALID_FLOAT]*missing_len,     #reference_signal
+            [AgilentCGH.INVALID_FLOAT]*missing_len,     #test_signal
+            [AgilentCGH.INVALID_INT]*missing_len,       #chromosome
+            [AgilentCGH.INVALID_INT]*missing_len,       #start_base
+            [AgilentCGH.INVALID_INT]*missing_len,       #end_base
+        )
+
+        missing_rdata = np.rec.fromarrays(missing_data,
+                                          names=names).view(np.ndarray)
+
+        return missing_rdata
 
 
     def _extract_array(self):

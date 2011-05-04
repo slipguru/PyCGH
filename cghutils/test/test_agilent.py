@@ -6,24 +6,27 @@ import numpy as np
 import cghutils.readers as cghr
 from cghutils.readers import AgilentCGH
 
+PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
+
 class TestAgilentCGH(object):
     def setup(self):
-        self.par_dir = os.path.split(os.path.abspath(__file__))[0]
-        self.aCGH = AgilentCGH.load(os.path.join(self.par_dir, 'test_agilent.txt'))
+        self.path = os.path.join(PAR_DIR, 'test_agilent.txt')
 
     def test_access_features(self):
-        value = self.aCGH['id']
-        assert_equals(4460, len(value))
+        aCGH = AgilentCGH.load(self.path)
+        assert_equals(4460, len(aCGH))
+        assert_equals(4460, len(aCGH['id']))
 
-        assert_raises(ValueError, self.aCGH.__getitem__, 'fake')
+        assert_raises(ValueError, aCGH.__getitem__, 'fake')
 
     def test_features_keys(self):
-        features = self.aCGH.names
-        assert_equals(9, len(features))
+        aCGH = AgilentCGH.load(self.path)
+        assert_equals(9, len(aCGH.names))
 
-        print
-        print self.aCGH.names
-        print self.aCGH
+    def test_fill_missing(self):
+        aCGH = AgilentCGH.load(self.path, fill_missing=True)
+        assert_equals(45220, len(aCGH))
+
 
     # Parameters: fill_missing_rows, ol, quality...
     # useful: map betwwen std names and agilent names

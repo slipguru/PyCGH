@@ -6,13 +6,14 @@ import itertools as it
 import numpy as np
 from cghutils import ArrayCGH
 
+PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
+ROW_NUM = COL_NUM = 10
+
 class TestArrayCGH(object):
 
     def setup(self):
-        self.PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
-        self.ROW_NUM = self.COL_NUM = 10
-        row, col =  zip(*it.product(range(1, self.ROW_NUM+1),
-                                    range(1, self.COL_NUM+1)))
+        row, col =  zip(*it.product(range(1, ROW_NUM+1),
+                                    range(1, COL_NUM+1)))
         self.input = [['Probe%d' % x for x in range(1, len(row)+1)],    #ID
                       list(row),                                        #Row
                       list(col),                                        #Col
@@ -27,13 +28,16 @@ class TestArrayCGH(object):
         assert_equals(100, len(aCGH))
         assert_equals(8, len(aCGH.names))
 
+    def test_missing_mandatory(self):
+        assert_raises(ValueError, ArrayCGH, self.input[:-1])
+
     def test_optional_inputs(self):
-        mask = [True]*(self.ROW_NUM*self.COL_NUM)
+        mask = [True]*(ROW_NUM*COL_NUM)
         aCGH = ArrayCGH(self.input, mask=mask)
         assert_equals(100, len(aCGH))
         assert_equals(9, len(aCGH.names))
 
-        optional = [30]*(self.ROW_NUM*self.COL_NUM)
+        optional = [30]*(ROW_NUM*COL_NUM)
         aCGH = ArrayCGH(self.input, optional_signal=optional)
         assert_equals(9, len(aCGH.names))
 
@@ -53,12 +57,15 @@ class TestArrayCGH(object):
         assert_true(np.all(self.input[0] == submatrix['id']))
         assert_true(np.all(self.input[5] == submatrix['chromosome']))
 
+
+class TestArrayCGHIO(object):
+
     def test_loading_file(self):
-        aCGH = ArrayCGH.load(os.path.join(self.PAR_DIR, 'test_acgh.txt'))
+        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh.txt'))
         assert_true(np.all(np.array([1, 1, 2, 2]) == aCGH['row']))
 
     def test_loading_fields(self):
-        aCGH = ArrayCGH.load(os.path.join(self.PAR_DIR, 'test_acgh2.txt'),
+        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh2.txt'),
                              fields={'id':'ProbeID',
                                      'reference_signal':'Ref',
                                      'test_signal': 'Test',
@@ -69,7 +76,7 @@ class TestArrayCGH(object):
         import tempfile
         out = os.path.join(tempfile.gettempdir(), 'acgh.txt')
 
-        aCGH = ArrayCGH.load(os.path.join(self.PAR_DIR, 'test_acgh.txt'),
+        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh.txt'),
                              fields={'orig_mask':'mask', #renaming
                                      'mask':'myflag'})
         aCGH.save(out)

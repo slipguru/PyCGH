@@ -12,8 +12,11 @@ class ArrayCGH(object):
     def __init__(self, input, mask=None, **kwargs):
 
         # Default: no optional inputs
-        buffer = input
+        buffer = list(input)
         names = list(self.COL_NAMES)
+
+        if len(names) != len(buffer):
+            raise ValueError('missing mandatory inputs, only %d provided' % len(buffer))
 
         # Read mask as a standard optional parameter
         if not mask is None:
@@ -22,11 +25,12 @@ class ArrayCGH(object):
         # Extend the list of inputs
         if kwargs:
             kwnames, kwvalues = zip(*kwargs.items())
-            buffer = it.chain(input, kwvalues)
+            buffer = it.chain(buffer, kwvalues)
             names.extend(kwnames)
 
         if len(set(names)) < len(names):
             raise ValueError('optional parameters name duplication')
+
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
 
     def __len__(self):
