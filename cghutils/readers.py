@@ -75,12 +75,18 @@ class AgilentCGH(ArrayCGH):
     INVALID_INT = -9999
     INVALID_FLOAT = np.nan
     INVALID_STRING = 'N/A'
+    QC_FLAGS = ('gIsFeatNonUnifOL', 'rIsFeatNonUnifOL',
+                'gIsFeatPopnOL', 'rIsFeatPopnOL',
+                'gIsBGNonUnifOL', 'rIsBGNonUnifOL',
+                'gIsBGPopnOL', 'rIsBGPopnOL',
+                'gIsSaturated', 'rIsSaturated')
 
     def __init__(self, *args, **kwargs):
         return super(AgilentCGH, self).__init__(*args, **kwargs)
 
     @staticmethod
-    def load(path, delimiter='\t', test_channel='r', fill_missing=False):
+    def load(path, delimiter='\t', test_channel='r',
+             fill_missings=False, qc_cleaning=False):
 
         if not test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
@@ -110,15 +116,24 @@ class AgilentCGH(ArrayCGH):
             agilent_names.extend(['rMedianSignal', 'gMedianSignal'])
 
         # Chromosome Position extraction (X=23, Y=24)
+        # Note that the control probe will be automatically removed
+        # during this step
         locations = features['SystematicName']
         loc_buff = zip(*(_split_mapping(x) for x in locations))
 
         # Data extraction
         data = it.chain([features[k] for k in agilent_names], loc_buff[:-1])
-        mask = loc_buff[-1]
+        mask = np.array(loc_buff[-1])
+
+        # Agilent: outliers
+        if qc_cleaning:
+            qc_mask = np.zeros_like(mask)
+            for flag in AgilentCGH.QC_FLAGS:
+                np.logical_or(qc_mask, features[flag], qc_mask)
+            np.logical_or(mask, qc_mask, mask)
 
         # Fill missing data
-        if fill_missing:
+        if fill_missings:
             # Missing data
             found_coords = set(zip(features['Row'], features['Col']))
             expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
@@ -141,7 +156,7 @@ class AgilentCGH(ArrayCGH):
             for d, md in zip(data, missing_data):
                 full_data.append(np.r_[d, md])
             data = full_data
-            mask += (True,)*missing_len
+            mask = np.r_[mask, np.array([True]*missing_len)]
 
         # Creation and dinamyc attachment of useful informations
         aCGH = AgilentCGH(data, mask=mask)
@@ -152,32 +167,6 @@ class AgilentCGH(ArrayCGH):
         aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6], agilent_names))
 
         return aCGH
-
-    @staticmethod
-    def _foo(names, num_rows, num_cols, features, params):
-
-        # Missing data
-        found_coords = set(tuple(x) for x in rdata[['row', 'col']])
-        expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
-        missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
-        missing_len = len(missing_rows)
-
-        missing_data = (
-            [AgilentCGH.INVALID_STRING]*missing_len,    #id
-            missing_rows,
-            missing_cols,
-            [AgilentCGH.INVALID_FLOAT]*missing_len,     #reference_signal
-            [AgilentCGH.INVALID_FLOAT]*missing_len,     #test_signal
-            [AgilentCGH.INVALID_INT]*missing_len,       #chromosome
-            [AgilentCGH.INVALID_INT]*missing_len,       #start_base
-            [AgilentCGH.INVALID_INT]*missing_len,       #end_base
-        )
-
-        missing_rdata = np.rec.fromarrays(missing_data,
-                                          names=names).view(np.ndarray)
-
-        return missing_rdata
-
 
     def _extract_array(self):
         agilent_names = ['Row', 'Col', 'ProbeName',

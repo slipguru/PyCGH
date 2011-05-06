@@ -24,96 +24,77 @@ class TestAgilentCGH(object):
         assert_equals(9, len(aCGH.names))
 
     def test_fill_missing(self):
-        aCGH = AgilentCGH.load(self.path, fill_missing=True)
+        aCGH = AgilentCGH.load(self.path, fill_missings=True)
         assert_equals(45220, len(aCGH))
 
+    def test_qc_cleaning(self):
+        aCGH = AgilentCGH.load(self.path, qc_cleaning=False)
+        assert_equals(4460, len(aCGH))
+        assert_equals(227, aCGH['mask'].sum())
 
-    # Parameters: fill_missing_rows, ol, quality...
-    # useful: map betwwen std names and agilent names
+        aCGH = AgilentCGH.load(self.path, qc_cleaning=True)
+        assert_equals(4460, len(aCGH))
+        assert_equals(227+3, aCGH['mask'].sum())
 
-############################
+    def test_qc_missings(self):
+        aCGH = AgilentCGH.load(self.path, fill_missings=True, qc_cleaning=True)
+        assert_equals(45220, len(aCGH))
+        assert_equals(227+3 + (45220-4460), aCGH['mask'].sum())
 
-
-    def _test_toarray(self):
-        value = self.aCGH.toarray()
-        assert_equals(45220, len(value))
-        assert_equals(12, len(value[0]))
+    def test_data(self):
+        aCGH = AgilentCGH.load(self.path, fill_missings=True)
 
         # Find present data
-        present = np.logical_and(value['row'] == 19, value['col'] == 64)
-        assert_equals(19, value['row'][present])
-        assert_equals(64, value['col'][present])
-        assert_equals('A_14_P102318', value['id'][present])
-        assert_equals(19, value['chromosome'][present])
-        assert_equals(11455241, value['start_base'][present])
-        assert_equals(11455291, value['end_base'][present])
-        assert_true(~np.isnan(value['ref_signal'][present]))
-        assert_true(~np.isnan(value['test_bg'][present]))
+        present = np.logical_and(aCGH['row'] == 19, aCGH['col'] == 64)
+        assert_equals(19, aCGH['row'][present])
+        assert_equals(64, aCGH['col'][present])
+        assert_equals('A_14_P102318', aCGH['id'][present])
+        assert_equals(19, aCGH['chromosome'][present])
+        assert_equals(11455241, aCGH['start_base'][present])
+        assert_equals(11455291, aCGH['end_base'][present])
+        assert_true(~np.isnan(aCGH['reference_signal'][present]))
 
         # Find missing data
-        missing = np.logical_and(value['row'] == 18, value['col'] == 64)
-        assert_equals(18, value['row'][missing])
-        assert_equals(64, value['col'][missing])
-        assert_equals('N/A', value['id'][missing])
-        assert_true(np.isnan(value['ref_signal'][missing]))
-        assert_true(np.isnan(value['test_bg'][missing]))
-        assert_equals(cghr.INVALID_INT, value['chromosome'][missing])
+        missing = np.logical_and(aCGH['row'] == 18, aCGH['col'] == 64)
+        assert_equals(18, aCGH['row'][missing])
+        assert_equals(64, aCGH['col'][missing])
+        assert_equals('N/A', aCGH['id'][missing])
+        assert_true(np.isnan(aCGH['reference_signal'][missing]))
+        assert_equals(AgilentCGH.INVALID_INT, aCGH['chromosome'][missing])
 
         # Chromosomes convertions
-        Xprobe = (value['id'] == 'A_14_P119856')
-        assert_equals(23, value['chromosome'][Xprobe]) # X
+        Xprobe = (aCGH['id'] == 'A_14_P119856')
+        assert_equals(23, aCGH['chromosome'][Xprobe]) # X
 
-    def _test_toarray_fields(self):
-        value = self.aCGH.toarray(fields=('row', 'col', 'chromosome'))
-        assert_equals(45220, len(value))
-        assert_equals(3, len(value[0]))
+    def test_swapping(self):
+        aCGH_1 = AgilentCGH.load(self.path, test_channel='r')
+        aCGH_2 = AgilentCGH.load(self.path, test_channel='g')
 
-    def _test_toarray_order(self):
-        value = self.aCGH.toarray(order=('chromosome', 'start_base'))
-        assert_equals(45220, len(value))
-        assert_equals(12, len(value[0]))
+        ref1 = aCGH_1['reference_signal']
+        test1 = aCGH_1['test_signal']
 
-        assert_equals(cghr.INVALID_INT, value[0]['chromosome'])
-        assert_equals(24, value[-1]['chromosome'])
-
-        # Order with filter
-        value = self.aCGH.toarray(fields=('chromosome',),
-                                    order=('chromosome', 'start_base'))
-        assert_equals(cghr.INVALID_INT, value[0]['chromosome'])
-        assert_equals(24, value[-1]['chromosome'])
-        assert_raises(ValueError, value.__getitem__, 'id')
-
-    def _test_toarray_lazyness(self):
-        value1 = self.aCGH.toarray()
-        assert_not_equals(cghr.INVALID_STRING, value1['id'][0])
-
-        value1['id'][0] = cghr.INVALID_STRING
-        assert_equals(cghr.INVALID_STRING, value1['id'][0])
-
-        value2 = self.aCGH.toarray()
-        assert_equals(cghr.INVALID_STRING, value2['id'][0])
-
-        value2 = self.aCGH.toarray(fields=('id',))
-        assert_equals(cghr.INVALID_STRING, value2['id'][0])
-
-    def _test_toarray_swapping(self):
-        reader2 = AgilentCGH(os.path.join(self.par_dir, 'test_agilent.txt'),
-                             test_channel='g')
-
-        value1 = self.aCGH.toarray()
-        value2 = reader2.toarray()
-
-        ref1 = value1['ref_signal'][value1['valid']]
-        refbg1 = value1['ref_bg'][value1['valid']]
-        test1 = value1['test_signal'][value1['valid']]
-        testbg1 = value1['test_bg'][value1['valid']]
-
-        ref2 = value2['ref_signal'][value1['valid']]
-        refbg2 = value2['ref_bg'][value1['valid']]
-        test2 = value2['test_signal'][value1['valid']]
-        testbg2 = value2['test_bg'][value1['valid']]
+        ref2 = aCGH_2['reference_signal']
+        test2 = aCGH_2['test_signal']
 
         assert_true(np.allclose(ref1, test2))
         assert_true(np.allclose(test1, ref2))
-        assert_true(np.allclose(refbg1, testbg2))
-        assert_true(np.allclose(testbg1, refbg2))
+
+    def test_masked(self):
+        aCGH_1 = AgilentCGH.load(self.path, fill_missings=True)
+        aCGH_2 = AgilentCGH.load(self.path, fill_missings=False)
+
+        mask_1 = aCGH_1['mask']
+        mask_2 = aCGH_2['mask']
+        assert_true(np.allclose(aCGH_1['reference_signal'][~mask_1],
+                                aCGH_2['reference_signal'][~mask_2]))
+
+        assert_true(np.allclose(aCGH_1.filtered('reference_signal'),
+                                aCGH_2.filtered('reference_signal')))
+
+        # The dimension is different
+        assert_false(np.allclose(aCGH_1.masked('reference_signal'),
+                                 aCGH_2.masked('reference_signal')))
+
+        # But true if compressed
+        assert_true(np.allclose(aCGH_1.masked('reference_signal').compressed(),
+                                 aCGH_2.masked('reference_signal').compressed()))

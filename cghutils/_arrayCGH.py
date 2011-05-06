@@ -43,6 +43,13 @@ class ArrayCGH(object):
     def __getitem__(self, key):
         return self._rdata[key]
 
+    def filtered(self, key):
+        return self._rdata[key][~self._rdata['mask']]
+
+    def masked(self, key, copy=False, fill_value=None):
+        return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
+                                  copy=copy, fill_value=fill_value)
+
     def __repr__(self):
         return repr(self._rdata)
 

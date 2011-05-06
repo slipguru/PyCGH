@@ -32,7 +32,7 @@ class TestArrayCGH(object):
         assert_raises(ValueError, ArrayCGH, self.input[:-1])
 
     def test_optional_inputs(self):
-        mask = [True]*(ROW_NUM*COL_NUM)
+        mask = [False]*(ROW_NUM*COL_NUM)
         aCGH = ArrayCGH(self.input, mask=mask)
         assert_equals(100, len(aCGH))
         assert_equals(9, len(aCGH.names))
@@ -56,6 +56,17 @@ class TestArrayCGH(object):
         submatrix = aCGH[['id', 'chromosome']]
         assert_true(np.all(self.input[0] == submatrix['id']))
         assert_true(np.all(self.input[5] == submatrix['chromosome']))
+
+    def test_masked(self):
+        mask = np.array([False]*(ROW_NUM*COL_NUM))
+        mask[0:10] = True # 10 values masked
+        aCGH = ArrayCGH(self.input, mask=mask)
+
+        assert_equals(ROW_NUM*COL_NUM, len(aCGH['id']))
+        assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.filtered('id')))
+
+        assert_equals((ROW_NUM*COL_NUM), len(aCGH.masked('id')))
+        assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.masked('id').compressed()))
 
 
 class TestArrayCGHIO(object):
