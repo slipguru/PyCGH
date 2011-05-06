@@ -80,13 +80,14 @@ class AgilentCGH(ArrayCGH):
                 'gIsBGNonUnifOL', 'rIsBGNonUnifOL',
                 'gIsBGPopnOL', 'rIsBGPopnOL',
                 'gIsSaturated', 'rIsSaturated')
+    NQC_FLAGS = ('gIsWellAboveBG', 'rIsWellAboveBG')
 
     def __init__(self, *args, **kwargs):
         return super(AgilentCGH, self).__init__(*args, **kwargs)
 
     @staticmethod
     def load(path, delimiter='\t', test_channel='r',
-             fill_missings=False, qc_cleaning=False):
+             fill_missings=False, qc_masking=False):
 
         if not test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
@@ -126,10 +127,12 @@ class AgilentCGH(ArrayCGH):
         mask = np.array(loc_buff[-1])
 
         # Agilent: outliers
-        if qc_cleaning:
+        if qc_masking:
             qc_mask = np.zeros_like(mask)
             for flag in AgilentCGH.QC_FLAGS:
                 np.logical_or(qc_mask, features[flag], qc_mask)
+            for flag in AgilentCGH.NQC_FLAGS:
+                np.logical_or(qc_mask, ~features[flag], qc_mask)
             np.logical_or(mask, qc_mask, mask)
 
         # Fill missing data
@@ -167,85 +170,3 @@ class AgilentCGH(ArrayCGH):
         aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6], agilent_names))
 
         return aCGH
-
-    def _extract_array(self):
-        agilent_names = ['Row', 'Col', 'ProbeName',
-                         'rMedianSignal', 'gMedianSignal',
-                         'rBGMedianSignal', 'gBGMedianSignal',
-                         'LogRatio']
-
-        if self._test_channel == 'r':
-            array_names =  ['row', 'col', 'id',
-                            'test_signal', 'ref_signal',
-                            'test_bg', 'ref_bg', 'ratio']
-        elif self._test_channel == 'g':
-            array_names =  ['row', 'col', 'id',
-                            'ref_signal', 'test_signal',
-                            'ref_bg', 'test_bg', 'ratio']
-
-        # (chr, start, end) extracted from SystematicName
-        # valid: not (unmapped , controls, OL, poor quality)
-        array_names.extend(['chromosome', 'start_base', 'end_base', 'valid'])
-
-        # Data lenght
-        data_len = len(self._features['Row'])
-        try:
-            num_rows = self._params['Grid_NumRows']
-            num_cols = self._params['Grid_NumCols']
-        except KeyError:
-            num_rows = self._features['Row'].max()
-            num_cols = self._features['Col'].max()
-        full_data_len = num_rows*num_cols
-
-        # Chromosome Position extraction (X=23, Y=24)
-        locations = self._features['SystematicName']
-        loc_buff = it.izip(*(_split_mapping(x) for x in locations))
-
-        # Data extraction
-        data = it.chain([self._features[k] for k in agilent_names], loc_buff)
-        rdata = np.rec.fromarrays(data, names=array_names).view(np.ndarray)
-
-        # Agilent: outliers
-        for flag in ('gIsFeatNonUnifOL', 'rIsFeatNonUnifOL',
-                     'gIsFeatPopnOL', 'rIsFeatPopnOL',
-                     'gIsBGNonUnifOL', 'rIsBGNonUnifOL',
-                     'gIsBGPopnOL', 'rIsBGPopnOL'):
-            # in-place update
-            np.logical_and(rdata['valid'], ~self._features[flag], rdata['valid'])
-
-        # Agilent: good quality probes
-        np.logical_and(rdata['valid'],
-                       np.logical_and(self._features['gIsWellAboveBG'],
-                                      self._features['rIsWellAboveBG']),
-                       rdata['valid'])
-
-        # Missing data
-        found_coords = set(tuple(x) for x in rdata[['row', 'col']])
-        expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
-        missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
-
-        missing_float = [INVALID_FLOAT]*len(missing_rows)
-        missing_str = [INVALID_STRING]*len(missing_rows)
-        missing_int = [INVALID_INT]*len(missing_rows)
-        missing_bool = [False]*len(missing_rows)
-        missing_data = [np.asarray(x) for x in (missing_rows,
-                                                missing_cols,
-                                                missing_str,    #id
-                                                missing_float,  #ref_signal
-                                                missing_float,  #sample_signal
-                                                missing_float,  #ref_bg
-                                                missing_float,  #sample_bg
-                                                missing_float,  #ratio
-                                                missing_int,    #chromosome
-                                                missing_int,    #start_base
-                                                missing_int,    #end_base
-                                                missing_bool)]  #valid
-
-        missing_rdata = np.rec.fromarrays(missing_data,
-                                          names=array_names,
-                                          dtype=rdata.dtype).view(np.ndarray)
-
-        full_rdata = np.r_[rdata, missing_rdata]
-        full_rdata.sort(order=('row', 'col')) # Default ordering
-
-        return full_rdata

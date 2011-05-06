@@ -2,6 +2,7 @@ import itertools as it
 import csv
 
 import numpy as np
+from numpy.lib import recfunctions
 
 class ArrayCGH(object):
 
@@ -19,8 +20,11 @@ class ArrayCGH(object):
             raise ValueError('missing mandatory inputs, only %d provided' % len(buffer))
 
         # Read mask as a standard optional parameter
-        if not mask is None:
-            kwargs['mask'] = mask
+        if mask is None:
+            # std "False-mask"
+            kwargs['mask'] = np.zeros(len(buffer[0]), dtype=np.bool)
+        else:
+            kwargs['mask'] = np.asanyarray(mask)
 
         # Extend the list of inputs
         if kwargs:
@@ -42,6 +46,25 @@ class ArrayCGH(object):
 
     def __getitem__(self, key):
         return self._rdata[key]
+
+    def __setitem__(self, key, value):
+        value = np.asanyarray(value)
+
+        # Update
+        if key in self.names:
+            self._rdata[key] = value
+        else:
+            # Passed a value computed from filtered arrays
+            if len(value) == len(self._rdata[~self._rdata['mask']]):
+                full_value = np.zeros(len(self._rdata), dtype=value.dtype)
+                full_value[~self._rdata['mask']] = value
+                value = full_value
+            elif len(value) != len(self._rdata):
+                raise ValueError('wrong dimension')
+
+            # A masked array is added too
+            self._rdata = recfunctions.append_fields(self._rdata, names=key,
+                                                     data=value, usemask=False)
 
     def filtered(self, key):
         return self._rdata[key][~self._rdata['mask']]

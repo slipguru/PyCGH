@@ -28,16 +28,16 @@ class TestAgilentCGH(object):
         assert_equals(45220, len(aCGH))
 
     def test_qc_cleaning(self):
-        aCGH = AgilentCGH.load(self.path, qc_cleaning=False)
+        aCGH = AgilentCGH.load(self.path, qc_masking=False)
         assert_equals(4460, len(aCGH))
         assert_equals(227, aCGH['mask'].sum())
 
-        aCGH = AgilentCGH.load(self.path, qc_cleaning=True)
+        aCGH = AgilentCGH.load(self.path, qc_masking=True)
         assert_equals(4460, len(aCGH))
         assert_equals(227+3, aCGH['mask'].sum())
 
     def test_qc_missings(self):
-        aCGH = AgilentCGH.load(self.path, fill_missings=True, qc_cleaning=True)
+        aCGH = AgilentCGH.load(self.path, fill_missings=True, qc_masking=True)
         assert_equals(45220, len(aCGH))
         assert_equals(227+3 + (45220-4460), aCGH['mask'].sum())
 

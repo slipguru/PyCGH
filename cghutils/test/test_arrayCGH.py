@@ -26,7 +26,7 @@ class TestArrayCGH(object):
     def test_simple_creation(self):
         aCGH = ArrayCGH(self.input)
         assert_equals(100, len(aCGH))
-        assert_equals(8, len(aCGH.names))
+        assert_equals(9, len(aCGH.names))
 
     def test_missing_mandatory(self):
         assert_raises(ValueError, ArrayCGH, self.input[:-1])
@@ -39,7 +39,7 @@ class TestArrayCGH(object):
 
         optional = [30]*(ROW_NUM*COL_NUM)
         aCGH = ArrayCGH(self.input, optional_signal=optional)
-        assert_equals(9, len(aCGH.names))
+        assert_equals(10, len(aCGH.names))
 
         aCGH = ArrayCGH(self.input, mask=mask, optional_signal=optional)
         assert_equals(10, len(aCGH.names))
@@ -67,6 +67,49 @@ class TestArrayCGH(object):
 
         assert_equals((ROW_NUM*COL_NUM), len(aCGH.masked('id')))
         assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.masked('id').compressed()))
+
+    def test_adding(self):
+        aCGH = ArrayCGH(self.input)
+
+        ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
+        assert_equals(ROW_NUM*COL_NUM, len(ratio))
+
+        aCGH['ratio'] = ratio
+        assert_true(np.allclose(ratio, aCGH['ratio']))
+        assert_true('ratio' in aCGH.names)
+
+    def test_adding_filtered(self):
+        mask = np.array([False]*(ROW_NUM*COL_NUM))
+        mask[0:10] = True # 10 values masked
+        aCGH = ArrayCGH(self.input, mask=mask)
+
+        ratio = np.log2(aCGH.filtered('test_signal')/aCGH.filtered('reference_signal'))
+        assert_equals((ROW_NUM*COL_NUM) - 10, len(ratio))
+
+        aCGH['ratio'] = ratio
+        assert_true(np.allclose(ratio, aCGH.filtered('ratio')))
+        assert_true('ratio' in aCGH.names)
+
+        assert_raises(ValueError, aCGH.__setitem__, 'foo', ratio[:-5]) #shorter
+        assert_raises(ValueError, aCGH.__setitem__, 'foo', np.r_[ratio, ratio]) #longer
+
+    def test_adding_masked(self):
+        mask = np.array([False]*(ROW_NUM*COL_NUM))
+        mask[0:10] = True # 10 values masked
+        aCGH = ArrayCGH(self.input, mask=mask)
+
+        ratio = np.log2(aCGH.masked('test_signal')/aCGH.masked('reference_signal'))
+        assert_equals((ROW_NUM*COL_NUM), len(ratio))
+
+        aCGH['ratio'] = ratio
+        assert_true(np.ma.allclose(ratio, aCGH.masked('ratio'))) # in "ma" sense
+        assert_true('ratio' in aCGH.names)
+
+    def test_update(self):
+        aCGH = ArrayCGH(self.input)
+        aCGH['mask'] = aCGH['mask']
+        assert_true(False)
+        #TODO: TEST TEST TEST
 
 
 class TestArrayCGHIO(object):
