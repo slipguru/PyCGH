@@ -50,19 +50,17 @@ class ArrayCGH(object):
     def __setitem__(self, key, value):
         value = np.asanyarray(value)
 
-        # Update
-        if key in self.names:
-            self._rdata[key] = value
-        else:
-            # Passed a value computed from filtered arrays
-            if len(value) == len(self._rdata[~self._rdata['mask']]):
-                full_value = np.zeros(len(self._rdata), dtype=value.dtype)
-                full_value[~self._rdata['mask']] = value
-                value = full_value
-            elif len(value) != len(self._rdata):
-                raise ValueError('wrong dimension')
+        # Filtered data handling
+        if len(value) == (~self._rdata['mask']).sum():
+            full_value = np.zeros(len(self._rdata), dtype=value.dtype)
+            full_value[~self._rdata['mask']] = value
+            value = full_value
+        elif len(value) != len(self._rdata):
+            raise ValueError('wrong dimension')
 
-            # A masked array is added too
+        if key in self.names: #Update
+            self._rdata[key] = value
+        else: #Add
             self._rdata = recfunctions.append_fields(self._rdata, names=key,
                                                      data=value, usemask=False)
 

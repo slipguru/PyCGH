@@ -107,10 +107,42 @@ class TestArrayCGH(object):
 
     def test_update(self):
         aCGH = ArrayCGH(self.input)
-        aCGH['mask'] = aCGH['mask']
-        assert_true(False)
-        #TODO: TEST TEST TEST
+        new_mask = np.array([True]*(ROW_NUM*COL_NUM))
+        aCGH['mask'] = new_mask
 
+        assert_true(np.allclose(new_mask, aCGH['mask']))
+        assert_equals(0, len(aCGH.filtered('id')))
+
+    def test_update_filtered(self):
+        mask = np.array([False]*(ROW_NUM*COL_NUM))
+        mask[0:10] = True # 10 values masked
+        aCGH = ArrayCGH(self.input, mask=mask)
+
+        filt_test = aCGH.filtered('test_signal')
+        filt_test += 1.
+        assert_equals((~mask).sum(), len(filt_test))
+
+        assert_false(np.allclose(filt_test, aCGH.filtered('test_signal')))
+
+        aCGH['test_signal'] = filt_test
+        assert_true(np.allclose(filt_test, aCGH.filtered('test_signal')))
+
+        assert_raises(ValueError, aCGH.__setitem__, 'test_signal', filt_test[:-5]) #shorter
+        assert_raises(ValueError, aCGH.__setitem__, 'test_signal', np.r_[filt_test, filt_test]) #longer
+
+    def test_update_masked(self):
+        mask = np.array([False]*(ROW_NUM*COL_NUM))
+        mask[0:10] = True # 10 values masked
+        aCGH = ArrayCGH(self.input, mask=mask)
+
+        mask_test = aCGH.masked('test_signal', copy=True) # Force copying
+        mask_test += 1.
+        assert_equals((ROW_NUM*COL_NUM), len(mask_test))
+        assert_equals((~mask).sum(), len(mask_test.compressed()))
+        assert_false(np.ma.allclose(mask_test, aCGH.masked('test_signal')))
+
+        aCGH['test_signal'] = mask_test
+        assert_true(np.ma.allclose(mask_test, aCGH.masked('test_signal')))
 
 class TestArrayCGHIO(object):
 
