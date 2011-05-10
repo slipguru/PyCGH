@@ -37,6 +37,7 @@ class ArrayCGH(object):
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
 
     def __len__(self):
+        """ mumble mumble """
         return len(self._rdata)
 
     @property
@@ -44,8 +45,8 @@ class ArrayCGH(object):
         return self._rdata.dtype.names
 
     def __getitem__(self, key):
-        """ Returns a view """
-        return self._rdata[key]
+        """ Returns a copy of the filtered data """
+        return self._rdata[key][~self._rdata['mask']]
 
     def __setitem__(self, key, value):
         value = np.asanyarray(value)
@@ -64,9 +65,12 @@ class ArrayCGH(object):
             self._rdata = recfunctions.append_fields(self._rdata, names=key,
                                                      data=value, usemask=False)
 
-    def filtered(self, key):
-        """ Returns a copy """
-        return self._rdata[key][~self._rdata['mask']]
+    def unfiltered(self, key, copy=False):
+        """ Returns a copy if copy=True """
+        if copy:
+            return self._rdata[key].copy()
+        else:
+            return self._rdata[key]
 
     def masked(self, key, copy=False, fill_value=None):
         """ Returns a copy if copy=True """

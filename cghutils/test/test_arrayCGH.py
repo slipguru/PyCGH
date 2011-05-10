@@ -62,32 +62,32 @@ class TestArrayCGH(object):
         mask[0:10] = True # 10 values masked
         aCGH = ArrayCGH(*self.input, mask=mask)
 
-        assert_equals(ROW_NUM*COL_NUM, len(aCGH['id']))
-        assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.filtered('id')))
+        assert_equals(ROW_NUM*COL_NUM, len(aCGH.unfiltered('id')))
+        assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH['id']))
 
         assert_equals((ROW_NUM*COL_NUM), len(aCGH.masked('id')))
         assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.masked('id').compressed()))
 
-    def test_adding(self):
+    def test_adding_unfiltered(self):
         aCGH = ArrayCGH(*self.input)
 
-        ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
+        ratio = np.log2(aCGH.unfiltered('test_signal')/aCGH.unfiltered('reference_signal'))
         assert_equals(ROW_NUM*COL_NUM, len(ratio))
 
         aCGH['ratio'] = ratio
-        assert_true(np.allclose(ratio, aCGH['ratio']))
+        assert_true(np.allclose(ratio, aCGH.unfiltered('ratio')))
         assert_true('ratio' in aCGH.names)
 
-    def test_adding_filtered(self):
+    def test_adding(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
         aCGH = ArrayCGH(*self.input, mask=mask)
 
-        ratio = np.log2(aCGH.filtered('test_signal')/aCGH.filtered('reference_signal'))
+        ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
         assert_equals((ROW_NUM*COL_NUM) - 10, len(ratio))
 
         aCGH['ratio'] = ratio
-        assert_true(np.allclose(ratio, aCGH.filtered('ratio')))
+        assert_true(np.allclose(ratio, aCGH['ratio']))
         assert_true('ratio' in aCGH.names)
 
         assert_raises(ValueError, aCGH.__setitem__, 'foo', ratio[:-5]) #shorter
@@ -105,27 +105,27 @@ class TestArrayCGH(object):
         assert_true(np.ma.allclose(ratio, aCGH.masked('ratio'))) # in "ma" sense
         assert_true('ratio' in aCGH.names)
 
-    def test_update(self):
+    def test_update_unfiltered(self):
         aCGH = ArrayCGH(*self.input)
         new_mask = np.array([True]*(ROW_NUM*COL_NUM))
         aCGH['mask'] = new_mask
 
-        assert_true(np.allclose(new_mask, aCGH['mask']))
-        assert_equals(0, len(aCGH.filtered('id')))
+        assert_true(np.allclose(new_mask, aCGH.unfiltered('mask')))
+        assert_equals(0, len(aCGH['id']))
 
-    def test_update_filtered(self):
+    def test_update(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
         aCGH = ArrayCGH(*self.input, mask=mask)
 
-        filt_test = aCGH.filtered('test_signal')
+        filt_test = aCGH['test_signal']
         filt_test += 1.
         assert_equals((~mask).sum(), len(filt_test))
 
-        assert_false(np.allclose(filt_test, aCGH.filtered('test_signal')))
+        assert_false(np.allclose(filt_test, aCGH['test_signal']))
 
         aCGH['test_signal'] = filt_test
-        assert_true(np.allclose(filt_test, aCGH.filtered('test_signal')))
+        assert_true(np.allclose(filt_test, aCGH['test_signal']))
 
         assert_raises(ValueError, aCGH.__setitem__, 'test_signal', filt_test[:-5]) #shorter
         assert_raises(ValueError, aCGH.__setitem__, 'test_signal', np.r_[filt_test, filt_test]) #longer
@@ -160,7 +160,7 @@ class TestArrayCGHIO(object):
 
     def test_loading_file(self):
         aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh.txt'))
-        assert_true(np.all(np.array([1, 1, 2, 2]) == aCGH['row']))
+        assert_true(np.all(np.array([1, 1, 2, 2]) == aCGH.unfiltered('row')))
 
     def test_loading_fields(self):
         aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh2.txt'),
@@ -168,7 +168,7 @@ class TestArrayCGHIO(object):
                                      'reference_signal':'Ref',
                                      'test_signal': 'Test',
                                      'flag': 'myflag'}) # Name change
-        assert_true(np.all(np.array([0, 0, 0, 1]) == aCGH['mask']))
+        assert_true(np.all(np.array([0, 0, 0, 1]) == aCGH.unfiltered('mask')))
 
     def test_save(self):
         import tempfile
