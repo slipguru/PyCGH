@@ -7,8 +7,8 @@ from r_functions import lowess, loess
 
 from matplotlib import pylab as plt
 
-def array_image(signals, rows, cols, title=None, median_center=False,
-                cmap=None, cbticks=None):
+def spatial(signals, rows, cols, title=None, median_center=False,
+            cmap=None, cbticks=None):
     plt.title('CGH Spatial plot' if title is None else title)
 
     try:
@@ -49,8 +49,8 @@ def array_image(signals, rows, cols, title=None, median_center=False,
     cb.ax.tick_params(axis='x', direction='out', length=3, colors='black',
                       labelsize='small')
 
-def MA_plot(test, reference, title=None,
-            points_color='k', median_color='b', lowess_color='r'):
+
+def MA(test, reference, title=None, points_color='k', median_color='b', lowess_color='r'):
     plt.title('CGH M-A plot' if title is None else title)
 
     nan_values = np.logical_or(np.isnan(test), np.isnan(reference))
@@ -76,26 +76,75 @@ def MA_plot(test, reference, title=None,
     plt.legend()
 
 
-def cgh_profile(positions, signal, separators, vmin=-1, vmax=1):
-    plt.title('CGH profile')
+def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
+            cmap=None, title=None):
+    #plt.title('CGH profile' if title is None else title)
 
-    cmap = plt.get_cmap('jet') #cool, jet
-    plt.scatter(positions, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
+    test_signal = aCGH.filtered('test_signal')
+    reference_signal = aCGH.filtered('reference_signal')
+    positions = aCGH.filtered(['chromosome', 'start_base'])
+
+    if not chromosome is None:
+        if chromosome == 'X': chr_val = 23
+        elif chromosome == 'Y': chr_val = 24
+        else: chr_val = int(chromosome)
+
+        chridx = (aCGH.filtered('chromosome') == chr_val)
+        test_signal = test_signal[chridx]
+        reference_signal = reference_signal[chridx]
+        positions = positions[chridx]
+
+    if signal is None:
+        signal = np.log2(test_signal) - np.log2(reference_signal)
+
+    # Calculation of the coordinates
+    coords = positions['start_base']
+    if chromosome is None:
+        from matplotlib import mlab as ml
+        summary = ml.rec_groupby(positions,
+                                 groupby=('chromosome',),
+                                 stats=(('start_base', np.max, 'shifts'),))
+        shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
+
+
+        for i in xrange(2, 25):
+            coords[positions['chromosome'] == i] += shifts[i-1]
+
+        ticks = (shifts[:-1] + shifts[1:])/2.0
+        separators = shifts[1:-1]
+    else:
+        ticks = [coords.max() / 2.0]
+    #--------------------------------
+
+    cmap = plt.cm.jet if cmap is None else cmap
+    plt.scatter(coords, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
                 s=8, edgecolors='none')
 
-    plt.axis([positions.min(), positions.max(),
-              np.nanmin(signal), np.nanmax(signal)])
+    max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
+    plt.axis([coords.min(), coords.max(), -max_h, max_h])
     plt.colorbar()
-
-    for sep in separators:
-        plt.axvline(sep-1, lw=1, color='gray', ls='-')
 
     plt.axhline(0.0, lw=1, color='gray', ls='--')
     plt.axhline(1.0, lw=1, color='red', ls='--')
     plt.axhline(-1.0, lw=1, color='blue', ls='--')
 
-    ticks = (separators[:-1] + separators[1:])/2.0
-    label_ticks = ['Chr %s' % k for k in chain(range(1, 23), ('X', 'Y'))]
-    plt.xticks(ticks, label_ticks, rotation=90)
-    plt.tick_params(axis='x', direction='out', length=3, colors='black',
-                    labelsize='small', labelbottom='on')
+    if chromosome is None:
+        for sep in separators:
+            plt.axvline(sep-1, lw=1, color='gray', ls='-')
+
+        label_ticks = ['Chr %s' % k for k in chain(range(1, 23), ('X', 'Y'))]
+        plt.xticks(ticks, label_ticks, rotation=90)
+        plt.tick_params(axis='x', direction='out', length=3, colors='black',
+                        labelsize='small', labelbottom='on')
+    else:
+        label_ticks = ['Chr %s' % chromosome]
+        plt.xticks(ticks, label_ticks)
+        plt.tick_params(axis='x', direction='out', length=3, colors='black',
+                        labelsize='small', labelbottom='on')
+
+def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None):
+
+    for i, chr in enumerate(chain(range(1, 23), ('X', 'Y'))):
+        plt.subplot(6, 4, (i+1))
+        profile(aCGH, signal=signal, chromosome=chr, vmin=vmin, vmax=vmax,
+                cmap=cmap)
