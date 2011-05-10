@@ -69,7 +69,7 @@ def _split_mapping(location):
     else:
         return int(chr), start, end, False
 
-# Main Classes ------------------------------------------------------------------
+# Main Class -------------------------------------------------------------------
 class AgilentCGH(ArrayCGH):
 
     INVALID_INT = -9999
@@ -162,7 +162,7 @@ class AgilentCGH(ArrayCGH):
             mask = np.r_[mask, np.array([True]*missing_len)]
 
         # Creation and dinamyc attachment of useful informations
-        aCGH = AgilentCGH(data, mask=mask)
+        aCGH = ArrayCGH(*data, mask=mask)
         aCGH.TEST_CHANNEL = test_channel
         aCGH.PARAMS = params
         aCGH.STATS = stats

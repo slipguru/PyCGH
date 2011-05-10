@@ -3,8 +3,7 @@ import os
 
 import numpy as np
 
-import cghutils.readers as cghr
-from cghutils.readers import AgilentCGH
+from cghutils import AgilentCGH
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 

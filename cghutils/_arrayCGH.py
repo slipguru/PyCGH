@@ -10,14 +10,13 @@ class ArrayCGH(object):
                  'reference_signal', 'test_signal',
                  'chromosome', 'start_base', 'end_base')
 
-    def __init__(self, input, mask=None, **kwargs):
+    def __init__(self, id, row, col, reference_signal, test_signal,
+                 chromosome, start_base, end_base, mask=None, **kwargs):
 
         # Default: no optional inputs
-        buffer = list(input)
+        buffer = [id, row, col, reference_signal, test_signal,
+                  chromosome, start_base, end_base]
         names = list(self.COL_NAMES)
-
-        if len(names) != len(buffer):
-            raise ValueError('missing mandatory inputs, only %d provided' % len(buffer))
 
         # Read mask as a standard optional parameter
         if mask is None:
@@ -100,7 +99,7 @@ class ArrayCGH(object):
         optional_columns = set(file_fields.keys()).difference(ArrayCGH.COL_NAMES)
         optional_inputs = dict((k, data[file_fields[k]]) for k in optional_columns)
 
-        return ArrayCGH([data[file_fields[k]] for k in ArrayCGH.COL_NAMES],
+        return ArrayCGH(*[data[file_fields[k]] for k in ArrayCGH.COL_NAMES],
                         **optional_inputs)
 
     def save(self, path, delimiter=','):

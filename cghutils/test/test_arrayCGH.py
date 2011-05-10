@@ -24,31 +24,31 @@ class TestArrayCGH(object):
                       [x+10 for x in range(1, len(row)+1)]]             #End
 
     def test_simple_creation(self):
-        aCGH = ArrayCGH(self.input)
+        aCGH = ArrayCGH(*self.input)
         assert_equals(100, len(aCGH))
         assert_equals(9, len(aCGH.names))
 
     def test_missing_mandatory(self):
-        assert_raises(ValueError, ArrayCGH, self.input[:-1])
+        assert_raises(TypeError, ArrayCGH, self.input[:-1])
 
     def test_optional_inputs(self):
         mask = [False]*(ROW_NUM*COL_NUM)
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
         assert_equals(100, len(aCGH))
         assert_equals(9, len(aCGH.names))
 
         optional = [30]*(ROW_NUM*COL_NUM)
-        aCGH = ArrayCGH(self.input, optional_signal=optional)
+        aCGH = ArrayCGH(*self.input, optional_signal=optional)
         assert_equals(10, len(aCGH.names))
 
-        aCGH = ArrayCGH(self.input, mask=mask, optional_signal=optional)
+        aCGH = ArrayCGH(*self.input, mask=mask, optional_signal=optional)
         assert_equals(10, len(aCGH.names))
 
         # name duplication
-        assert_raises(ValueError, ArrayCGH, self.input, chromosome=optional)
+        assert_raises(TypeError, ArrayCGH, self.input, chromosome=optional)
 
     def test_reading(self):
-        aCGH = ArrayCGH(self.input)
+        aCGH = ArrayCGH(*self.input)
 
         id = aCGH['id']
         assert_true(np.equal(self.input[0], id))
@@ -60,7 +60,7 @@ class TestArrayCGH(object):
     def test_masked(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
 
         assert_equals(ROW_NUM*COL_NUM, len(aCGH['id']))
         assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.filtered('id')))
@@ -69,7 +69,7 @@ class TestArrayCGH(object):
         assert_equals((ROW_NUM*COL_NUM) - 10, len(aCGH.masked('id').compressed()))
 
     def test_adding(self):
-        aCGH = ArrayCGH(self.input)
+        aCGH = ArrayCGH(*self.input)
 
         ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
         assert_equals(ROW_NUM*COL_NUM, len(ratio))
@@ -81,7 +81,7 @@ class TestArrayCGH(object):
     def test_adding_filtered(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
 
         ratio = np.log2(aCGH.filtered('test_signal')/aCGH.filtered('reference_signal'))
         assert_equals((ROW_NUM*COL_NUM) - 10, len(ratio))
@@ -96,7 +96,7 @@ class TestArrayCGH(object):
     def test_adding_masked(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
 
         ratio = np.log2(aCGH.masked('test_signal')/aCGH.masked('reference_signal'))
         assert_equals((ROW_NUM*COL_NUM), len(ratio))
@@ -106,7 +106,7 @@ class TestArrayCGH(object):
         assert_true('ratio' in aCGH.names)
 
     def test_update(self):
-        aCGH = ArrayCGH(self.input)
+        aCGH = ArrayCGH(*self.input)
         new_mask = np.array([True]*(ROW_NUM*COL_NUM))
         aCGH['mask'] = new_mask
 
@@ -116,7 +116,7 @@ class TestArrayCGH(object):
     def test_update_filtered(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
 
         filt_test = aCGH.filtered('test_signal')
         filt_test += 1.
@@ -133,7 +133,7 @@ class TestArrayCGH(object):
     def test_update_masked(self):
         mask = np.array([False]*(ROW_NUM*COL_NUM))
         mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(self.input, mask=mask)
+        aCGH = ArrayCGH(*self.input, mask=mask)
 
         mask_test = aCGH.masked('test_signal', copy=True) # Force copying
         mask_test += 1.
@@ -147,7 +147,7 @@ class TestArrayCGH(object):
     def test_order(self):
         # Call this in-place ordering may be useful before saving the data
         # or before the estraction
-        aCGH = ArrayCGH(self.input)
+        aCGH = ArrayCGH(*self.input)
 
         chr = aCGH['chromosome'].copy()
         idx = np.argsort(chr)
