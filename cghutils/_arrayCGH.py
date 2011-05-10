@@ -45,6 +45,7 @@ class ArrayCGH(object):
         return self._rdata.dtype.names
 
     def __getitem__(self, key):
+        """ Returns a view """
         return self._rdata[key]
 
     def __setitem__(self, key, value):
@@ -65,11 +66,16 @@ class ArrayCGH(object):
                                                      data=value, usemask=False)
 
     def filtered(self, key):
+        """ Returns a copy """
         return self._rdata[key][~self._rdata['mask']]
 
     def masked(self, key, copy=False, fill_value=None):
+        """ Returns a copy if copy=True """
         return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
                                   copy=copy, fill_value=fill_value)
+
+    def sort(self, order):
+        self._rdata.sort(order=order)
 
     def __repr__(self):
         return repr(self._rdata)
@@ -83,7 +89,7 @@ class ArrayCGH(object):
                              names=True, dtype=None, case_sensitive='lower',
                              autostrip=True, invalid_raise=True)
 
-        # chiavi sono campi aCHG, valori cosa leggere da tmp
+        # chiavi sono campi aCHG, valori cosa leggere da input
         file_fields = dict((v, v) for v in data.dtype.names)
         if not fields is None:
             for name in fields:

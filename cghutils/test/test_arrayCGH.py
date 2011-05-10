@@ -144,6 +144,18 @@ class TestArrayCGH(object):
         aCGH['test_signal'] = mask_test
         assert_true(np.ma.allclose(mask_test, aCGH.masked('test_signal')))
 
+    def test_order(self):
+        # Call this in-place ordering may be useful before saving the data
+        # or before the estraction
+        aCGH = ArrayCGH(self.input)
+
+        chr = aCGH['chromosome'].copy()
+        idx = np.argsort(chr)
+
+        aCGH.sort('chromosome')
+        assert_true(np.allclose(chr[idx], aCGH['chromosome']))
+
+
 class TestArrayCGHIO(object):
 
     def test_loading_file(self):
