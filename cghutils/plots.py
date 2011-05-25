@@ -7,15 +7,23 @@ from r_functions import lowess, loess
 
 from matplotlib import pylab as plt
 
-def spatial(signals, rows, cols, title=None, median_center=False,
+
+def spatial(aCGH, signal=None, title=None, median_center=False,
             cmap=None, cbticks=None):
     plt.title('CGH Spatial plot' if title is None else title)
 
+    rows = aCGH['row']
+    cols = aCGH['col']
+
+    if signal is None:
+        signal = (np.log2(aCGH['test_signal']) -
+                  np.log2(aCGH['reference_signal']))
+
     try:
-        array_image = signals.reshape((rows.max(), cols.max()))
+        array_image = signal.reshape((rows.max(), cols.max()))
     except ValueError:
         array_image = np.ones((rows.max(), cols.max())) * np.nan
-        for r, c, sig in zip(rows, cols, signals):
+        for r, c, sig in zip(rows, cols, signal):
             array_image[r-1, c-1] = sig
 
     if median_center:

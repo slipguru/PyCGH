@@ -3,5 +3,4 @@ syntax: glob
 *.pyc
 libs
 *~
-result
-CGHresult
+bin/cghutils
