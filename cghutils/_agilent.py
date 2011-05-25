@@ -12,10 +12,6 @@ TYPE_MAP = {'text': (unicode, unicode),
             'integer': (int, int),
             'boolean': (lambda x: bool(int(x)), bool)}
 
-INVALID_INT = -9999
-INVALID_FLOAT = np.nan
-INVALID_STRING = 'N/A'
-
 def _read_info_line(acgh, delimiter='\t'):
     out = dict()
     types, info = _return_headers(acgh, delimiter)
@@ -55,7 +51,9 @@ def _split_mapping(location):
         chr, interval = location.split(':')
         start, end = (int(x) for x in interval.split('-'))
     except ValueError: # unmapped/control probe
-        return (INVALID_INT,INVALID_INT, INVALID_INT, True)
+        return (AgilentCGH.INVALID_INT,
+                AgilentCGH.INVALID_INT,
+                AgilentCGH.INVALID_INT, True)
 
     # in some files the range is swapped :-/
     if start > end:

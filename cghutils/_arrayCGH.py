@@ -23,7 +23,7 @@ class ArrayCGH(object):
             # std "False-mask"
             kwargs['mask'] = np.zeros(len(buffer[0]), dtype=np.bool)
         else:
-            kwargs['mask'] = np.asanyarray(mask)
+            kwargs['mask'] = np.asanyarray(mask, dtype=np.bool)
 
         # Extend the list of inputs
         if kwargs:

@@ -50,15 +50,18 @@ def spatial(signals, rows, cols, title=None, median_center=False,
                       labelsize='small')
 
 
-def MA(test, reference, title=None, points_color='k', median_color='b', lowess_color='r'):
+def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_color='r'):
     plt.title('CGH M-A plot' if title is None else title)
 
+    test = aCGH['test_signal']
+    reference = aCGH['reference_signal']
     nan_values = np.logical_or(np.isnan(test), np.isnan(reference))
     test = test[~nan_values]
     reference = reference[~nan_values]
-
-    M = np.log2(test) - np.log2(reference)
     A = 0.5 * (np.log2(test) + np.log2(reference))
+
+    if M is None:
+        M = np.log2(test) - np.log2(reference)
 
     plt.scatter(A, M, label='Data', s=2, edgecolors='none', c=points_color)
     plt.xlabel('A')
@@ -80,16 +83,16 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
             cmap=None, title=None):
     #plt.title('CGH profile' if title is None else title)
 
-    test_signal = aCGH.filtered('test_signal')
-    reference_signal = aCGH.filtered('reference_signal')
-    positions = aCGH.filtered(['chromosome', 'start_base'])
+    test_signal = aCGH['test_signal']
+    reference_signal = aCGH['reference_signal']
+    positions = aCGH[['chromosome', 'start_base']]
 
     if not chromosome is None:
         if chromosome == 'X': chr_val = 23
         elif chromosome == 'Y': chr_val = 24
         else: chr_val = int(chromosome)
 
-        chridx = (aCGH.filtered('chromosome') == chr_val)
+        chridx = (aCGH['chromosome'] == chr_val)
         test_signal = test_signal[chridx]
         reference_signal = reference_signal[chridx]
         positions = positions[chridx]
@@ -141,6 +144,8 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
         plt.xticks(ticks, label_ticks)
         plt.tick_params(axis='x', direction='out', length=3, colors='black',
                         labelsize='small', labelbottom='on')
+
+    return coords
 
 def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None):
 
