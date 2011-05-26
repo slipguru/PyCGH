@@ -9,7 +9,8 @@ from cghutils import plots
 def main(file_name):
     # assumed test_channel='r' (as usual)
     aCGH = cghutils.AgilentCGH.load(file_name, fill_missings=True,
-                                    qc_masking=True)
+                                    qc_masking=True,
+                                    test_channel='r')
 
     for fun in (plots.spatial, plots.MA, plots.profiles, plots.profile):
         plt.figure()

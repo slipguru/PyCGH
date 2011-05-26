@@ -91,8 +91,10 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
             cmap=None, title=None):
     #plt.title('CGH profile' if title is None else title)
 
-    test_signal = aCGH['test_signal']
-    reference_signal = aCGH['reference_signal']
+    if signal is None:
+        test_signal = aCGH['test_signal']
+        reference_signal = aCGH['reference_signal']
+        signal = np.log2(test_signal) - np.log2(reference_signal)
     positions = aCGH[['chromosome', 'start_base']]
 
     if not chromosome is None:
@@ -101,12 +103,8 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
         else: chr_val = int(chromosome)
 
         chridx = (aCGH['chromosome'] == chr_val)
-        test_signal = test_signal[chridx]
-        reference_signal = reference_signal[chridx]
+        signal = signal[chridx]
         positions = positions[chridx]
-
-    if signal is None:
-        signal = np.log2(test_signal) - np.log2(reference_signal)
 
     # Calculation of the coordinates
     coords = positions['start_base']
