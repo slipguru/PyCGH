@@ -46,7 +46,7 @@ class ArrayCGH(object):
 
     def __getitem__(self, key):
         """ Returns a copy of the filtered data """
-        return self._rdata[key][~self._rdata['mask']]
+        return self._rdata[~self._rdata['mask']][key]
 
     def __setitem__(self, key, value):
         value = np.asanyarray(value)

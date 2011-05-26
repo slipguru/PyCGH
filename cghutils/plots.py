@@ -87,15 +87,21 @@ def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_colo
     plt.legend()
 
 
-def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
-            cmap=None, title=None):
+def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
+            cmap=None, title=None, superimposed=None):
     #plt.title('CGH profile' if title is None else title)
 
     if signal is None:
         test_signal = aCGH['test_signal']
         reference_signal = aCGH['reference_signal']
         signal = np.log2(test_signal) - np.log2(reference_signal)
+
+        if not indexes is None:
+            signal = signal[indexes]
+
     positions = aCGH[['chromosome', 'start_base']]
+    if not indexes is None:
+        positions = positions[indexes]
 
     if not chromosome is None:
         if chromosome == 'X': chr_val = 23
@@ -115,8 +121,7 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
                                  stats=(('start_base', np.max, 'shifts'),))
         shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
 
-
-        for i in xrange(2, 25):
+        for i in np.unique(positions['chromosome']):
             coords[positions['chromosome'] == i] += shifts[i-1]
 
         ticks = (shifts[:-1] + shifts[1:])/2.0
@@ -128,6 +133,10 @@ def profile(aCGH, signal=None, chromosome=None, vmin=-1, vmax=1,
     cmap = plt.cm.jet if cmap is None else cmap
     plt.scatter(coords, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
                 s=8, edgecolors='none')
+
+    if not superimposed is None:
+        cidx = np.argsort(coords)
+        plt.plot(coords[cidx], superimposed[cidx], color='gray', ls='-', lw=2)
 
     max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
     plt.axis([coords.min(), coords.max(), -max_h, max_h])
