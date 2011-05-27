@@ -74,8 +74,11 @@ class ArrayCGH(object):
 
     def masked(self, key, copy=False, fill_value=None):
         """ Returns a copy if copy=True """
-        return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
-                                  copy=copy, fill_value=fill_value)
+        if key in self.names:
+            return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
+                                      copy=copy, fill_value=fill_value)
+        else:
+            raise ValueError('required a valid field name')
 
     def sort(self, order):
         self._rdata.sort(order=order)
