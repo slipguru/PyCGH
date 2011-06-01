@@ -90,7 +90,7 @@ class ChromosomeBands(object):
 
         return min_limit, max_limit
 
-    def sub_bands(self, band, with_limits=False):
+    def sub_bands(self, band='', with_limits=False):
         band = str(band)
         if band.endswith('.'):
             raise ValueError('wrong band representation') #special case of error
@@ -117,10 +117,10 @@ class CytoBands(object):
             if converted == 'Y': return 24
             return int(converted)
 
-    def __init__(self):
+    def __init__(self, release='hg19'):
         import os
         file_path = os.path.join(os.path.dirname(__file__),
-                                 'cytoBand_hg19_ucsc.txt')
+                                 'cytoBand_%s_ucsc.txt' % release)
 
         # Parsing and bands reading
         bands = dict()
@@ -150,4 +150,3 @@ class CytoBands(object):
             elif key.strip() == 'Y': key = 24
 
         return self._bands[key]
-
