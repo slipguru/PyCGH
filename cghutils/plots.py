@@ -131,7 +131,8 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
     #--------------------------------
 
     cmap = plt.cm.jet if cmap is None else cmap
-    plt.scatter(coords, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
+    #plt.scatter(coords, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
+    plt.scatter(coords, signal, c='gray', cmap=cmap, vmin=vmin, vmax=vmax,
                 s=8, edgecolors='none')
 
     if not superimposed is None:
@@ -140,7 +141,7 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
 
     max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
     plt.axis([coords.min(), coords.max(), -max_h, max_h])
-    plt.colorbar()
+    #plt.colorbar()
 
     plt.axhline(0.0, lw=1, color='gray', ls='--')
     plt.axhline(1.0, lw=1, color='red', ls='--')
@@ -160,11 +161,17 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
         plt.tick_params(axis='x', direction='out', length=3, colors='black',
                         labelsize='small', labelbottom='on')
 
+    if not chromosome is None:
+        return coords, chridx
     return coords
 
 def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None):
+    coords = np.empty_like(signal)
 
     for i, chr in enumerate(chain(range(1, 23), ('X', 'Y'))):
         plt.subplot(6, 4, (i+1))
-        profile(aCGH, signal=signal, chromosome=chr, vmin=vmin, vmax=vmax,
-                cmap=cmap)
+        c, ci = profile(aCGH, signal=signal, chromosome=chr, vmin=vmin, vmax=vmax,
+                        cmap=cmap)
+        coords[ci] = c
+
+    return coords
