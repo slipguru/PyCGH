@@ -3,7 +3,7 @@ from itertools import chain
 import numpy as np
 
 # Rpy2 must be imported befor matplotlib to avoid a segmentation fault!
-from r_functions import lowess, loess
+from utils import lowess, loess
 
 from matplotlib import pylab as plt
 
