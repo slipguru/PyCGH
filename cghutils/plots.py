@@ -88,7 +88,7 @@ def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_colo
 
 
 def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
-            cmap=None, title=None, superimposed=None):
+            cmap=None, title=None, superimposed=None, ylimits=None):
     #plt.title('CGH profile' if title is None else title)
 
     if signal is None:
@@ -104,30 +104,36 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
         positions = positions[indexes]
 
     if not chromosome is None:
-        if chromosome == 'X': chr_val = 23
-        elif chromosome == 'Y': chr_val = 24
-        else: chr_val = int(chromosome)
+        #if chromosome == 'X': chr_val = 23
+        #elif chromosome == 'Y': chr_val = 24
+        #else: chr_val = int(chromosome)
+        chr_val = [int(chr) for chr in chromosome]
 
-        chridx = (aCGH['chromosome'] == chr_val)
+        chridx = np.array(np.zeros_like(signal), dtype=bool)
+        for chr in chr_val:
+            chridx = np.logical_or(chridx, aCGH['chromosome'] == chr)
+        #chridx = (aCGH['chromosome'] in chr_val)
         signal = signal[chridx]
         positions = positions[chridx]
 
     # Calculation of the coordinates
     coords = positions['start_base']
-    if chromosome is None:
-        from matplotlib import mlab as ml
-        summary = ml.rec_groupby(positions,
-                                 groupby=('chromosome',),
-                                 stats=(('start_base', np.max, 'shifts'),))
-        shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
+    #if chromosome is None:
+    from matplotlib import mlab as ml
+    summary = ml.rec_groupby(positions,
+                             groupby=('chromosome',),
+                             stats=(('start_base', np.max, 'shifts'),))
+    shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
+    #print shifts
+    #print np.unique(positions['chromosome'])
 
-        for i in np.unique(positions['chromosome']):
-            coords[positions['chromosome'] == i] += shifts[i-1]
+    for i in range(1, len(chromosome)+1):#np.unique(positions['chromosome']):
+        coords[positions['chromosome'] == chromosome[i-1]] += shifts[i-1]
 
-        ticks = (shifts[:-1] + shifts[1:])/2.0
-        separators = shifts[1:-1]
-    else:
-        ticks = [coords.max() / 2.0]
+    ticks = (shifts[:-1] + shifts[1:])/2.0
+    separators = shifts[1:-1]
+    #else:
+        #ticks = [coords.max() / 2.0]
     #--------------------------------
 
     cmap = plt.cm.jet if cmap is None else cmap
@@ -140,13 +146,24 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
         cidx = np.argsort(coords)
         plt.plot(coords[cidx], superimposed[cidx], color='gray', ls='-', lw=2)
 
-    max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
-    plt.axis([coords.min(), coords.max(), -max_h, max_h])
-    plt.colorbar(ticks=[])
+    if ylimits is None:
+        max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
+        min_h = -max_h
+    else:
+        min_h, max_h = ylimits
 
-    plt.axhline(0.0, lw=1, color='gray', ls='--')
-    plt.axhline(1.0, lw=1, color='red', ls='--')
-    plt.axhline(-1.0, lw=1, color='blue', ls='--')
+    plt.axis([coords.min(), coords.max(), min_h, max_h])
+    #plt.colorbar(ticks=[])
+
+    #plt.axhline(0.0, lw=1, color='gray', ls='--')
+    #plt.axhline(1.0, lw=1, color='red', ls='--')
+    #plt.axhline(-1.0, lw=1, color='blue', ls='--')
+
+    for i in range(1, 9):
+        plt.axhline(np.log2(i/2.), lw=1, c='k', ls='--')
+    plt.yticks([-1, 0, 0.58, 1, 1.32, 1.58, 1.81, 2],
+                ('log(1/2)', 'log(2/2)', 'log(3/2)', 'log(4/2)',
+                 'log(5/2)', 'log(6/2)', 'log(7/2)', 'log(8/2)',))
 
     if chromosome is None:
         for sep in separators:
@@ -157,8 +174,10 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
         plt.tick_params(axis='x', direction='out', length=3, colors='black',
                         labelsize='small', labelbottom='on')
     else:
-        label_ticks = ['Chr %s' % chromosome]
-        plt.xticks(ticks, label_ticks)
+        for sep in separators:
+            plt.axvline(sep-1, lw=1, color='gray', ls='-')
+        label_ticks = ['Chr %s' % k for k in chromosome]
+        plt.xticks(ticks, label_ticks, rotation=90)
         plt.tick_params(axis='x', direction='out', length=3, colors='black',
                         labelsize='small', labelbottom='on')
 
@@ -166,13 +185,13 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
         return coords, chridx
     return coords
 
-def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None):
+def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None, *args, **kwargs):
     coords = np.empty_like(signal)
 
     for i, chr in enumerate(chain(range(1, 23), ('X', 'Y'))):
         plt.subplot(6, 4, (i+1))
         c, ci = profile(aCGH, signal=signal, chromosome=chr, vmin=vmin, vmax=vmax,
-                        cmap=cmap)
+                        cmap=cmap, *args, **kwargs)
         coords[ci] = c
 
     return coords

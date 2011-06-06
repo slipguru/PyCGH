@@ -20,10 +20,10 @@ CLINICAL_INFO_PATH = os.path.join(ROOT_DIR, 'def files/annotation_cgh.csv')
 
 # Sample reading ======================================================
 print 'Reading...'
-test_path = os.path.join(SAMPLES_DIR, '57428_532.pair')         # HCT-116 hdip
-reference_path = os.path.join(SAMPLES_DIR, '57428_635.pair')
-#test_path = os.path.join(SAMPLES_DIR, '55650_532.pair')         # A549 tri
-#reference_path = os.path.join(SAMPLES_DIR, '55650_635.pair')
+#test_path = os.path.join(SAMPLES_DIR, '57428_532.pair')         # HCT-116 hdip
+#reference_path = os.path.join(SAMPLES_DIR, '57428_635.pair')
+test_path = os.path.join(SAMPLES_DIR, '55650_532.pair')         # A549 tri
+reference_path = os.path.join(SAMPLES_DIR, '55650_635.pair')
 #test_path = os.path.join(SAMPLES_DIR, '59212_532.pair')         # HOP-62 htetr
 #reference_path = os.path.join(SAMPLES_DIR, '59212_635.pair')
 #test_path = os.path.join(SAMPLES_DIR, '59214_532.pair')         # HOP-92 ntetr
@@ -37,35 +37,63 @@ reference_path = os.path.join(SAMPLES_DIR, '57428_635.pair')
 aCGH = NimblegenCGH.load(test_path=test_path,
                          reference_path=reference_path)
 
+
+# Raw -------------------------------------------------------------------------
+plt.figure()
+ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
+cghplots.profile(aCGH, signal=ratio, ylimits=(-2.5, 2.5), chromosome=(17, 18))
+plt.axhline(np.median(ratio), lw=2, c='r', ls='--')
+
+# Global Median ---------------------------------------------------------------
+plt.figure()
+ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
+ratio -= np.median(ratio)
+cghplots.profile(aCGH, signal=ratio, ylimits=(-2.5, 2.5), chromosome=(17, 18))
+plt.axhline(np.median(ratio), lw=2, c='r', ls='--')
+
 # -- Ploidy shifting ----------------------------------------------------------
-PLOIDY = 2.
-print 'Shifting...'
+plt.figure()
+PLOIDY = 3.
 ref_median = np.median(aCGH['reference_signal'])
 test_median = np.median(aCGH['test_signal'])
 aCGH['test_signal'] = aCGH['test_signal'] + (ref_median - test_median)
 aCGH['test_signal'] *= PLOIDY/2.
 
-# So che la trisomia e' stata schiacciata al valore della mediana
-#POLY = 4.
-#mediana_attesa = POLY/2.
-#segnale = aCGH['test_signal'] / aCGH['reference_signal']
-#segnale_atteso = (mediana_attesa * segnale) / np.median(segnale)
-#print np.median(segnale)
-
-# -- Profiles ---------------------------------------------------------
-print 'Profile...'
-plt.figure()
 ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
-coords = cghplots.profile(aCGH, signal=ratio)
-coords = np.array(coords, dtype=float)
+cghplots.profile(aCGH, signal=ratio, ylimits=(-2.5, 2.5), chromosome=(17, 18))
 plt.axhline(np.median(ratio), lw=2, c='r', ls='--')
 
-plt.axhline(np.log2(3./2.), lw=1, c='k', ls='-')
-plt.axhline(np.log2(4./2.), lw=1, c='k', ls='-')
-plt.axhline(np.log2(5./2.), lw=1, c='k', ls='-')
-plt.axhline(np.log2(1./2.), lw=1, c='k', ls='-')
+## -- Profiles ---------------------------------------------------------
+#print 'Profile...'
+#plt.figure()
+#
+#ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
+##ratio -= np.median(ratio)
+#coords = cghplots.profile(aCGH, signal=ratio, ylimits=(-2.5, 2.5))
+#
+#plt.axhline(np.median(ratio), lw=2, c='r', ls='--')
+#
+#plt.axhline(np.log2(1.), lw=1, c='k', ls='-')
+#plt.axhline(np.log2(3./2.), lw=1, c='k', ls='-')
+#plt.axhline(np.log2(4./2.), lw=1, c='k', ls='-')
+#plt.axhline(np.log2(5./2.), lw=1, c='k', ls='-')
+#plt.axhline(np.log2(1./2.), lw=1, c='k', ls='-')
+
+#ratio = aCGH['test_signal'] / aCGH['reference_signal']
+#coords = cghplots.profile(aCGH, signal=ratio, ylimits=(0, 2.5))
+
+#ratio = aCGH['test_signal'] / aCGH['reference_signal']
+#ratio = ratio - np.median(ratio) + 1.0
+#coords = cghplots.profile(aCGH, signal=ratio, ylimits=(0, 2.5))
 
 
+#plt.axhline((1.), lw=1, c='k', ls='-')
+#plt.axhline((3./2.), lw=1, c='k', ls='-')
+#plt.axhline((4./2.), lw=1, c='k', ls='-')
+#plt.axhline((5./2.), lw=1, c='k', ls='-')
+#plt.axhline((1./2.), lw=1, c='k', ls='-')
+
+#coords = np.array(coords, dtype=float)
 # -- Signals profiles -------------------------------------------------
 #plt.figure()
 #for signal in ('test_signal', 'reference_signal'):
