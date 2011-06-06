@@ -131,8 +131,9 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
     #--------------------------------
 
     cmap = plt.cm.jet if cmap is None else cmap
-    #plt.scatter(coords, signal, c=signal, cmap=cmap, vmin=vmin, vmax=vmax,
-    plt.scatter(coords, signal, c='gray', cmap=cmap, vmin=vmin, vmax=vmax,
+    # NOTE: colors centered on the median of the signal
+    plt.scatter(coords, signal, c=signal-np.median(signal), cmap=cmap,
+                vmin=vmin, vmax=vmax,
                 s=8, edgecolors='none')
 
     if not superimposed is None:
@@ -141,7 +142,7 @@ def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
 
     max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
     plt.axis([coords.min(), coords.max(), -max_h, max_h])
-    #plt.colorbar()
+    plt.colorbar(ticks=[])
 
     plt.axhline(0.0, lw=1, color='gray', ls='--')
     plt.axhline(1.0, lw=1, color='red', ls='--')

@@ -38,11 +38,12 @@ aCGH = NimblegenCGH.load(test_path=test_path,
                          reference_path=reference_path)
 
 # -- Ploidy shifting ----------------------------------------------------------
-#print 'Shifting...'
-#ref_median = np.median(aCGH['reference_signal'])
-#test_median = np.median(aCGH['test_signal'])
-#aCGH['test_signal_shifted'] = aCGH['test_signal'] + (ref_median - test_median)
-#aCGH['test_signal_shifted'] *= PLOIDY/2.
+PLOIDY = 2.
+print 'Shifting...'
+ref_median = np.median(aCGH['reference_signal'])
+test_median = np.median(aCGH['test_signal'])
+aCGH['test_signal'] = aCGH['test_signal'] + (ref_median - test_median)
+aCGH['test_signal'] *= PLOIDY/2.
 
 # So che la trisomia e' stata schiacciata al valore della mediana
 #POLY = 4.
@@ -54,9 +55,10 @@ aCGH = NimblegenCGH.load(test_path=test_path,
 # -- Profiles ---------------------------------------------------------
 print 'Profile...'
 plt.figure()
-coords = cghplots.profile(aCGH)#, signal=ratio)#(ratio-np.median(ratio))+center)
+ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
+coords = cghplots.profile(aCGH, signal=ratio)
 coords = np.array(coords, dtype=float)
-#plt.axhline(center, lw=1, c='g', ls='--')
+plt.axhline(np.median(ratio), lw=2, c='r', ls='--')
 
 plt.axhline(np.log2(3./2.), lw=1, c='k', ls='-')
 plt.axhline(np.log2(4./2.), lw=1, c='k', ls='-')
