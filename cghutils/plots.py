@@ -87,102 +87,101 @@ def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_colo
     plt.legend()
 
 
-def profile(aCGH, indexes=None, signal=None, chromosome=None, vmin=-1, vmax=1,
-            cmap=None, title=None, superimposed=None, ylimits=None):
-    #plt.title('CGH profile' if title is None else title)
+def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
+            ymin=None, ymax=None, cmin=-1, cmax=1, cmap=plt.cm.jet):
+    """
+        - signal: 'custom' cgh values
+                  len(signal) == len(aCGH)
+        - chromosomes: a list of chromosomes to plot from 1 to 24 (23=X, 24=Y)
+        - segmentation: signal to plot against the cgh signal,
+                        len(segmentation) == len(signal)
+        - ymin, ymax: y axis limits
+        - cmin, cmax: scatter plot color limits
+    """
 
+    chr_map = dict((str(c), c) for c in xrange(1, 25))
+    chr_map['X'] = 23
+    chr_map['Y'] = 24
+
+    inverse_chr_map = dict((c, str(c)) for c in xrange(1, 23))
+    inverse_chr_map[23] = 'X'
+    inverse_chr_map[24] = 'Y'
+
+    # Chromosomes Fitering
+    if not chromosomes is None:
+        chr_filtered = np.unique(chr_map[str(chr).strip().upper()]
+                                 for chr in chromosomes)
+
+        chridx = np.array(np.zeros(len(aCGH)), dtype=bool)
+        for chr in chr_filtered:
+            np.logical_or(chridx, aCGH['chromosome'] == chr, chridx)
+
+        aCGH = aCGH[chridx]
+        chromosomes = sorted(chr_filtered)
+
+        # Signal and segmentation filtering
+        if not signal is None:
+            signal = signal[chridx]
+        if not segmentation is None:
+            segmentation = segmentation[chridx]
+    else:
+        chromosomes = np.unique(aCGH['chromosome'])
+
+    # Signal Calculation (chromosome filtering included)
     if signal is None:
         test_signal = aCGH['test_signal']
         reference_signal = aCGH['reference_signal']
         signal = np.log2(test_signal) - np.log2(reference_signal)
 
-        if not indexes is None:
-            signal = signal[indexes]
-
-    positions = aCGH[['chromosome', 'start_base']]
-    if not indexes is None:
-        positions = positions[indexes]
-
-    if not chromosome is None:
-        #if chromosome == 'X': chr_val = 23
-        #elif chromosome == 'Y': chr_val = 24
-        #else: chr_val = int(chromosome)
-        chr_val = [int(chr) for chr in chromosome]
-
-        chridx = np.array(np.zeros_like(signal), dtype=bool)
-        for chr in chr_val:
-            chridx = np.logical_or(chridx, aCGH['chromosome'] == chr)
-        #chridx = (aCGH['chromosome'] in chr_val)
-        signal = signal[chridx]
-        positions = positions[chridx]
-
-    # Calculation of the coordinates
-    coords = positions['start_base']
-    #if chromosome is None:
+    # Plot-Coordinates Calculation
     from matplotlib import mlab as ml
+    positions = aCGH[['chromosome', 'start_base']]
+    coords = positions['start_base']
+
     summary = ml.rec_groupby(positions,
                              groupby=('chromosome',),
                              stats=(('start_base', np.max, 'shifts'),))
     shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
-    #print shifts
-    #print np.unique(positions['chromosome'])
 
-    for i in range(1, len(chromosome)+1):#np.unique(positions['chromosome']):
-        coords[positions['chromosome'] == chromosome[i-1]] += shifts[i-1]
+    for i, chr in enumerate(chromosomes):
+        coords[positions['chromosome'] == chr] += shifts[i]
 
+    # Chromosomes ticks and separators
     ticks = (shifts[:-1] + shifts[1:])/2.0
     separators = shifts[1:-1]
-    #else:
-        #ticks = [coords.max() / 2.0]
-    #--------------------------------
 
-    cmap = plt.cm.jet if cmap is None else cmap
-    # NOTE: colors centered on the median of the signal
-    plt.scatter(coords, signal, c=signal-np.median(signal), cmap=cmap,
-                vmin=vmin, vmax=vmax,
-                s=8, edgecolors='none')
+    # CHG Scatter plot
+    plt.scatter(coords, signal, c=signal, cmap=cmap,
+                vmin=cmin, vmax=cmax, s=8, edgecolors='none')
 
-    if not superimposed is None:
+    # Superimposed segmentation
+    if not segmentation is None:
         cidx = np.argsort(coords)
-        plt.plot(coords[cidx], superimposed[cidx], color='gray', ls='-', lw=2)
+        plt.plot(coords[cidx], segmentation[cidx], color='gray', ls='-', lw=2)
 
-    if ylimits is None:
-        max_h = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
-        min_h = -max_h
-    else:
-        min_h, max_h = ylimits
+    # Axis limits
+    if ymax is None:
+        ymax = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
+    if ymin is None:
+        ymin = -ymax
+    plt.axis([coords.min(), coords.max(), ymin, ymax])
 
-    plt.axis([coords.min(), coords.max(), min_h, max_h])
-    #plt.colorbar(ticks=[])
+    # Visual effects
+    plt.colorbar(extend='both')
+    plt.axhline(0.0, lw=1, color='gray', ls='--')
+    plt.axhline(1.0, lw=1, color='red', ls='--')
+    plt.axhline(-1.0, lw=1, color='blue', ls='--')
 
-    #plt.axhline(0.0, lw=1, color='gray', ls='--')
-    #plt.axhline(1.0, lw=1, color='red', ls='--')
-    #plt.axhline(-1.0, lw=1, color='blue', ls='--')
+    for sep in separators:
+        plt.axvline(sep-1, lw=1, color='gray', ls='-')
 
-    for i in range(1, 9):
-        plt.axhline(np.log2(i/2.), lw=1, c='k', ls='--')
-    plt.yticks([-1, 0, 0.58, 1, 1.32, 1.58, 1.81, 2],
-                ('log(1/2)', 'log(2/2)', 'log(3/2)', 'log(4/2)',
-                 'log(5/2)', 'log(6/2)', 'log(7/2)', 'log(8/2)',))
+    label_ticks = ['Chr %s' % inverse_chr_map[k] for k in chromosomes]
+    plt.xticks(ticks, label_ticks, rotation=90)
+    plt.tick_params(axis='x', direction='out', length=3, colors='black',
+                    labelsize='small', labelbottom='on')
 
-    if chromosome is None:
-        for sep in separators:
-            plt.axvline(sep-1, lw=1, color='gray', ls='-')
-
-        label_ticks = ['Chr %s' % k for k in chain(range(1, 23), ('X', 'Y'))]
-        plt.xticks(ticks, label_ticks, rotation=90)
-        plt.tick_params(axis='x', direction='out', length=3, colors='black',
-                        labelsize='small', labelbottom='on')
-    else:
-        for sep in separators:
-            plt.axvline(sep-1, lw=1, color='gray', ls='-')
-        label_ticks = ['Chr %s' % k for k in chromosome]
-        plt.xticks(ticks, label_ticks, rotation=90)
-        plt.tick_params(axis='x', direction='out', length=3, colors='black',
-                        labelsize='small', labelbottom='on')
-
-    if not chromosome is None:
-        return coords, chridx
+    if not segmentation is None:
+        return coords, cidx
     return coords
 
 def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None, *args, **kwargs):
