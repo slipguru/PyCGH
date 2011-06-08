@@ -118,9 +118,11 @@ class CytoBands(object):
             return int(converted)
 
     def __init__(self, release='hg19'):
-        import os
-        file_path = os.path.join(os.path.dirname(__file__),
-                                 'cytoBand_%s_ucsc.txt' % release)
+        from cghutils import UCSC
+
+        if not release in UCSC:
+            raise ValueError('wrong release specified')
+        file_path = UCSC[release]['cytoBand']
 
         # Parsing and bands reading
         bands = dict()
