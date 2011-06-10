@@ -65,7 +65,12 @@ def _split_mapping(location):
     elif chr=='Y':
         return 24, start, end, False
     else:
-        return int(chr), start, end, False
+        try:
+            return int(chr), start, end, False
+        except ValueError: # unplaceable probe eg chrUn
+            return (AgilentCGH.INVALID_INT,
+                    AgilentCGH.INVALID_INT,
+                    AgilentCGH.INVALID_INT, True)
 
 # Main Class -------------------------------------------------------------------
 class AgilentCGH(ArrayCGH):
@@ -85,7 +90,7 @@ class AgilentCGH(ArrayCGH):
 
     @staticmethod
     def load(path, delimiter='\t', test_channel='r',
-             fill_missings=False, qc_masking=False):
+             fill_missings=False, qc_masking=False, release=None):
 
         if not test_channel in ('r', 'g'):
             raise ValueError("test_channel must be 'r' (default) or 'g'")
@@ -114,10 +119,25 @@ class AgilentCGH(ArrayCGH):
         elif test_channel == 'g':
             agilent_names.extend(['rMedianSignal', 'gMedianSignal'])
 
+
+        # Mapping between probe and chromosomal position
+        if not release is None:
+            rel_data = np.genfromtxt(release, dtype=None, usecols=(4, 1, 2, 3),
+                                     names=('id', 'chr', 'sb', 'eb'))
+            rel_data['sb'] += 1 # ucsc starts from zero
+            rel_map = dict((id, '%s:%d-%d' % (c, s, e))
+                           for id, c, s, e in rel_data)
+
+            # If an id is missing in the release,
+            # the probe is marked as unmapped
+            locations = (rel_map.get(id, 'unmapped')
+                         for id in features['ProbeName'])
+        else:
+            locations = features['SystematicName']
+
         # Chromosome Position extraction (X=23, Y=24)
         # Note that the control probe will be automatically removed
         # during this step
-        locations = features['SystematicName']
         loc_buff = zip(*(_split_mapping(x) for x in locations))
 
         # Data extraction

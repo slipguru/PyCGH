@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from cghutils import AgilentCGH
+from cghutils import AgilentCGH, UCSC
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 
@@ -98,3 +98,18 @@ class TestAgilentCGH(object):
         # But true if compressed
         assert_true(np.allclose(aCGH_1.masked('reference_signal').compressed(),
                                  aCGH_2.masked('reference_signal').compressed()))
+
+    def test_release(self):
+        aCGH = AgilentCGH.load(self.path)
+        index = (aCGH['id'] == 'A_14_P131095')
+        assert_equals(6, aCGH['chromosome'][index])
+        assert_equals(1259769, aCGH['start_base'][index])
+        assert_equals(1259826, aCGH['end_base'][index])
+
+        # Hg19 mapping
+        aCGH = AgilentCGH.load(self.path,
+                               release=UCSC['hg19']['agilentCgh4x44k'])
+        index = (aCGH['id'] == 'A_14_P131095')
+        assert_equals(6, aCGH['chromosome'][index])
+        assert_equals(1314769, aCGH['start_base'][index])
+        assert_equals(1314826, aCGH['end_base'][index])
