@@ -10,7 +10,6 @@ def lowess(x, y, **kwargs):
     rlowess = robjects.r['lowess']
     return rlowess(x, y, **kwargs)
 
-
 def loess(values, x, y=None, **kwargs):
     """ Loess from R """
     loess = robjects.r['loess']
@@ -31,10 +30,17 @@ def loess(values, x, y=None, **kwargs):
     out = loess(fmla, **kwargs)
     return np.asarray(predict(out, df))
 
-
 def array_trend(values, col, row):
     return loess(values, col, row, span=0.03, degree=1,
                  normalize=True, family='gaussian', iterations=3)
+
+def probes_average(probes_id, probes_values, avg_function=np.mean):
+    summary = dict()
+    for id, v in it.izip(probes_id, probes_values):
+        summary.setdefault(id, []).append(v)
+
+    return dict((id, avg_function(summary[id])) for id in summary)
+
 
 # Cytoband access code --------------------------------------------------------
 class ChromosomeBands(object):
