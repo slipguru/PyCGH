@@ -158,3 +158,56 @@ class CytoBands(object):
             elif key.strip() == 'Y': key = 24
 
         return self._bands[key]
+
+
+#------------------------------------------------------------------------------
+class LabeledMatrix(object):
+    def __init__(self, names, data_type=np.float32):
+        self._names = dict((n, i) for i, n in enumerate(names))
+        self._samples = {}
+
+        self._rdata = np.empty((0, len(names)), dtype=data_type)
+
+    def append(self, name, values):
+        " ADD "
+        values = np.asanyarray(values)
+        values.shape = (1, len(values))
+
+        if name in self._samples:
+            raise ValueError('sample already present')
+
+        self._rdata = np.r_[self._rdata, values]
+        self._samples[name] = (len(self._rdata) - 1)
+
+    def __getitem__(self, key):
+        " READ "
+        if key in self._samples:
+            return self._rdata[self._samples[key]]
+        return self._rdata[key]
+
+    def __setitem__(self, key, value):
+        " CHANGE "
+        if not key in self._samples:
+            raise ValueError('sample not existent')
+
+        values = np.asanyarray(value)
+        values.shape = (1, len(values))
+        self._rdata[self._samples[key]] = values
+
+    def __delitem__(self, key):
+        " DELETE "
+        if not key in self._samples:
+            raise ValueError('sample not existent')
+
+        self._rdata = np.delete(self._rdata, self._samples[key], 0)
+
+        # Shift indici... se spostasti l'ultimo al posto dal cancellato
+        # ed elimino solo una riga?
+        sh_keys = [k for k in self._samples if self._samples[k] > self._samples[key]]
+        for k in sh_keys:
+            self._samples[k] -= 1
+
+        del self._samples[key]
+
+    def __len__(self):
+        return len(self._rdata)

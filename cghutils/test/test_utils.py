@@ -1,6 +1,6 @@
 from nose.tools import *
 
-from cghutils.utils import CytoBands, probes_average
+from cghutils.utils import CytoBands, probes_average, LabeledMatrix
 
 class TestCytoBands(object):
 
@@ -67,3 +67,41 @@ class TestProbesAverage(object):
         assert_equals(10, out[3])
         assert_equals(10, out[4])
         assert_equals(10, out[5])
+
+class TestLabeledMatrix(object):
+    def test_add_samples(self):
+        lm = LabeledMatrix(['value1', 'value2'])
+
+        lm.append('sample1', [1, 2])
+        assert_true(all([1, 2] == lm['sample1']))
+        assert_equal(1, len(lm))
+
+        lm.append('sample2', [2, 2])
+        assert_true(all([2, 2] == lm['sample2']))
+        assert_equal(2, len(lm))
+
+        assert_raises(ValueError, lm.append, 'sample1', [3, 3])
+
+    def test_change_sample(self):
+        lm = LabeledMatrix(['value1', 'value2'])
+
+        lm.append('sample1', [1, 2])
+        lm['sample1'] = [5, 6]
+        assert_equal(1, len(lm))
+
+        del lm['sample1']
+        assert_equal(0, len(lm))
+
+        assert_raises(ValueError, lm.__delitem__, 'sample1')
+
+    def test_access_by_index(self):
+        lm = LabeledMatrix(['value1', 'value2'])
+
+        lm.append('sample1', [1, 1])
+        lm.append('sample2', [2, 2])
+
+        assert_true(all(lm[0] == lm['sample1']))
+        assert_true(all(lm[1] == lm['sample2']))
+
+        del lm['sample1']
+        assert_true(all(lm[0] == lm['sample2']))
