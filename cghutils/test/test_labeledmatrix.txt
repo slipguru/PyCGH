@@ -1,0 +1,7 @@
+sample	attr1	attr2
+sample1	10.0	20.0
+sample200	100.0	200.0
+sample100	10.0	20.0
+sample23	100.0	200.0
+sample10	10.0	20.0
+sample2	100.0	200.0

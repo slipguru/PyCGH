@@ -1,6 +1,9 @@
+import os
 from nose.tools import *
 
 from cghutils.utils import CytoBands, probes_average, LabeledMatrix
+
+PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 
 class TestCytoBands(object):
 
@@ -80,7 +83,32 @@ class TestLabeledMatrix(object):
         assert_true(all([2, 2] == lm['sample2']))
         assert_equal(2, len(lm))
 
+        assert_raises(ValueError, lm.append, None, [3, 3])
         assert_raises(ValueError, lm.append, 'sample1', [3, 3])
+
+        lm = LabeledMatrix(['value1', 'value2'])
+        lm.append(None, [1, 1])
+        lm.append(None, [2, 2])
+        assert_equals(['sample0', 'sample1'], sorted(lm.samples))
+
+    def test_delete_sample(self):
+        lm = LabeledMatrix(['value1', 'value2'])
+        for i in xrange(1, 11):
+            lm.append('sample%d' % i, [i, i])
+
+        for i in (2, 5, 9):
+            assert_true(all([i, i] == lm['sample%d' % i]))
+
+        idx = lm.index_of('sample10')
+        assert_true(all([10, 10] == lm['sample10']))
+        assert_true(all([10, 10] == lm[idx]))
+
+        del lm['sample2']
+        assert_raises(ValueError, lm.__getitem__, 'sample2')
+
+        idx = lm.index_of('sample10')
+        assert_true(all([10, 10] == lm['sample10']))
+        assert_true(all([10, 10] == lm[idx]))
 
     def test_change_sample(self):
         lm = LabeledMatrix(['value1', 'value2'])
@@ -105,3 +133,39 @@ class TestLabeledMatrix(object):
 
         del lm['sample1']
         assert_true(all(lm[0] == lm['sample2']))
+
+    def test_pass_data(self):
+        lm = LabeledMatrix(['value1', 'value2'], data=[[1, 2], [3, 4]])
+        assert_equals(2, len(lm))
+
+        assert_raises(ValueError, LabeledMatrix, ['value1', 'value2'],
+                                                 data=[[1, 2], [3, 4, 5]])
+        assert_raises(ValueError, LabeledMatrix, ['value1'],
+                                                 data=[[1, 2], [3, 4]])
+        assert_raises(ValueError, LabeledMatrix, ['value1'],
+                                                 data=[[1, 2], [3, 4, 5]])
+
+    def test_load(self):
+        lm = LabeledMatrix.load(os.path.join(PAR_DIR,
+                                             'test_labeledmatrix.txt'))
+
+        assert_equals(6, len(lm))
+        assert_equals(['attr1', 'attr2'], sorted(lm.names))
+        assert_true(all([10, 20] == lm['sample1']))
+        assert_true(all([100, 200] == lm['sample2']))
+
+    def test_save(self):
+        import tempfile
+        out = os.path.join(tempfile.gettempdir(), 'lm.txt')
+
+        lm = LabeledMatrix.load(os.path.join(PAR_DIR,
+                                             'test_labeledmatrix.txt'))
+        lm.save(out)
+        lm2 = LabeledMatrix.load(out)
+
+        assert_equals(len(lm), len(lm2))
+        assert_equals(sorted(lm.names), sorted(lm2.names))
+        assert_equals(sorted(lm.samples), sorted(lm2.samples))
+
+        for sample in lm.samples:
+            assert_true(all(lm[sample] == lm2[sample]))
