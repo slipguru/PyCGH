@@ -114,6 +114,9 @@ class ChromosomeBands(object):
     def __len__(self):
         return len(self._names)
 
+    def __str__(self):
+        return str(self._names)
+
 
 class CytoBands(object):
     @staticmethod
@@ -183,6 +186,10 @@ class LabeledMatrix(object):
     def index_of(self, key):
         return self._samples[key]
 
+    ###############TO TEST
+    def asarray(self):
+        return np.asanyarray(self._rdata)
+
     @property
     def samples(self):
         return self._samples.keys()
@@ -241,16 +248,26 @@ class LabeledMatrix(object):
     def __len__(self):
         return len(self._rdata)
 
+    def __str__(self):
+        return str(self._rdata)
+
     @staticmethod
     def load(file_path, delimiter='\t'):
-        data = np.genfromtxt(file_path, dtype=None,
-                             delimiter=delimiter, names=True)
-        dnames = list(data.dtype.names)
+        # For some reason genfromtxt removes the '.' in the names string
+        f = open(file_path)
+        header = '#'
+        while header.startswith('#'):
+            header = f.readline()
+        names = header.strip().split(delimiter)
+        attrs = names[1:]
 
-        attrs = dnames[1:]
-        samples = data[dnames[0]]
-        data = (data[attrs].view(dtype=np.float)
-                           .reshape((len(samples), len(attrs)))
+        data = np.genfromtxt(f, dtype=None,
+                             delimiter=delimiter, names=names)
+        dnames = data.dtype.names
+
+        samples = data[names[0]]
+        data = (data[list(dnames[1:])].view(dtype=np.float)
+                                      .reshape((len(samples), len(attrs)))
                )
 
         return LabeledMatrix(names=attrs,
