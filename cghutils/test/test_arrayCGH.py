@@ -155,7 +155,6 @@ class TestArrayCGH(object):
         aCGH.sort('chromosome')
         assert_true(np.allclose(chr[idx], aCGH['chromosome']))
 
-
 class TestArrayCGHIO(object):
 
     def test_loading_file(self):

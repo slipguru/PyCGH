@@ -119,7 +119,6 @@ class AgilentCGH(ArrayCGH):
         elif test_channel == 'g':
             agilent_names.extend(['rMedianSignal', 'gMedianSignal'])
 
-
         # Mapping between probe and chromosomal position
         if not release is None:
             rel_data = np.genfromtxt(release, dtype=None, usecols=(4, 1, 2, 3),
