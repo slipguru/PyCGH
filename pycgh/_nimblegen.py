@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 import numpy as np
 
-from cghutils import ArrayCGH
+from _arrayCGH import ArrayCGH
 
 
 TYPE_MAP = {'IMAGE_ID': unicode,

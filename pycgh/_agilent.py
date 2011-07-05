@@ -3,21 +3,7 @@ import itertools as it
 
 import numpy as np
 
-from cghutils import ArrayCGH
-
-# TO BE REMOVED!!!! ##########################################################
-import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-
-logger.addHandler(handler)
-###############################################################################
+from _arrayCGH import ArrayCGH
 
 # Utility functions -----------------------------------------------------------
             # Agilent -> (conversion, dtype)

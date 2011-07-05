@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from cghutils import NimblegenCGH
+from pycgh import NimblegenCGH
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 

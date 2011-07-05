@@ -4,7 +4,7 @@ from nose.tools import *
 
 import itertools as it
 import numpy as np
-from cghutils import ArrayCGH
+from pycgh import ArrayCGH
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 ROW_NUM = COL_NUM = 10

@@ -127,7 +127,7 @@ class CytoBands(object):
             return int(converted)
 
     def __init__(self, release='hg19'):
-        from cghutils import UCSC
+        from pycgh import UCSC
 
         if not release in UCSC:
             raise ValueError('wrong release specified')

@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-from cghutils import AgilentCGH, UCSC
+from pycgh import AgilentCGH, UCSC
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 

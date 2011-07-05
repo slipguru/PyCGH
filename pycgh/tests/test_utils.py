@@ -1,7 +1,7 @@
 import os
 from nose.tools import *
 
-from cghutils.utils import CytoBands, probes_average, LabeledMatrix
+from pycgh.utils import CytoBands, probes_average, LabeledMatrix
 
 PAR_DIR = os.path.split(os.path.abspath(__file__))[0]
 
