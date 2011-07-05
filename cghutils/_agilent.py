@@ -49,7 +49,7 @@ def _read_info_block(acgh, delimiter='\t'):
             try:
                 out.setdefault(i, []).append(TYPE_MAP[t][0](d))
             except Exception, e:
-                print 'Skipping unreadable lines nro %d' % ln
+                print 'Skipping unreadable lines #%d' % ln
                 for k in out:
                     if len(out[k]) == (num+1): #rollback
                         out[k] = out[k][:-1]
