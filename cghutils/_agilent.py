@@ -5,6 +5,20 @@ import numpy as np
 
 from cghutils import ArrayCGH
 
+# TO BE REMOVED!!!! ##########################################################
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+###############################################################################
+
 # Utility functions -----------------------------------------------------------
             # Agilent -> (conversion, dtype)
 TYPE_MAP = {'text': (unicode, unicode),
@@ -28,10 +42,20 @@ def _read_info_block(acgh, delimiter='\t'):
     out = dict()
     types, info = _return_headers(acgh, delimiter)
 
-    for line in acgh:
+    num = 0
+    for ln, line in enumerate(acgh):
         data = line.strip().split(delimiter)[1:]
         for i, t, d in zip(info, types, data):
-            out.setdefault(i, []).append(TYPE_MAP[t][0](d))
+            try:
+                out.setdefault(i, []).append(TYPE_MAP[t][0](d))
+            except Exception, e:
+                print 'Skipping unreadable lines nro %d' % ln
+                for k in out:
+                    if len(out[k]) == (num+1): #rollback
+                        out[k] = out[k][:-1]
+                break
+        else:
+            num += 1 #number of lines              
 
     # Conversion in numpy array
     for i, t in zip(info, types):
@@ -73,7 +97,7 @@ def _split_mapping(location):
                     AgilentCGH.INVALID_INT, True)
 
 # Main Class -------------------------------------------------------------------
-class AgilentCGH(ArrayCGH):
+class AgilentCGH(object):#ArrayCGH):
 
     INVALID_INT = -9999
     INVALID_FLOAT = np.nan
@@ -85,8 +109,8 @@ class AgilentCGH(ArrayCGH):
                 'gIsSaturated', 'rIsSaturated')
     NQC_FLAGS = ('gIsWellAboveBG', 'rIsWellAboveBG')
 
-    def __init__(self, *args, **kwargs):
-        return super(AgilentCGH, self).__init__(*args, **kwargs)
+    #def __init__(self, *args, **kwargs):
+        #return super(AgilentCGH, self).__init__(*args, **kwargs)
 
     @staticmethod
     def load(path, delimiter='\t', test_channel='r',
@@ -156,8 +180,8 @@ class AgilentCGH(ArrayCGH):
         if fill_missings:
             # Missing data
             found_coords = set(zip(features['Row'], features['Col']))
-            expexted_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
-            missing_rows, missing_cols = zip(*(expexted_coords - found_coords))
+            expected_coords = set(it.product(xrange(1, num_rows+1), xrange(1, num_cols+1)))
+            missing_rows, missing_cols = zip(*(expected_coords - found_coords))
             missing_len = len(missing_rows)
 
             missing_data = (
