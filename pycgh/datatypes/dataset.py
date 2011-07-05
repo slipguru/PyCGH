@@ -1,22 +1,66 @@
-#------------------------------------------------------------------------------
+#-*- coding: utf-8 -*-
+
+# Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
+# License: New BSD
+
+import numpy as np
+
 class Dataset(object):
-    def __init__(self, names, data=None, sample_names=None, data_type=np.float32):
+    """Dataset data type.
+    
+    The class encapsulate the concepts of a collection of omogeneous
+    labeled samples, described by a fixed number of named variables.
+    
+    Another way to handle the class is to imagine it as an abstract
+    representation of a two-entry table, where on the rows we have the
+    different labeled sample and on the columns the different named variables.
+    
+    In the context of the class, the the two terms `label` and `name` are
+    respectively associated with `samples` and `variables`
+    (eg: "the sample label" and "the variable name").
+    
+    Moreover, each variables has also a specific type. The internal
+    representation of the data inherits the data type representation from
+    the numpy.ndarray data structure.
+    
+    """
+    
+    def __init__(self, names, types=np.float32,
+                 data=None, labels=None):
+        """ Dataset constructor.
+        
+        The class constructor requires only the description of the samples
+        as list of variable `names` and `types`.
+        The input variable `types` may be a simple python (or numpy) type
+        and the class assumes that all the variables have the same type
+        (as default types is `np.float32`).
+        
+        Data has to be a list of samples (in a form convertible in a
+        numpy 2d ndarray, eg. list of lists, list of 1d ndarrays ...),
+        where the lenght of each sample must be equal the lenght of `names`.
+        
+        Finally, `labels' is the list of sample labels. If it is None,
+        the class automatically will use the labels ['sample0', 'sample1', ...].
+        """
+        
+        ##TODO: if types is a list we have to build consistently _rdata
+        
         self._names = dict((n, i) for i, n in enumerate(names))
 
         if data is None:
-            self._rdata = np.empty((0, len(names)), dtype=data_type)
+            self._rdata = np.empty((0, len(names)), dtype=types)
             self._samples = {}
         else:
-            data = np.asanyarray(data, dtype=data_type)
+            data = np.asanyarray(data, dtype=types)
             r, c = data.shape
             if len(names) != c:
                 raise ValueError('data column number must be equal to number of column names')
 
             self._rdata = data
-            if sample_names is None:
+            if labels is None:
                 self._samples = dict(('sample%d' % i, i) for i in xrange(1, r+1))
             else:
-                self._samples = dict((name, i) for i, name in enumerate(sample_names))
+                self._samples = dict((name, i) for i, name in enumerate(labels))
 
     def index_of(self, key):
         return self._samples[key]
@@ -107,7 +151,7 @@ class Dataset(object):
 
         return LabeledMatrix(names=attrs,
                              data=data,
-                             sample_names=samples)
+                             labels=samples)
 
     def save(self, path, delimiter='\t'):
         from operator import itemgetter as ig
