@@ -1,10 +1,24 @@
-import itertools as it
+# -*- coding: utf-8 -*-
+
+# Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
+# License: New BSD
+
 import csv
+import itertools as it
 
 import numpy as np
 from numpy.lib import recfunctions
 
 class ArrayCGH(object):
+    """ Main data structure repersenting a generic Array CGH.
+    
+    Features
+    --------
+    1. The instantiation of the class needs a reduced number of parameter
+    2. The class methods `load` and `save` offer a way to easily import and
+       export a processed Array CGH.
+    
+    """
 
     COL_NAMES = ('id', 'row', 'col',
                  'reference_signal', 'test_signal',
