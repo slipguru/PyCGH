@@ -6,6 +6,51 @@
 import numpy as np
 from pycgh import PyCGHException
 
+### Potrei implementare la classe in modo che sia
+### mono tipo
+### In questo modo avrei un classico ndarray
+### Questo la differenzierebbe dall'arraycgh anche se... solo l'id è stringa
+### .... potrei semplicemente litarmi ai tipi numerici,
+### pero se li mischio il problema è o stesso.
+
+### sia larry che pandas sono orientati a serie, non tanto al concetto
+### di sample e comunque usano semplici array numpy...
+
+### Semplificare avendo internamente due indici (mappe) sia per colonne
+### che per righe. Accetto in input un dtype numpy... potrei ereditare
+### La classe funziona come un normalissimo array numpy senza perdere nulla
+### della sua efficenza, potrei eventualmente intercettare
+### il get item per convertirli ai nomi
+### ed aggiungo supporto per lettura e salvataggio da un csv tabellare
+### a due dimensioni... in quel caso il dtype... vediamo che succede
+### usando le funzioni numpy classiche...
+###
+### Questo differenzia questa classe dagli array cgh che
+### usano un array numpy solo come rappresentazione interna.
+
+### Ma se eredito che succede quando concateno o faccio altre cose strane??
+### potrebbe essere una menata gestire queste eccezioni.
+### Ad esempio x = x[1:] che fa? x[1:] dovrebbe ritornare una sottoclasse
+### dello stesso tipo con la mappa aggiornata senza una colonna...
+### e se faccio r_[x, x].... che succede?
+
+### Di cosa ho bisogno: lettura scrittura csv, non dimenticarmi delle etichette
+### larry sarebbe più che sufficiente se non fosse che legge una merda i csv.
+
+### Forse conviene anche a me usare un array numpy e fornire un minimo di
+### funzionalità nella gestione delle etichette
+### Per adesso potremmo anche lasciarla perdere!!!!!!!!!!!
+### Alla fine la lettura e la scrittura sono sempre dipendenti dall'applicazione
+### Un po' di codice per usare un larry alla fine non è niente di complicato,
+### anche dovendo leggere manualmente il csv.
+
+### Ad esempio la classe mi è tornata comoda, ma solo per converitre un csv
+### in un altro ma era poco avanzata per fare operazioni davvero furbe,
+### tipo estrarre direttamente la sottomarice perché non potevo usarla
+### come un ndarray... però sottoclassarlo rende le cose complicate.
+
+## Forse ereditare è piùà facile di quel che sembra
+
 class Dataset(object):
     """Dataset data type.
 
