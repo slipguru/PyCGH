@@ -49,7 +49,8 @@ from pycgh import PyCGHException
 ### tipo estrarre direttamente la sottomarice perché non potevo usarla
 ### come un ndarray... però sottoclassarlo rende le cose complicate.
 
-## Forse ereditare è piùà facile di quel che sembra
+### Forse ereditare è piùà facile di quel che sembra:
+### http://docs.scipy.org/doc/numpy/user/basics.subclassing.html
 
 class Dataset(object):
     """Dataset data type.
