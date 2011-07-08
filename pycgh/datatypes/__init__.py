@@ -6,4 +6,4 @@
 """Insert module description
 """
 
-from dataset import Dataset
+from dataset import DataTable, Dataset

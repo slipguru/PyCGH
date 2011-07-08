@@ -6,41 +6,126 @@
 from nose.tools import *
 
 import numpy as np
-from pycgh.datatypes import Dataset
+from pycgh.datatypes import DataTable, Dataset
 from pycgh import PyCGHException
+
+
+class TestDataTable(object):
+    def setup(self):
+        self.data = [[1, 2, 3], [4, 5, 6]]
+        self.rlabels = ['r0', 'r1']
+        self.clabels = ['c0', 'c1', 'c2']
+
+    def test_creation(self):
+        dt = DataTable(self.data, self.rlabels, self.clabels)
+        assert_equal(2, dt.nrow)
+        assert_equal(3, dt.ncol)
+        assert_equal(2, len(dt))
+
+        assert_equals(self.rlabels, dt.rlabels)
+        assert_equals(self.clabels, dt.clabels)
+
+    def test_labels(self):
+        dt = DataTable(self.data)
+        assert_equals(self.rlabels, dt.rlabels)
+        assert_equals(self.clabels, dt.clabels)
+
+        assert_raises(PyCGHException, DataTable, self.data,
+                      self.rlabels[:-1], self.clabels)
+        assert_raises(PyCGHException, DataTable, self.data,
+                      self.rlabels, self.clabels[:-1])
+        assert_raises(PyCGHException, DataTable, self.data,
+                      self.rlabels[:-1], self.clabels[:-1])
+
+    def test_dtype(self):
+        for dtype in (float, int, np.float32, np.bool, np.complex):
+            dt = DataTable(self.data, self.rlabels, self.clabels, dtype=dtype)
+            assert_equals(dtype, dt.dtype)
+
+            dt = DataTable(self.data, self.rlabels, self.clabels,
+                           dtype=np.dtype(dtype))
+            assert_equals(dtype, dt.dtype)
+
+        # Only builtin dtype accepted
+        assert_raises(PyCGHException, DataTable, self.data,
+                      dtype=np.dtype([('f0', float)]))
+
+    def test_dtypestr(self):
+        dt = DataTable(self.data, dtype=str)
+        assert_equals(np.asarray([1], dtype=str).dtype, dt.dtype)
+
+    def test_reading(self):
+        dt = DataTable(self.data)
+        data = np.array(self.data)
+
+        # rows
+        assert_true(np.all(data[0] == dt[0]))
+        assert_true(np.all(data[1] == dt[1]))
+
+        #columns
+        assert_true(np.all(data[:,0] == dt[:,0]))
+        assert_true(np.all(data[:,1] == dt[:,1]))
+        assert_true(np.all(data[:,2] == dt[:,2]))
+
+        #both
+        assert_true(np.all([1] == dt[0,0]))
+        assert_true(np.all([6] == dt[1,2]))
+
+        #slicing
+        assert_true(np.all(data == dt[0:2]))
+        assert_true(np.all(data[0:1] == dt[0:1]))
+        assert_true(np.all(data[:,0:1] == dt[:,0:1]))
+        assert_true(np.all(data[:,0:2] == dt[:,0:2]))
+        assert_true(np.all(data[:,0:3] == dt[:,0:3]))
+        assert_true(np.all(data[0:1,0:2] == dt[0:1,0:2]))
+
+    def test_label_reading(self):
+        dt = DataTable(self.data)
+
+        data = np.array(self.data)
+        # Remember that:
+        #      c0  c1  c2
+        # r0    1   2   3
+        # r1    4   5   6
+
+        tests = ( # pairs 'index on ndarray', 'index on DataTable'
+            # Row access
+            (0, 0),
+            (1, 1),
+            (0, 'r0'),
+            (1, 'r1'),
+            (slice(0, 1, None), slice(0, 1, None)),
+            (slice(0, None, None), slice(0, None, None)),
+            (slice(0, 1, None), slice('r0', 'r1', None)),
+            (slice(0, None, None), slice('r0', None, None)),
+
+            # Column access
+            ((0, slice(0, None, None)), ('r0', slice('c0', None, None))),
+            ((0, slice(0, 2, None)), (0, slice('c0', 'c2', None))),
+            ((0, slice(0, None, 2)), (0, slice('c0', None, 2))),
+
+            # Combined access
+            ( (slice(0, None, None), slice(0, None, None)),
+              (slice('r0', None, None), slice('c0', None, None))),
+            ( (slice(0, 1, None), slice(0, 2, None)),
+              (slice('r0', 'r1', None), slice('c0', 'c2', None))),
+            ( (slice(0, None, 2), slice(0, None, 2)),
+              (slice('r0', None, 2), slice('c0', None, 2))),
+
+            # List access
+            ([0, 1], [0, 1]),
+            ([0, 1], ['r0', 'r1']),
+            (([0, 1, 1], [0, 1, 2]), (['r0', 'r1', 'r1'], ['c0', 'c1', 'c2'])),
+        )
+
+        for nd_test, dt_test in tests:
+            assert_true(np.all(data[nd_test] == dt[dt_test]))
+
+
+
 
 class TestDataset(object):
 
-    def test_creation(self):
-        names = ('value1', 'value2')
-
-        for t in [float, int, 'S10']:
-            ds = Dataset(names, types=t)
-            yield self.check_dataset, ds, names, (t,)*len(names)
-
-    def test_creation_with_type(self):
-        names = ('value1', 'value2')
-
-        for t in [(float, float), (float, int), ('S10', int)]:
-            ds = Dataset(names, types=t)
-            yield self.check_dataset, ds, names, t
-
-    def check_dataset(self, ds, names, types):
-        assert_equal(0, len(ds))
-        assert_equals(2, ds.dim)
-        assert_equals(names, ds.names)
-        assert_equals(types, ds.types)
-
-    def test_creation_errors(self):
-        assert_raises(PyCGHException, Dataset,
-                                      ['value1', 'value2'],
-                                      [float])
-        assert_raises(PyCGHException, Dataset,
-                                      ['value1', 'value2'],
-                                      [float, float, float])
-        assert_raises(PyCGHException, Dataset,
-                                      ['value1', 'value2'],
-                                      ['S10'])
 
     def test_add_samples(self):
         ds = Dataset(['value1', 'value2'])
@@ -65,13 +150,6 @@ class TestDataset(object):
 
         # Failed adding
         assert_raises(ValueError, ds.add, 'sample1', [3, 3])
-
-    def test_auto_labels(self):
-        ds = Dataset(['value1', 'value2'])
-        ds.add(None, [1, 1])
-        ds.add(None, [2, 2])
-
-        assert_equals(('sample1', 'sample2'), ds.labels)
 
     def test_index_of(self):
         ds = Dataset(['value1', 'value2'])

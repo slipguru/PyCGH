@@ -6,51 +6,165 @@
 import numpy as np
 from pycgh import PyCGHException
 
-### Potrei implementare la classe in modo che sia
-### mono tipo
-### In questo modo avrei un classico ndarray
-### Questo la differenzierebbe dall'arraycgh anche se... solo l'id è stringa
-### .... potrei semplicemente litarmi ai tipi numerici,
-### pero se li mischio il problema è o stesso.
-
-### sia larry che pandas sono orientati a serie, non tanto al concetto
-### di sample e comunque usano semplici array numpy...
+### L'utilità di questa classe dovrebbe essere limitata alla
+### possibilità sia di leggere tabelle cliniche (anche se basta il csv reader,
+### se non fosse che è un reader e non un parser che ti mette tutto in memoria.)
+### rispetto al csv reader permette slicing su righe e colonne offreddo accesso
+### alle righe, quindi ha senso di esistere.
+###
+### Un secondo uso è quello di gestire dataset si sample viste sempre come
+### tabelle csv e offrendo le stesse funzionalità
+### oltre che alla possibilità di aggiungere ed eliminare colonne e righe
+### e risalvare il file tutto molto più semplice rispetto ad un csv reader.
+###
+### Sul tipo, per ora limitiamoci ai tipi base, non ai record array.
+### Valgono solo i ".isbuiltin == 1", così posso salvarla come csv
+###
+### Quindi l'astrazione corretta è quella di Table con row and columns
 
 ### Semplificare avendo internamente due indici (mappe) sia per colonne
-### che per righe. Accetto in input un dtype numpy... potrei ereditare
-### La classe funziona come un normalissimo array numpy senza perdere nulla
-### della sua efficenza, potrei eventualmente intercettare
-### il get item per convertirli ai nomi
-### ed aggiungo supporto per lettura e salvataggio da un csv tabellare
-### a due dimensioni... in quel caso il dtype... vediamo che succede
-### usando le funzioni numpy classiche...
-###
-### Questo differenzia questa classe dagli array cgh che
-### usano un array numpy solo come rappresentazione interna.
-
-### Ma se eredito che succede quando concateno o faccio altre cose strane??
-### potrebbe essere una menata gestire queste eccezioni.
-### Ad esempio x = x[1:] che fa? x[1:] dovrebbe ritornare una sottoclasse
-### dello stesso tipo con la mappa aggiornata senza una colonna...
-### e se faccio r_[x, x].... che succede?
+### che per righe. Accetto in input un dtype numpy...
 
 ### Di cosa ho bisogno: lettura scrittura csv, non dimenticarmi delle etichette
 ### larry sarebbe più che sufficiente se non fosse che legge una merda i csv.
 
-### Forse conviene anche a me usare un array numpy e fornire un minimo di
-### funzionalità nella gestione delle etichette
-### Per adesso potremmo anche lasciarla perdere!!!!!!!!!!!
-### Alla fine la lettura e la scrittura sono sempre dipendenti dall'applicazione
-### Un po' di codice per usare un larry alla fine non è niente di complicato,
-### anche dovendo leggere manualmente il csv.
+class DataTable(object):
+    def __init__(self, data, rlabels=None, clabels=None, dtype=None):
 
-### Ad esempio la classe mi è tornata comoda, ma solo per converitre un csv
-### in un altro ma era poco avanzata per fare operazioni davvero furbe,
-### tipo estrarre direttamente la sottomarice perché non potevo usarla
-### come un ndarray... però sottoclassarlo rende le cose complicate.
+        ### TODO: check data dimension == 2
+        ### Pur rlabels and clabels into 2 dict
 
-### Forse ereditare è piùà facile di quel che sembra:
-### http://docs.scipy.org/doc/numpy/user/basics.subclassing.html
+        self._data = self._create_data(data, dtype)
+        r, c = self._data.shape
+        self._rlabels = self._autolabels(rlabels, r, 'r')
+        self._clabels = self._autolabels(clabels, c, 'c')
+
+    def _create_data(self, data, dtype):
+        # Because, if None the type will be automatically inferred by numpy
+        if dtype is None:
+            return np.asanyarray(data)
+        else:
+            dtype = np.dtype(dtype)
+            if dtype.isbuiltin:
+                return np.asanyarray(data, dtype=dtype)
+            else:
+                raise PyCGHException('only builtin dtype permitted.')
+
+    def _autolabels(self, labels, dim, prefix):
+        if labels is None:
+            return ['%s%d' % (prefix, i) for i in xrange(dim)]
+
+        if len(labels) == dim:
+            return labels
+
+        raise PyCGHException('wrong %slabels dimension.' % prefix)
+
+    def __str__(self):
+        return '\n'.join(('rows: %s' % ', '.join(self.rlabels),
+                          'cols: %s' % ', '.join(self.clabels),
+                          'data:\n%s' % str(self._data)))
+
+    def __getitem__(self, item):
+
+        #### NEEDS a BIG CLEANUP!!!!
+
+        # Multi-axes access
+        if isinstance(item, tuple):
+            try:
+                ritem, citem = item
+            except ValueError:
+                PyCGHException('only 2 dimension permitted.')
+
+            try:
+                if isinstance(ritem, slice):
+                    if ritem.start in self.rlabels:
+                        ritem_start = self.rlabels.index(ritem.start)
+                    else:
+                        ritem_start = ritem.start
+
+                    if ritem.stop in self.rlabels:
+                        ritem_stop = self.rlabels.index(ritem.stop)
+                    else:
+                        ritem_stop = ritem.stop
+
+                    ritem = slice(ritem_start, ritem_stop, ritem.step)
+                elif ritem in self.rlabels:
+                    ritem = self.rlabels.index(ritem)
+                else:
+                    ritem = [self.rlabels.index(x) if x in self.rlabels else x for x in ritem]
+            except Exception, e:
+                ritem = int(ritem)
+
+            try:
+                if isinstance(citem, slice):
+                    if citem.start in self.clabels:
+                        citem_start = self.clabels.index(citem.start)
+                    else:
+                        citem_start = citem.start
+
+                    if citem.stop in self.clabels:
+                        citem_stop = self.clabels.index(citem.stop)
+                    else:
+                        citem_stop = citem.stop
+
+                    citem = slice(citem_start, citem_stop, citem.step)
+                elif citem in self.clabels:
+                    citem = self.clabels.index(citem)
+                else:
+                    citem = [self.clabels.index(x) if x in self.clabels else x for x in citem]
+            except Exception, e:
+                citem = int(citem)
+
+            return self._data[ritem, citem]
+        # Row access
+        else:
+
+            ritem = item
+
+            try:
+                if isinstance(ritem, slice):
+                    if ritem.start in self.rlabels:
+                        ritem_start = self.rlabels.index(ritem.start)
+                    else:
+                        ritem_start = ritem.start
+
+                    if ritem.stop in self.rlabels:
+                        ritem_stop = self.rlabels.index(ritem.stop)
+                    else:
+                        ritem_stop = ritem.stop
+
+                    ritem = slice(ritem_start, ritem_stop, ritem.step)
+                elif ritem in self.rlabels:
+                    ritem = self.rlabels.index(ritem)
+                else:
+                    ritem = [self.rlabels.index(x) if x in self.rlabels else x for x in ritem]
+            except Exception, e:
+                ritem = int(ritem)
+
+            return self._data[ritem]
+
+    @property
+    def nrow(self):
+        return 2
+
+    @property
+    def ncol(self):
+        return 3
+
+    def __len__(self):
+        return self.nrow
+
+    @property
+    def rlabels(self):
+        return self._rlabels
+
+    @property
+    def clabels(self):
+        return self._clabels
+
+    @property
+    def dtype(self):
+        return self._data.dtype
 
 class Dataset(object):
     """Dataset data type.
