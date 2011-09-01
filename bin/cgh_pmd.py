@@ -7,7 +7,9 @@ from numpy.lib import arraysetops
 
 from rpy2 import robjects
 from rpy2.robjects.packages import importr
-import rpy2.robjects.numpy2ri
+from rpy2.robjects import numpy2ri
+robjects.conversion.py2ri = numpy2ri
+robjects.activate()
 
 from matplotlib import pylab as plt
 from matplotlib import mlab as ml
