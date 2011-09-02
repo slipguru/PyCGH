@@ -1,0 +1,5 @@
+useDynLib(FLLat,LatL2C)
+import(gplots)
+export(FLLat,FLLat.BIC,FLLat.PVE)
+S3method(plot,PVE)
+S3method(plot,FLLat)
