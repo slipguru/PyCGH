@@ -7,6 +7,8 @@ robjects.conversion.py2ri = numpy2ri.numpy2ri
 
 from matplotlib import pylab as pl
 
+from scipy.cluster.hierarchy import ward, dendrogram
+
 
 ## Data parameters ------------------------------------------------------------
 N = 30              # numero sample
@@ -22,6 +24,7 @@ signal_err = 1e-1
 X = np.zeros((N, M))
 
 ## Data generation ------------------------------------------------------------
+print 'Generazione dati...'
 for i, x in enumerate(X):
     x[:] = np.random.normal(scale=signal_err, size=M)
 
@@ -50,7 +53,8 @@ FLLat_BIC = robjects.r['FLLat.BIC']
 J = 8
 
 ## Best model -----------------------------------------------------------------
-result_bic = FLLat_BIC(X.T, J=J)
+print 'Calcolo modello...'
+result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0})
 lam1 = result_bic.rx2('lam1')
 lam2 = result_bic.rx2('lam2')
 D = np.asarray(result_bic.rx2('opt.FLLat').rx2('Beta'))
@@ -61,10 +65,33 @@ for p, d in enumerate(D.T):
     pl.subplot(4, 2, p+1)
     pl.plot(d, '.')
 
+## Clustering -----------------------------------------------------------------
+print 'Clustering matrice pesi...'
+linkage = ward(A.T)
+pl.figure()
+dendrogram(linkage)
+
 pl.figure()
 pl.imshow(A, aspect='auto', interpolation='nearest')
 pl.colorbar()
 
+
+## SPAMS ----------------------------------------------------------------------
+# Online learning for matrix factorization and sparse coding - FL
+# Tree-structured sum of l2-norms
+# mexFistaTree(Y,X,W0,tree,param):
+#   - Y contiene i dati -> X
+#   - X e' il dizionario -> D
+#   - W i coefficienti -> A
+#
+# tree ... vedi test_FistaTree.m
+# param.loss='square';
+# param.regul='tree-l2';
+# A = mexFistaTree(X,D,A0,tree,param)
+# non c'e' l'implementazione completa del metodo...
+# e nemmeno la sola fase separata di calcolo del dizionario dato A
+# se uso fflat con maxiter.T = 0... dovrebbe tenermi sempre fisso Theta=A
+# va modificata la funzione fflat in modo da accettare old.T oltre a old.B
 
 
 #pl.imshow(X, aspect='auto')
