@@ -1,4 +1,4 @@
-FLLat <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",lam1,lam2,
+FLLat <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",T="std",lam1,lam2,
                   thresh=10^(-4),maxiter=100,maxiter.B=1,maxiter.T=1) {
   
   ## Error checking parameters.
@@ -17,7 +17,12 @@ FLLat <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",lam1,lam2,
   } else if (B=="rand") {
     old.B <- Y[,sample(ncol(Y),J),drop=F]
   }
-  old.T <- matrix(0,nrow=J,ncol=ncol(Y))
+  
+  if (is.matrix(T)) {
+    old.T <- T
+  } else if (T=="std") {
+    old.T <- matrix(0,nrow=J,ncol=ncol(Y))
+  }
 
   ## Running FLLat.
   result <- .Call(LatL2C,Y,as.integer(J),old.B,old.T,as.double(lam1),

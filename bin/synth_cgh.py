@@ -42,8 +42,9 @@ for i, x in enumerate(X):
 
 ## FLLat ----------------------------------------------------------------------
 importr('FLLat')
-FLLat_PVE = robjects.r['FLLat.PVE']
+#FLLat_PVE = robjects.r['FLLat.PVE']
 FLLat_BIC = robjects.r['FLLat.BIC']
+FLLat = robjects.r['FLLat']
 
 ## J selection ----------------------------------------------------------------
 #J_seq = robjects.IntVector(range(1, N+1))
@@ -54,11 +55,16 @@ J = 8
 
 ## Best model -----------------------------------------------------------------
 print 'Calcolo modello...'
-result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0})
+result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':1})
 lam1 = result_bic.rx2('lam1')
 lam2 = result_bic.rx2('lam2')
-D = np.asarray(result_bic.rx2('opt.FLLat').rx2('Beta'))
-A = np.asarray(result_bic.rx2('opt.FLLat').rx2('Theta'))
+
+result_fflat = FLLat(X.T, J=J, lam1=lam1, lam2=lam2)
+D = np.asarray(result_fflat.rx2('Beta'))
+A = np.asarray(result_fflat.rx2('Theta'))
+
+#D = np.asarray(result_bic.rx2('opt.FLLat').rx2('Beta'))
+#A = np.asarray(result_bic.rx2('opt.FLLat').rx2('Theta'))
 
 pl.figure()
 for p, d in enumerate(D.T):
