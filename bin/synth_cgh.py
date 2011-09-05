@@ -55,7 +55,7 @@ J = 8
 
 ## Best model -----------------------------------------------------------------
 print 'Calcolo modello...'
-result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':1})
+result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0})
 lam1 = result_bic.rx2('lam1')
 lam2 = result_bic.rx2('lam2')
 

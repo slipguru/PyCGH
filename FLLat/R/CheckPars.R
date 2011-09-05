@@ -25,7 +25,7 @@ CheckPars <- function(Y,J=1,B="pc",lam1=1,lam2=1,thresh=10^(-4),
   if (!all(length(maxiter.B)==1,maxiter.B>0)) {
     stop("'maxiter.B' must be an integer > 0")
   }
-  if (!all(length(maxiter.T),maxiter.T>=0)) { 
+  if (!all(length(maxiter.T)==1,maxiter.T>=0)) { 
     stop("'maxiter.T' must be an integer >= 0")
   }
   if (!all(length(lam1)==1,is.double(lam1),length(lam2)==1,
