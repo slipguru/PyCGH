@@ -2,7 +2,7 @@ FLLat <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",T="std",lam1,lam2,
                   thresh=10^(-4),maxiter=100,maxiter.B=1,maxiter.T=1) {
   
   ## Error checking parameters.
-  CheckPars(Y,J,B,lam1,lam2,thresh,maxiter,maxiter.B,maxiter.T)
+  CheckPars(Y,J,B,T,lam1,lam2,thresh,maxiter,maxiter.B,maxiter.T)
 
   ## Setting weight constraint.
   sT <- 1

@@ -1,8 +1,8 @@
-FLLat.BIC <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",thresh=10^(-4),
+FLLat.BIC <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",T="std",thresh=10^(-4),
                       maxiter=100,maxiter.B=1,maxiter.T=1) {
 
   ## Error checking parameters.
-  CheckPars(Y=Y,J=J,B=B,thresh=thresh,maxiter=maxiter,maxiter.B=maxiter.B,
+  CheckPars(Y=Y,J=J,B=B,T=T,thresh=thresh,maxiter=maxiter,maxiter.B=maxiter.B,
             maxiter.T=maxiter.T)
 
   ## Initializing Beta.
@@ -15,7 +15,14 @@ FLLat.BIC <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",thresh=10^(-4),
   } else if (B=="rand") {
     in.B <- Y[,sample(ncol(Y),J),drop=F]
   }
-
+  
+  ## Initializing Theta.
+  if (is.matrix(T)) {
+    in.T <- T
+  } else if (T=="std") {
+    in.T <- matrix(0,nrow=J,ncol=ncol(Y))
+  }
+  
   ## Setting up parameters.
   n <- length(Y)
   n.lam0s <- 5
@@ -29,7 +36,7 @@ FLLat.BIC <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",thresh=10^(-4),
 
   ## Generating grid of lams (alphas in rows, lam0s in columns).
   for (i in 1:n.alphas) {
-    lam0.max[i] <- Max.Lam0(Y,J,in.B,in.lam0[i],alphas[i],thresh,maxiter,maxiter.B,
+    lam0.max[i] <- Max.Lam0(Y,J,in.B,in.T,in.lam0[i],alphas[i],thresh,maxiter,maxiter.B,
                             maxiter.T)
     lam0s[i,] <- seq(0,lam0.max[i],len=n.lam0s+2)[-c(1,n.lam0s+2)]
   }
@@ -37,7 +44,7 @@ FLLat.BIC <- function(Y,J=min(15,floor(ncol(Y)/2)),B="pc",thresh=10^(-4),
   ## Calculating BICs.
   for (j in 1:n.lam0s) {
     for (i in 1:n.alphas) {
-      bic.est <- FLLat(Y,J,in.B,lam0s[i,j]*alphas[i],
+      bic.est <- FLLat(Y,J,in.B,in.T,lam0s[i,j]*alphas[i],
                        lam0s[i,j]*(1-alphas[i]),thresh,maxiter,maxiter.B,
                        maxiter.T)
       bics[i,j] <- bic.est$bic

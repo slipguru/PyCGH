@@ -1,7 +1,7 @@
-Max.Lam0 <- function(Y,J,B,in.lam0,alpha,thresh,maxiter,maxiter.B,
+Max.Lam0 <- function(Y,J,B,T,in.lam0,alpha,thresh,maxiter,maxiter.B,
                      maxiter.T,nstep=10) {
   lam0 <- in.lam0
-  est.B <- FLLat(Y,J,B,lam0*alpha,lam0*(1-alpha),thresh,maxiter,maxiter.B,
+  est.B <- FLLat(Y,J,B,T,lam0*alpha,lam0*(1-alpha),thresh,maxiter,maxiter.B,
                  maxiter.T)$Beta
   check <- sum((scale(est.B,scale=F))^2)
   min.max <- c(0,Inf)
@@ -9,7 +9,7 @@ Max.Lam0 <- function(Y,J,B,in.lam0,alpha,thresh,maxiter,maxiter.B,
     if (check<=10^(-10)) {
       min.max[2] <- lam0
       lam0 <- mean(min.max)
-      est.B <- FLLat(Y,J,B,lam0*alpha,lam0*(1-alpha),thresh,maxiter,
+      est.B <- FLLat(Y,J,B,T,lam0*alpha,lam0*(1-alpha),thresh,maxiter,
                      maxiter.B,maxiter.T)$Beta
       check <- sum((scale(est.B,scale=F))^2)
     } else {
@@ -19,7 +19,7 @@ Max.Lam0 <- function(Y,J,B,in.lam0,alpha,thresh,maxiter,maxiter.B,
       } else {
         lam0 <- mean(min.max)
       }
-      est.B <- FLLat(Y,J,B,lam0*alpha,lam0*(1-alpha),thresh,maxiter,
+      est.B <- FLLat(Y,J,B,T,lam0*alpha,lam0*(1-alpha),thresh,maxiter,
                      maxiter.B,maxiter.T)$Beta
       check <- sum((scale(est.B,scale=F))^2)
     }

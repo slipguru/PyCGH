@@ -1,5 +1,5 @@
-CheckPars <- function(Y,J=1,B="pc",lam1=1,lam2=1,thresh=10^(-4),
-                      maxiter=100,maxiter.B=1,maxiter.T=1) {
+CheckPars <- function(Y,J=1,B="pc",T="std",lam1=1,lam2=1,thresh=10^(-4),
+                      maxiter=100,maxiter.B=1,maxiter.T=1) { 
   if (!all(is.matrix(Y),is.double(Y))) {
     stop("'Y' must be a numeric matrix of type double")
   }
@@ -15,6 +15,16 @@ CheckPars <- function(Y,J=1,B="pc",lam1=1,lam2=1,thresh=10^(-4),
     }
   } else {
     B <- match.arg(B,c("pc","rand"))
+  }
+  if (is.matrix(T)) {
+    if (!is.double(T)) {
+      stop("'T' must be a numeric matrix of type double")
+    }
+    if (!all(dim(T)==c(J,ncol(Y)))) {
+      stop("'T' is of the wrong dimension")
+    }
+  } else {
+    T <- match.arg(T,c("std"))
   }
   if (!all(length(thresh)==1,thresh>0)) {
     stop("'thresh' must be a scalar > 0")

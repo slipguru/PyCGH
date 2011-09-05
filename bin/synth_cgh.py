@@ -55,11 +55,11 @@ J = 8
 
 ## Best model -----------------------------------------------------------------
 print 'Calcolo modello...'
-result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0})
+result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0}) #nessuna iterazione coeffs
 lam1 = result_bic.rx2('lam1')
 lam2 = result_bic.rx2('lam2')
 
-result_fflat = FLLat(X.T, J=J, lam1=lam1, lam2=lam2)
+result_fflat = FLLat(X.T, J=J, lam1=lam1, lam2=lam2)#, **{'maxiter.T':0})
 D = np.asarray(result_fflat.rx2('Beta'))
 A = np.asarray(result_fflat.rx2('Theta'))
 
