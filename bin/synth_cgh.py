@@ -101,7 +101,7 @@ pl.colorbar()
 # va modificata la funzione fflat in modo da accettare old.T oltre a old.B
 param = mlab.struct('loss', 'square',
                     'regul', 'tree-l2')
-tree = mlab.struct('own_variables', [0, 0, 3, 5, 6, 6, 8, 9],
+tree = mlab.struct('own_variables', np.array([0, 0, 3, 5, 6, 6, 8, 9], dtype=int),
                    'N_own_variables', [0, 3, 2, 1, 0, 2, 1, 1],
                    'eta_g', [1, 1, 1, 2, 2, 2, 2.5, 2.5],
                    'groups', [[0, 0, 0, 0, 0, 0, 0, 0],
@@ -113,7 +113,7 @@ tree = mlab.struct('own_variables', [0, 0, 3, 5, 6, 6, 8, 9],
                               [0, 0, 0, 0, 1, 0, 0, 0],
                               [0, 0, 0, 0, 0, 0, 1, 0]])
 
-A, optim_info = mlab.mexFistaTree(X.T,D,A,tree,param)
+A, optim_info = mlab.mexFistaTree(X.T, D, A, tree, param, nout=2)
 
 
 #pl.imshow(X, aspect='auto')
