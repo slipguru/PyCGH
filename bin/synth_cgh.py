@@ -8,6 +8,7 @@ robjects.conversion.py2ri = numpy2ri.numpy2ri
 from mlabwrap import mlab
 mlab.addpath('../spams_release/build/')
 mlab.addpath('../spams_release/test_release/')
+mlab.addpath('bin/')
 
 from matplotlib import pylab as pl
 
@@ -20,7 +21,7 @@ M = 1000            # numero probe
 S = 3               # numero segmenti
 C = (1., -1., 2.)   # livelli segnale
 J = (100, 500, 800) # inizio alterazione
-K = (50, 20, 150)   # lunghezza alterazione
+K = (50, 200, 150)   # lunghezza alterazione
 
 bounds_err = 5.0
 signal_err = 1e-1
@@ -32,8 +33,10 @@ print 'Generazione dati...'
 for i, x in enumerate(X):
     x[:] = np.random.normal(scale=signal_err, size=M)
 
-    if i%2:
+    if i%2 == 0:
         str, end = 0, 2
+    #elif i%3 == 1:
+        #str, end = 1, 2 # solo centrale
     else:
         str, end = 1, 3
 
@@ -43,6 +46,13 @@ for i, x in enumerate(X):
         k += int(np.random.normal(scale=bounds_err))
 
         x[j:j+k] += c
+
+
+## Plot data ------------------------------------------------------------------
+pl.figure()
+for p, x in enumerate(X):
+    pl.subplot(6, 5, p+1)
+    pl.plot(x, '.')
 
 ## FLLat ----------------------------------------------------------------------
 importr('FLLat')
@@ -55,25 +65,60 @@ FLLat = robjects.r['FLLat']
 #result_pve = FLLat_PVE(X.T, J_seq)
 #PVEs = np.asarray(result_pve.rx2('PVEs'))
 #pl.plot(PVEs, 'o')
-J = 10
+P = 7
 
 ## Best model -----------------------------------------------------------------
 print 'Calcolo modello...'
-result_bic = FLLat_BIC(X.T, J=J, **{'maxiter.T':0}) #nessuna iterazione coeffs
+result_bic = FLLat_BIC(X.T, J=P, **{'maxiter.T':1}) #nessuna iterazione coeffs
 lam1 = result_bic.rx2('lam1')
 lam2 = result_bic.rx2('lam2')
 
-result_fflat = FLLat(X.T, J=J, lam1=lam1, lam2=lam2)#, **{'maxiter.T':0})
+print lam1, lam2
+
+## Initial coefficients --
+A = np.zeros((P, N))
+
+## Fixed Dictionary (initial **guess**) --
+#D = np.zeros((M, P))
+#for c, j, k, i in zip(C, J, K, (1, 0, 4)):
+    #D[j:j+k, i] += c
+#D = X[np.random.random_integers(0, N-1, P), :].T # Random dictionary
+result_fflat = FLLat(X.T, J=P, lam1=lam1, lam2=lam2, **{'maxiter.T':1})
 D = np.asarray(result_fflat.rx2('Beta'))
 A = np.asarray(result_fflat.rx2('Theta'))
 
+### Algoritmo ------------------------------------------------------------------
+#for i in xrange(100):
+#
+#    ## SPAMS --
+#    A = mlab.test_FistaTree(X.T, D, A)
+#
+#    # FLLat --
+#    result_fflat = FLLat(X.T, J=P, B=D, T=A, lam1=lam1, lam2=lam2, **{'maxiter.T':0})
+#    D = np.asarray(result_fflat.rx2('Beta'))
+#
+#    #pl.figure()
+#    #for p, d in enumerate(D.T):
+#    #    pl.subplot(4, 2, p+1)
+#    #    pl.plot(d, '.')
+
+#A = mlab.test_FistaTree(X.T, D, A)
+#print np.array(A > 1e-6, dtype=int)
+
+## Plot dictionary ------------------------------------------------------------
 pl.figure()
 for p, d in enumerate(D.T):
-    pl.subplot(5, 2, p+1)
+    pl.subplot(4, 2, p+1)
     pl.plot(d, '.')
 
-## Clustering -----------------------------------------------------------------
-print 'Clustering matrice pesi...'
+## Clustering atomi -----------------------------------------------------------
+print 'Clustering atomi...'
+linkage = ward(A)
+pl.figure()
+dendrogram(linkage)
+
+## Clustering samples ----------------------------------------------------------
+print 'Clustering samples...'
 linkage = ward(A.T)
 pl.figure()
 dendrogram(linkage)
@@ -82,38 +127,6 @@ pl.figure()
 pl.imshow(A, aspect='auto', interpolation='nearest')
 pl.colorbar()
 
-
-## SPAMS ----------------------------------------------------------------------
-# Online learning for matrix factorization and sparse coding - FL
-# Tree-structured sum of l2-norms
-# mexFistaTree(Y,X,W0,tree,param):
-#   - Y contiene i dati -> X
-#   - X e' il dizionario -> D
-#   - W i coefficienti -> A
-#
-# tree ... vedi test_FistaTree.m
-# param.loss='square';
-# param.regul='tree-l2';
-# A = mexFistaTree(X,D,A0,tree,param)
-# non c'e' l'implementazione completa del metodo...
-# e nemmeno la sola fase separata di calcolo del dizionario dato A
-# se uso fflat con maxiter.T = 0... dovrebbe tenermi sempre fisso Theta=A
-# va modificata la funzione fflat in modo da accettare old.T oltre a old.B
-param = mlab.struct('loss', 'square',
-                    'regul', 'tree-l2')
-tree = mlab.struct('own_variables', np.array([0, 0, 3, 5, 6, 6, 8, 9], dtype=int),
-                   'N_own_variables', [0, 3, 2, 1, 0, 2, 1, 1],
-                   'eta_g', [1, 1, 1, 2, 2, 2, 2.5, 2.5],
-                   'groups', [[0, 0, 0, 0, 0, 0, 0, 0],
-                              [1, 0, 0, 0, 0, 0, 0, 0],
-                              [0, 1, 0, 0, 0, 0, 0, 0],
-                              [0, 1, 0, 0, 0, 0, 0, 0],
-                              [1, 0, 0, 0, 0, 0, 0, 0],
-                              [0, 0, 0, 0, 1, 0, 0, 0],
-                              [0, 0, 0, 0, 1, 0, 0, 0],
-                              [0, 0, 0, 0, 0, 0, 1, 0]])
-
-A, optim_info = mlab.mexFistaTree(X.T, D, A, tree, param, nout=2)
 
 
 #pl.imshow(X, aspect='auto')
