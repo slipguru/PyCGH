@@ -325,7 +325,7 @@ class Dataset(object):
 
     ###############TO TEST
     def toarray(self):
-        return np.copy(self._rdata)
+        return np.asarray(self._rdata.tolist())
 
 
 
@@ -378,7 +378,7 @@ class Dataset(object):
                                       .reshape((len(samples), len(attrs)))
                )
 
-        return LabeledMatrix(names=attrs,
+        return Dataset(names=attrs,
                              data=data,
                              labels=samples)
 
