@@ -44,6 +44,9 @@ limits = dict()
 for i, chr in enumerate(chrom):
     limits[chr] = i #maximum index because are ordered
 
+ordered_limits = sorted(limits.values())
+chr_ticks = (ordered_limits + (np.array([0] + ordered_limits[:-1]))) / 2
+
 # Inputs ----------------------------------------------------------------------
 X, (N, M) = data_filtered, data_filtered.shape
 
@@ -68,23 +71,80 @@ D = np.asarray(result_fflat.rx2('Beta'))
 A = np.asarray(result_fflat.rx2('Theta'))
 Xest = np.dot(D, A).T
 
+## Plot function --------------------------------------------------------------
+
+def plot_clustered_matrix(matrix, linkage_structure,
+                          xticks, xlabels,
+                          ylabels=None, ylabels_size=10,
+                          left=0.3,
+                          width=0.6,
+                          fig=None):
+    # Definitions for the axes
+    if fig is None:
+        fig = pl.figure()
+
+    if ylabels is None:
+        ylabels = 'Sample #%(num)d'
+
+    bottom, height = 0.1, 0.8
+
+    # Plot dendrogram
+    axdend = fig.add_axes([0.05, bottom, left - 0.05, height])
+    dendr = dendrogram(linkage_structure, orientation='right')
+    order = dendr['leaves']
+    axdend.set_xticks([])
+    axdend.set_yticks([])
+
+    # Plot matrix
+    axmat = fig.add_axes([left, bottom, width, height])
+    vbound = min(np.abs(matrix.min()), np.abs(matrix.max()))
+    im = axmat.matshow(matrix[order], aspect='auto',
+                       cmap=pl.cm.RdBu_r,
+                       vmin=-vbound, vmax=vbound)
+
+    for l in limits.values():
+        axmat.axvline(l, ls='-', lw=1, c='gray')
+    axmat.set_xticks(xticks)
+    axmat.set_xticklabels(xlabels,
+                          size=10, rotation='vertical')
+    axmat.set_yticks(np.arange(matrix.shape[0])),
+
+    if type(ylabels) is str:
+        axmat.set_yticklabels([ylabels % {'num':o} for o in order])
+    else:
+        axmat.set_yticklabels([ylabels[o] % {'num':o} for o in order])
+
+    for tick in axmat.yaxis.get_major_ticks():
+        tick.label1On = False
+        tick.label2On = True
+        tick.label2.set_size(ylabels_size)
+
+    # Plot colorbar
+    axcolor = fig.add_axes([left, 0.05, width, 0.04])
+    pl.colorbar(im, cax=axcolor, extend='both', orientation='horizontal')
+
+    return fig
+
+
 ## Clustering atomi -----------------------------------------------------------
 print 'Clustering atomi...'
-linkage = ward(A)
-pl.figure()
-pl.title('Atoms clustering (by coefficients)')
-dendrogram(linkage)
-atoms_order = leaves_list(linkage)
+plot_clustered_matrix(D.T, ward(A),
+                      chr_ticks, ['Chr%d' % chr for chr in xrange(1, 25)],
+                      ylabels='Atom #%(num)d')
 
 ## Clustering samples ---------------------------------------------------------
 print 'Clustering samples...'
-linkage = ward(A.T)
-pl.figure()
-pl.title('Samples clustering (by coefficients)')
-dendrogram(linkage)
-samples_order = leaves_list(linkage)
+labels = ['%s [#%s]' % (name, '%(num)d') for name in data_sample_names]
+plot_clustered_matrix(X, ward(A.T),
+                      chr_ticks, ['Chr%d' % chr for chr in xrange(1, 25)],
+                      ylabels=labels,
+                      ylabels_size=7,
+                      left=0.2,
+                      width=0.6)
 
-## Plots ----------------------------------------------------------------------
+
+pl.show()
+exit()
 
 # Plot dictionary --
 pl.figure()
@@ -118,6 +178,18 @@ pl.figure()
 pl.title('Raw data heatmap (ordered by samples clustering)')
 vbound = min(np.abs(X.min()), np.abs(X.max()))
 pl.imshow(X[samples_order],
+          aspect='auto', interpolation='nearest', cmap=pl.cm.RdBu,
+          vmin=-vbound, vmax=vbound)
+for l in limits.values():
+    pl.axvline(l, ls='-', lw=1, c='gray')
+pl.yticks(np.arange(len(samples_order)), samples_order)
+pl.colorbar(extend='both')
+
+# Plot estimated data --
+pl.figure()
+pl.title('Estimated data heatmap (ordered by samples clustering)')
+vbound = min(np.abs(Xest.min()), np.abs(Xest.max()))
+pl.imshow(Xest[samples_order],
           aspect='auto', interpolation='nearest', cmap=pl.cm.RdBu,
           vmin=-vbound, vmax=vbound)
 for l in limits.values():
