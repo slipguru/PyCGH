@@ -28,17 +28,29 @@ FLLat = robjects.r['FLLat']
 ROOT_DIR = '/home/sabba/Phd/Tonini_IST/aCGH_GEO'
 FLLAT_DIR = os.path.join(ROOT_DIR, 'FLLat')
 
-ds = Dataset.load(os.path.join(FLLAT_DIR, 'cytobands_matrix.txt'))
+ds = Dataset.load(os.path.join(ROOT_DIR, 'cytobands_matrix.txt'))
 
 # Data filtering
-data = ds.toarray()
-valid_columns = list()
-for i, name in enumerate(sorted(ds.names)):
-    if not np.any(np.isnan(data[:, i])):
-        valid_columns.append(i)
-data_filtered = data[:, valid_columns]
-data_names = [sorted(ds.names)[i] for i in valid_columns]
+#data = ds.toarray()
+#valid_columns = list()
+#for i, name in enumerate(sorted(ds.names)):
+#    if not np.any(np.isnan(data[:, i])):
+#        valid_columns.append(i)
+#data_filtered = data[:, valid_columns]
+#data_names = [sorted(ds.names)[i] for i in valid_columns]
+#data_sample_names = [l[:-4] for l in ds.labels]
+
+cb = CytoBands(release='hg18')
+data_names = list()
+for i in range(1, 25):
+    for b in ['%s%s' % (str(i).zfill(2), x) for x in cb[i].sub_bands()]:
+        data_names.append(b)
+
+data = np.array([list(x) for x in ds[data_names]])
+data[np.isnan(data)] = 0.0
+
 data_sample_names = [l[:-4] for l in ds.labels]
+
 
 samples_colors = dict()
 CSV = '/home/sabba/Phd/Tonini_IST/GEO/GSE255711_info.csv'
@@ -74,7 +86,7 @@ ordered_limits = sorted(limits.values())
 chr_ticks = (ordered_limits + (np.array([0] + ordered_limits[:-1]))) / 2
 
 # Inputs ----------------------------------------------------------------------
-X, (N, M) = data_filtered, data_filtered.shape
+X, (N, M) = data, data.shape
 
 ## J selection ----------------------------------------------------------------
 #J_seq = robjects.IntVector(range(1, N+1))
@@ -82,7 +94,7 @@ X, (N, M) = data_filtered, data_filtered.shape
 #PVEs = np.asarray(result_pve.rx2('PVEs'))
 #pl.figure(2)
 #pl.plot(PVEs, 'o')
-P = 16
+P = 12
 #pl.show()
 #exit()
 
@@ -102,12 +114,12 @@ Xest = np.dot(D, A).T
 ## Plot function --------------------------------------------------------------
 
 def plot_clustered_matrix(matrix, linkage_structure,
-                          xticks, xlabels,
+                          xticks, xlabels, xlabels_size=10,
                           ylabels=None, ylabels_size=10,
-                          ylimits=None,
-                          left=0.2, width=0.7,
+                          xlimits=None,
+                          left=0.2, width=0.7, height=0.8,
                           title=None,
-                          colors=None,
+                          ycolors=None, xcolors=None,
                           fig=None):
     # Definitions for the axes
     if fig is None:
@@ -116,7 +128,7 @@ def plot_clustered_matrix(matrix, linkage_structure,
     if ylabels is None:
         ylabels = 'Sample #%(num)d'
 
-    bottom, height = 0.1, 0.8
+    bottom = 0.1
 
     try:
         if len(linkage_structure) > 2:
@@ -127,7 +139,7 @@ def plot_clustered_matrix(matrix, linkage_structure,
 
     positions = (
         (0.05, bottom, left - 0.055, height), # left
-        (left, bottom + height + 0.055, width, 0.2), # top
+        (left, bottom + height + 0.07, width, 0.2), # top
     )
 
     orientations = ('right', 'top')
@@ -153,12 +165,11 @@ def plot_clustered_matrix(matrix, linkage_structure,
                        cmap=pl.cm.RdBu_r,
                        vmin=-vbound, vmax=vbound)
 
-    if ylimits:
-        for l in ylimits.values():
+    if xlimits:
+        for l in xlimits.values():
             axmat.axvline(l, ls='-', lw=1, c='gray')
     axmat.set_xticks(xticks)
-    axmat.set_xticklabels(xlabels,
-                          size=10, rotation='vertical')
+    axmat.set_xticklabels(xlabels, rotation='vertical')
     axmat.set_yticks(np.arange(matrix.shape[0]))
     if title:
         pl.title(title, size=10, weight='bold')
@@ -168,9 +179,9 @@ def plot_clustered_matrix(matrix, linkage_structure,
     else:
         axmat.set_yticklabels([ylabels[o] % {'num':o} for o in orders[0]])
 
-    if colors:
+    if ycolors:
         for tick, color in zip(axmat.yaxis.get_major_ticks(),
-                              [colors[o] for o in orders[0]]):
+                              [ycolors[o] for o in orders[0]]):
             tick.label1On = False
             tick.label2On = True
             tick.label2.set_size(ylabels_size)
@@ -180,6 +191,19 @@ def plot_clustered_matrix(matrix, linkage_structure,
             tick.label1On = False
             tick.label2On = True
             tick.label2.set_size(ylabels_size)
+
+    if xcolors:
+        for tick, color in zip(axmat.xaxis.get_major_ticks(),
+                              [xcolors[o] for o in orders[1]]):
+            tick.label1On = False
+            tick.label2On = True
+            tick.label2.set_size(xlabels_size)
+            tick.label2.set_color(color)
+    else:
+        for tick in axmat.xaxis.get_major_ticks():
+            tick.label1On = False
+            tick.label2On = True
+            tick.label2.set_size(xlabels_size)
 
 
     # Plot colorbar
@@ -194,37 +218,50 @@ def plot_clustered_matrix(matrix, linkage_structure,
 ## Clustering atomi -----------------------------------------------------------
 print 'Clustering atomi...'
 atoms_clustering = ward(A)
-plot_clustered_matrix(D.T, atoms_clustering,
-                      chr_ticks, ['Chr%d' % chr for chr in xrange(1, 25)],
-                      ylabels='Atom #%(num)d', ylimits=limits,
+plot_clustered_matrix(D.T,
+                      linkage_structure=atoms_clustering,
+                      xticks=chr_ticks,
+                      xlabels=['Chr%d' % chr for chr in xrange(1, 25)],
+                      xlimits=limits,
+                      ylabels='Atom #%(num)d',
                       title='Atoms ordered by coefficients clustering')
 
 ## Clustering samples ---------------------------------------------------------
 print 'Clustering samples...'
 #labels = ['%s [#%s]' % (name, '%(num)d') for name in data_sample_names]
 samples_clustering = ward(A.T)
-plot_clustered_matrix(X, samples_clustering,
-                      chr_ticks, ['Chr%d' % chr for chr in xrange(1, 25)],
-                      ylabels=sample_labels, ylimits=limits,
-                      ylabels_size=7,
+plot_clustered_matrix(X,
+                      linkage_structure=samples_clustering,
+                      xticks=chr_ticks,
+                      xlabels=['Chr%d' % chr for chr in xrange(1, 25)],
+                      xlimits=limits,
+                      ylabels=sample_labels,
+                      ylabels_size=6,
                       left=0.2,
                       width=0.6,
-                      colors=sample_colors,
+                      ycolors=sample_colors,
                       title='Samples ordered by coefficients clustering')
 
 plot_clustered_matrix(Xest, samples_clustering,
-                      chr_ticks, ['Chr%d' % chr for chr in xrange(1, 25)],
-                      ylabels=sample_labels, ylimits=limits,
-                      ylabels_size=7,
+                      xticks=chr_ticks,
+                      xlabels=['Chr%d' % chr for chr in xrange(1, 25)],
+                      xlimits=limits,
+                      ylabels=sample_labels,
+                      ylabels_size=6,
                       left=0.2,
                       width=0.6,
-                      colors=sample_colors,
+                      ycolors=sample_colors,
                       title='Samples estimation ordered by coefficients clustering')
 
 # La generazione della figura va rivista!
 samples_order = leaves_list(ward(A.T))
-plot_clustered_matrix(A, [atoms_clustering, samples_clustering],
-                      range(A.shape[1]), [str(a) for a in samples_order],
+plot_clustered_matrix(A,
+                      linkage_structure= [atoms_clustering, samples_clustering],
+                      xticks=range(A.shape[1]),
+                      xcolors=sample_colors,
+                      xlabels=[sample_labels[a] for a in samples_order],
+                      xlabels_size=5,
+                      ylabels='Atom #%(num)d'
                       )
 
 atoms_order = leaves_list(ward(A))
@@ -233,9 +270,9 @@ pl.figure()
 pl.title('Dictionary Atoms (ordered by atoms clustering)')
 vbound = min(np.abs(D.min()), np.abs(D.max()))
 for p, d in enumerate(D[:,atoms_order].T):
-    pl.subplot(4, 4, p+1)
+    pl.subplot(4, 3, p+1)
     pl.title('Atom #%d' % atoms_order[p], size=10)
-    pl.plot(d, '.')
+    pl.plot(d, 'r-', lw=1)
     pl.axis([0, len(d), -vbound, vbound])
 
     ax = pl.gca()
