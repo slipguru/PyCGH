@@ -34,6 +34,39 @@ chrX	59500000	65000000	q11.1	acen
 chrX	65000000	65100000	q11.2	gneg
 """
 
+#######
+#def test_bands_structure():
+#    for label in ('1', '1p', '1p1', '1p11', '1p11.2'):
+#        cb = ChromosomeBand(label)
+#        assert_equals(1, cb.chromosome)
+#        assert_equals('1', cb.str_chromosome)
+#        
+#    assert_equals('X', ChromosomeBand('Xp11').str_chromosome)
+#    assert_equals(23, ChromosomeBand('Xp11').chromosome)
+#    
+#    assert_raises(ValueError, ChromosomeBand, '1p112')
+#    assert_raises(ValueError, ChromosomeBand, '1p11.')
+#    assert_raises(ValueError, ChromosomeBand, 'p11')
+#    assert_raises(ValueError, ChromosomeBand, '25p11')
+#    assert_raises(ValueError, ChromosomeBand, '23p1.1')
+#    
+#def test_adding_bands():
+#    chr1 = ChromosomeBand('1')
+#    assert_equals(None, chr1.start_base)
+#    assert_equals(None, chr1.end_base)
+#    
+#    chr1.update(ChromosomeBand('1p')) # arm
+#    assert_equals(None, chr1.start_base)
+#    assert_equals(None, chr1.end_base)
+#    
+#    chr1.update(ChromosomeBand('1p', 0, 100)) # arm
+#    assert_equals(0, chr1.start_base)
+#    assert_equals(100, chr1.end_base)
+#
+#### Forse e' inutilmente complicato!!
+
+#####
+
 def test_types():
     cs = CytoStructure(StringIO(CytoFileContent))
     
@@ -43,9 +76,15 @@ def test_types():
     assert_equals(8, len(cs[1]))
     assert_equals(11, len(cs['Y']))
     assert_equals(list(cs[24]), list(cs['Y']))
+
+def test_iteration():
+    cs = CytoStructure(StringIO(CytoFileContent))
     
-    # Print
-    assert_equals(str(tuple(cs[1])), str(cs[1]))
+    # Iteration is not dictionary like
+    for chr, (int_chr, str_chr) in zip(cs, ((1, '1'), (23, 'X'), (24, 'Y'))):
+        assert_equals(ChromosomeStructure, type(chr))
+        assert_equals(int_chr, chr.chromosome)
+        assert_equals(str_chr, chr.str_chromosome)
 
 def test_chromosome_iteration():
     cs = CytoStructure(StringIO(CytoFileContent))
@@ -89,10 +128,6 @@ def test_slicing_defaults():
     assert_equals(8, len(cs['1'])) #ALL
     assert_equals(11, len(cs['Y'][:])) #ALL
 
-
-    #for b in cs[1].bands_iter(level=1):
-        #print b, cs[1].position(b), cs[1].expand(b, with_position=True)
-
 def test_positions():
     cs = CytoStructure(StringIO(CytoFileContent))
     
@@ -117,7 +152,6 @@ def test_positions():
     assert_raises(ValueError, cs['Y'].position, 'q1.')
     assert_raises(ValueError, cs['Y'].position, 'q11.')
     assert_raises(ValueError, cs['Y'].position, 'q2')
-    
 
 def test_expand_band():
     cs = CytoStructure(StringIO(CytoFileContent))
@@ -137,3 +171,15 @@ def test_expand_band():
     # Errors
     assert_raises(ValueError, cs[1].expand, 'p36.')
     assert_raises(ValueError, cs[1].expand, 'z36')
+    
+def test_gstrand():
+    chr1 = CytoStructure(StringIO(CytoFileContent))[1]
+    
+    map = {'p12': 'gpos50', 'p11.2': 'gneg', 'p11.1': 'acen', 'q21.3': 'gneg',
+           'q11': 'acen', 'q12': 'gvar', 'q21.1': 'gneg', 'q21.2': 'gpos50'}
+    
+    for band in chr1:
+        assert_equals(map[band], chr1.gstrand(band))
+        
+       
+        
