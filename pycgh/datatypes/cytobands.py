@@ -1,29 +1,88 @@
 import itertools as it
 import operator as op
 
-# Implementation is simple but not really efficient.
-# Iterations run in linear time, but to get information
-# of a specific band it is a second linear time operation.
-
-# A little improvement may be the return of ChromosomeBand objects
-# instead of strings for query and iteration, to get directly
-# positions and gstrand informations (if available)
-class ChromosomeBand(object):
-    def __init__(self, label, start_base, end_base, gstrand=None):
-        self.label = label
-        self.start_base = start_base
-        self.end_base = end_base
-        self.gstrand = gstrand
-        
-    # we can implement ordering methods and "startswith" methods
-    # in order to reuse already implemented code
-    # but simplifying user-interaction!!
-    # Keeping linear time for iteration but removing position and gstrand
-    # queryies
-    
-    # From 14:30 to 17:15
+# Cytostructure is a parser
+# ChromosomeStructure is the resulting object
+# ChromosomeBand is a representation of a band (for all resolution)
 
 # Cytoband access code --------------------------------------------------------
+class ChromosomeBand(object):
+    def __init__(self, chromosome, label, start_base, end_base,
+                 gstrand=None, sub_bands=None):
+
+        if start_base >= end_base:
+            raise ValueError('wrong band coordinates '
+                             '%d-%d' % (start_base, end_base))
+
+        self._chromosome = chromosome
+        self._label = label
+        self._start_base = start_base
+        self._end_base = end_base
+
+        self._gstrand = gstrand
+        self._sub_bands = sub_bands
+
+    @property
+    def chromosome(self):
+        return self._chromosome
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def start_base(self):
+        return self._start_base
+
+    @property
+    def end_base(self):
+        return self._end_base
+
+    @property
+    def gstrand(self):
+        return self._gstrand
+
+    def expand(self):
+        return self._sub_bands
+
+    def __eq__(self, other):
+        return (self.chromosome == other.chromosome and
+                self.label == other.label and
+                self.start_base == other.start_base and
+                self.end_base == other.end_base)
+
+    def __ne__(self, other):
+        return (not self == other)
+
+    def __cmp__(self, other):
+        # Equality shortcut  (using __eq__)
+        if self == other: return 0
+
+        # Chromosome Order
+        if self.chromosome != other.chromosome:
+            raise RuntimeError('bands belong to different chromosomes')
+
+        # Checking ambiguity
+        if self.start_base <= other.start_base:
+            first, last = self, other
+        else:
+            first, last = other, self
+
+        # Overlapping bands
+        if first.end_base >= last.start_base:
+            raise RuntimeError('ambigous comparison between '
+                               '%s and %s' % (self.label, other.label))
+
+        return cmp(self.start_base, other.start_base)
+
+    def __str__(self):
+        return '%s%s [%d-%d]' % (_int2chr(self.chromosome), self.label,
+                                 self.start_base, self.end_base)
+
+    def __repr__(self):
+        return '%s%s' % (_int2chr(self.chromosome), self.label)
+
+
 class ChromosomeStructure(object):
 
     def __init__(self, chromosome, starts, ends, labels, gstrands):
@@ -31,30 +90,51 @@ class ChromosomeStructure(object):
             self._chromosome = chromosome
         else:
             raise ValueError('wrong chromosome number %d' % chromosome)
-        
+
         # Sort bands by starting base
         sorted_bands = sorted(zip(labels, starts, ends, gstrands),
                               key=op.itemgetter(1))
-        self._labels, self._starts, self._ends, self._gstrands = zip(*sorted_bands)        
-        
+
+        self._band_keys = dict((k[0], i) for i, k in enumerate(sorted_bands))
+        self._bands = tuple(ChromosomeBand(self._chromosome, *band)
+                            for band in sorted_bands)
+
     @property
     def chromosome(self):
         return self._chromosome
-    
+
     @property
     def str_chromosome(self):
-        if self._chromosome < 23:
-            return str(self._chromosome)
-        elif self._chromosome == 23:
-            return 'X'
-        elif self._chromosome == 24:
-            return 'Y'
-        
+        return _int2chr(self._chromosome)
+
+    def band(self, label=None):
+
+        if label is None: # full chromosome
+            return ChromosomeBand(self._chromosome, '', # empty label
+                                  self._bands[0].start_base,
+                                  self._bands[-1].end_base,
+                                  sub_bands = self._bands)
+
+        label = str(label)
+        if label in self._band_keys:
+            return self._bands[self._band_keys[label]] # O(1)
+        else:
+            if label.endswith('.'): #special case of error
+                raise ValueError('wrong band representation %s' % label)
+
+            # O(n)
+            sub_bands = tuple(band for band in self._bands
+                              if band.label.startswith(label))
+
+            if sub_bands:
+                return ChromosomeBand(self._chromosome, label,
+                                      sub_bands[0].start_base,
+                                      sub_bands[-1].end_base,
+                                      sub_bands = sub_bands)
+            else:
+                raise ValueError('wrong band value %s' % label)
+
     def __getitem__(self, key):
-        
-        # O(n) operation! Could be better implemented,
-        # but probably this class is not a bootleneck, having
-        # at maximum less than 1000 items.
 
         # To be consistent with the cytogenetic meaning, the slice
         # range in considere inclusive [start, stop] instead of [start, stop[
@@ -65,8 +145,14 @@ class ChromosomeStructure(object):
         if not key.step is None:
             raise ValueError('slice step value not allowed')
 
-        start_base = key.start if not key.start is None else min(self._starts)
-        end_base = key.stop if not key.stop is None else max(self._ends)
+        min_sb = self._bands[0].start_base
+        max_eb = self._bands[-1].end_base
+
+        start_base = key.start if not key.start is None else min_sb
+        end_base = key.stop if not key.stop is None else max_eb
+
+        if start_base == 0:
+            raise ValueError('base slicing starts from 1')
 
         #         sb                   eb
         # |    |   :  |    |       |   :    |       |
@@ -77,92 +163,58 @@ class ChromosomeStructure(object):
         #                           *********           ( s <= end_base <= e)
         #       *****************************           RESULT
 
-        map = (( s >= start_base and e <= end_base ) or  #fully_contained
-               ( s <= start_base <= e )              or
-               ( s <= end_base <= e )
-                        for s,e in zip(self._starts, self._ends))
-    
-        return [label for label, m in zip(self._labels, map) if m]
+        def keep(band):
+            s, e = band.start_base, band.end_base
+            return (( s >= start_base and e <= end_base ) or  #fully_contained
+                    ( s <= start_base <= e )              or
+                    ( s <= end_base <= e ))
 
-    def position(self, band=None):
-        """ Given a band (at any resolution), returns its position on chromosome
-        in terms of starting and ending bases"""
-        if not band:
-            return min(self._starts), max(self._ends)
+        return tuple(band for band in self._bands if keep(band))
 
-        try:
-            band = str(band)
-            if band.endswith('.'): raise ValueError() #special case of error
-
-            min_limit = min(s for s, l in it.izip(self._starts, self._labels)
-                                          if l.startswith(str(band)))
-            max_limit = max(e for e, l in it.izip(self._ends, self._labels)
-                                          if l.startswith(str(band)))
-        except ValueError:
-            raise ValueError('wrong band representation')
-
-        return min_limit, max_limit
-    
-    def gstrand(self, band):
-        return self._gstrands[self._labels.index(band)]
-
-    def expand(self, band, with_position=False):
-        band = str(band)
-        if band.endswith('.'):
-            raise ValueError('wrong band representation') #special case of error
-
-        if with_position:
-            table = it.izip(self._labels, self._starts, self._ends)
-            out = [(l, s, e) for l, s, e in table if l.startswith(str(band))]
-        else:
-            out = [l for l in self._labels if l.startswith(str(band))]
-
-        if not out:
-            raise ValueError('wrong band representation') # no bands found
-        return out
-    
     def __iter__(self):
-        return iter(self._labels)
-        
+        return iter(self._bands)
+
     def bands_iter(self, level=None):
         if level is None:
             return self.__iter__()
-        
+
         if level <= 2:
             level += 1
         elif level > 2:
             level += 2 # dot
         else:
-            raise ValueError('wrong level value')   
-        
+            raise ValueError('wrong level value')
+
         out = list()
-        for l in self._labels:
-            label = l[:level]
-            if not label in out:
-                out.append(label)
-        
-        return iter(out)
+        for label, sub_bands in it.groupby(self._bands,
+                                           lambda b: b.label[:level]):
+            sub_bands = tuple(sub_bands)
+            out.append(ChromosomeBand(self._chromosome, label,
+                                      sub_bands[0].start_base,
+                                      sub_bands[-1].end_base,
+                                      sub_bands = sub_bands))
+        return iter(tuple(out))
 
     def __len__(self):
-        return len(self._labels)
+        return len(self._bands)
 
-    def __str__(self):        
-        plabels = [l for l in self._labels if l.startswith('p')]
-        qlabels = [l for l in self._labels if l.startswith('q')]
+    def __str__(self):
+        labels = dict()
+        for k, g in it.groupby(self._bands, lambda b: b.label[0]):
+            labels[k] = ' | '.join(b.label for b in g)
+
         return 'Chr %s < %s || %s >' % (self.str_chromosome,
-                                        ' | '.join(plabels),
-                                        ' | '.join(qlabels),)
-
+                                        labels['p'], labels['q'])
 
 class CytoStructure(object):
     """Chromosome cytogenetic structure manager.
-    
+
     It is a map-like collection of ChromosomeStruture objects, each one
     containing information about a specified chromosome cytogenetic structure.
     This class act as a parser of file containing needed informations.
-    
+
     File format description... TODO
-    
+
     Parameters
     ----------
     cytofile : str or file
@@ -171,10 +223,10 @@ class CytoStructure(object):
     format : 'ucsc' or None
         Cytogenetic file format. If 'ucsc' starting base of each cytogenetic
         band is incremented of one.
-        
+
     """
-    def __init__(self, cytofile, format='ucsc'):        
-        
+    def __init__(self, cytofile, format='ucsc'):
+
         # file reading
         try:
             if _is_string_like(cytofile):
@@ -225,24 +277,29 @@ class CytoStructure(object):
             elif chr.strip() == 'Y': chr = 24
 
         return self._bands[chr]
-        
+
     def __iter__(self):
         chromosomes = sorted(self._bands.keys())
         return iter(self._bands[chr] for chr in chromosomes)
-        
+
     def __len__(self):
         return len(self._bands)
 
-# Private utils ---------------------------------------------------------------        
+# Private utils ---------------------------------------------------------------
 def _chr2int(value):
     converted = value.strip()
     if converted == 'X': return 23
     if converted == 'Y': return 24
     return int(converted)
-    
+
+def _int2chr(value):
+    if value < 23: return str(value)
+    elif value == 23: return 'X'
+    elif value == 24: return 'Y'
+
 def _check_label(label):
     label = label.strip()
-    
+
     if 'p' in label:
         chr, band = label.split('p')
         arm = 'p'
@@ -254,10 +311,10 @@ def _check_label(label):
         band = arm = None
     else:
         raise ValueError('wrong chromosome arm in %s' % label)
-        
+
     if not 1 <= _chr2int(chr) <= 24:
         raise ValueError('wrong chromosome number in %s' % label)
-    
+
     if band: # not empty
         if band.endswith('.'):
             raise ValueError('wrong chromosome band code in %s' % label)
@@ -265,12 +322,12 @@ def _check_label(label):
         # check dot position
         if len(band) >= 3 and not band[2] == '.':
             raise ValueError('wrong chromosome band code in %s' % label)
-            
+
         try:
             int(band.replace('.', ''))
         except ValueError:
             raise ValueError('wrong chromosome band code in %s' % label)
-    
+
     return label
 
 def _is_string_like(obj):
