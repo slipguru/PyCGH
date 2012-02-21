@@ -20,12 +20,16 @@ class ArrayCGH(object):
     
     """
 
+    # Mandatory column names
     COL_NAMES = ('id', 'row', 'col',
                  'reference_signal', 'test_signal',
                  'chromosome', 'start_base', 'end_base')
+    # 'mask' has a special meaning but it is not mandatory
 
     def __init__(self, id, row, col, reference_signal, test_signal,
                  chromosome, start_base, end_base, mask=None, **kwargs):
+        
+        # Mask indicates probes to hide... default all False
 
         # Default: no optional inputs
         buffer = [id, row, col, reference_signal, test_signal,
@@ -49,6 +53,15 @@ class ArrayCGH(object):
             raise ValueError('optional parameters name duplication')
 
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
+        
+        # We have to evaluate the efficency to have a record array
+        # or to have a dictionary of column vector...
+        # With a record array we can also access a Probe row... is it useful?
+        # In order to have this feature, are we sacrifying efficiency
+        # accessing columns??
+
+        # Access by probe is probably not so useful... than the rec array,
+        # could be a simple interface to with operate
 
     def __len__(self):
         """ mumble mumble """
@@ -58,26 +71,14 @@ class ArrayCGH(object):
     def names(self):
         return self._rdata.dtype.names
 
+    # - filtered data (copy)
+    # - unfiltered data (view or copy)
+    # - masked data (view or copy)
+    # Default only as a copy?????
+
     def __getitem__(self, key):
         """ Returns a copy of the filtered data """
         return self._rdata[~self._rdata['mask']][key]
-
-    def __setitem__(self, key, value):
-        value = np.asanyarray(value)
-
-        # Filtered data handling
-        if len(value) == (~self._rdata['mask']).sum():
-            full_value = np.zeros(len(self._rdata), dtype=value.dtype)
-            full_value[~self._rdata['mask']] = value
-            value = full_value
-        elif len(value) != len(self._rdata):
-            raise ValueError('wrong dimension')
-
-        if key in self.names: #Update
-            self._rdata[key] = value
-        else: #Add
-            self._rdata = recfunctions.append_fields(self._rdata, names=key,
-                                                     data=value, usemask=False)
 
     def unfiltered(self, key, copy=False):
         """ Returns a copy if copy=True """
@@ -96,6 +97,23 @@ class ArrayCGH(object):
 
     def sort(self, order):
         self._rdata.sort(order=order)
+        
+    def ___setitem__(self, key, value):
+        value = np.asanyarray(value)
+
+        # Filtered data handling
+        if len(value) == (~self._rdata['mask']).sum():
+            full_value = np.zeros(len(self._rdata), dtype=value.dtype)
+            full_value[~self._rdata['mask']] = value
+            value = full_value
+        elif len(value) != len(self._rdata):
+            raise ValueError('wrong dimension')
+
+        if key in self.names: #Update
+            self._rdata[key] = value
+        else: #Add
+            self._rdata = recfunctions.append_fields(self._rdata, names=key,
+                                                     data=value, usemask=False)
 
     def __repr__(self):
         return repr(self._rdata)

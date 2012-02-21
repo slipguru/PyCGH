@@ -5,7 +5,7 @@ from nose.tools import *
 from ..datatypes.cytobands import CytoStructure
 from ..datatypes.cytobands import ChromosomeStructure, ChromosomeBand
 
-CytoFileContent ="""\
+CytoFileContent = """\
 chr1	117600000	120700000	p12	gpos50
 chr1	120700000	121100000	p11.2	gneg
 chr1	121100000	124300000	p11.1	acen
