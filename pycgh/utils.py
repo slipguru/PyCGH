@@ -42,7 +42,6 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
     return dict((id, avg_function(summary[id])) for id in summary)
 
 
-
-
-
-
+#-----------
+class ArrayCGHSynth(object):
+    pass
