@@ -1,6 +1,8 @@
 import itertools as it
 import operator as op
 
+from ..io.utils import _file_handle
+
 # Cytostructure is a parser
 # ChromosomeStructure is the resulting object
 # ChromosomeBand is a representation of a band (for all resolution)
@@ -228,17 +230,7 @@ class CytoStructure(object):
     def __init__(self, cytofile, format='ucsc'):
 
         # file reading
-        try:
-            if _is_string_like(cytofile):
-                if cytofile.endswith('.gz'):
-                    import gzip
-                    fh = gzip.open(cytofile)
-                else:
-                    fh = open(cytofile, 'U')
-            else:
-                fh = cytofile
-        except TypeError:
-            raise ValueError('cytofile must be a string or file handle')
+        fh = _file_handle(cytofile)
 
         # format offset
         if format =='ucsc':
@@ -329,13 +321,3 @@ def _check_label(label):
             raise ValueError('wrong chromosome band code in %s' % label)
 
     return label
-
-def _is_string_like(obj):
-    """
-    Check whether obj behaves like a string.
-    """
-    try:
-        obj + ''
-    except (TypeError, ValueError):
-        return False
-    return True

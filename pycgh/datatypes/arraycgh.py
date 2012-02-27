@@ -3,21 +3,22 @@
 # Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
 # License: New BSD
 
-import csv
 import itertools as it
 
 import numpy as np
 from numpy.lib import recfunctions
 
+from ..io.utils import _file_handle
+
 class ArrayCGH(object):
     """ Main data structure repersenting a generic Array CGH.
-    
+
     Features
     --------
     1. The instantiation of the class needs a reduced number of parameter
     2. The class methods `load` and `save` offer a way to easily import and
        export a processed Array CGH.
-    
+
     """
 
     # Mandatory column names
@@ -28,7 +29,7 @@ class ArrayCGH(object):
 
     def __init__(self, id, row, col, reference_signal, test_signal,
                  chromosome, start_base, end_base, mask=None, **kwargs):
-        
+
         # Mask indicates probes to hide... default all False
 
         # Default: no optional inputs
@@ -53,7 +54,7 @@ class ArrayCGH(object):
             raise ValueError('optional parameters name duplication')
 
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
-        
+
         # We have to evaluate the efficency to have a record array
         # or to have a dictionary of column vector...
         # With a record array we can also access a Probe row... is it useful?
@@ -71,37 +72,31 @@ class ArrayCGH(object):
     def names(self):
         return self._rdata.dtype.names
 
-    # - filtered data (copy)
-    # - unfiltered data (view or copy)
+    # - raw data (view) - Default
     # - masked data (view or copy)
+    # - filtered data (copy)
     # Default only as a copy?????
 
     def __getitem__(self, key):
-        """ Returns a copy of the filtered data """
-        return self._rdata[~self._rdata['mask']][key]
-
-    def unfiltered(self, key, copy=False):
-        """ Returns a copy if copy=True """
-        if copy:
-            return self._rdata[key].copy()
-        else:
-            return self._rdata[key]
+        """ Returns a view of the raw data """
+        return self._rdata[key].view()
 
     def masked(self, key, copy=False, fill_value=None):
         """ Returns a copy if copy=True """
-        if key in self.names:
-            return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
-                                      copy=copy, fill_value=fill_value)
-        else:
-            raise ValueError('required a valid field name')
+        return np.ma.masked_array(self._rdata[key], self._rdata['mask'],
+                                  copy=copy, fill_value=fill_value)
+
+    def filtered(self, key):
+        """ Returns a copy """
+        return self._rdata[~self._rdata['mask']][key]
 
     def sort(self, order):
         self._rdata.sort(order=order)
-        
-    def ___setitem__(self, key, value):
+
+    def __setitem__(self, key, value):
         value = np.asanyarray(value)
 
-        # Filtered data handling
+        # Filtered data handling (autofilled with 0)
         if len(value) == (~self._rdata['mask']).sum():
             full_value = np.zeros(len(self._rdata), dtype=value.dtype)
             full_value[~self._rdata['mask']] = value
@@ -122,8 +117,9 @@ class ArrayCGH(object):
         return str(self._rdata)
 
     @staticmethod
-    def load(path, fields=None, delimiter=','):
-        data = np.genfromtxt(path, delimiter=delimiter,
+    def load(acgh_file, fields=None, delimiter=','):
+        fh = _file_handle(acgh_file)
+        data = np.genfromtxt(fh, delimiter=delimiter, comments='#',
                              names=True, dtype=None, case_sensitive='lower',
                              autostrip=True, invalid_raise=True)
 
@@ -142,8 +138,7 @@ class ArrayCGH(object):
                         **optional_inputs)
 
     def save(self, path, delimiter=','):
-        with open(path, 'wb') as out:
-            writer = csv.writer(open(path, 'wb'), delimiter=delimiter)
-            writer.writerow(self.names)
-            for a in self._rdata:
-                writer.writerow(a)
+        fh = _file_handle(path, mode='w')
+        fh.write('%s\n' % delimiter.join(self.names))
+        np.savetxt(fh, self._rdata, fmt="%s", delimiter=delimiter)
+

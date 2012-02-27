@@ -30,7 +30,7 @@ def test_simple_creation():
     aCGH = ArrayCGH(*input)
     assert_equal(100, len(aCGH))
     assert_equal(9, len(aCGH.names))
-    
+
 def test_missing_mandatory():
     assert_raises(TypeError, ArrayCGH, input[:-1])
 
@@ -66,149 +66,162 @@ def test_masked():
     mask[0:10] = True # 10 masked values
     aCGH = ArrayCGH(*input, mask=mask)
 
-    assert_equal(ROW_NUM * COL_NUM, len(aCGH.unfiltered('id')))
-    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH['id']))
+    # Single col
+    assert_equal(ROW_NUM * COL_NUM, len(aCGH['id']))
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.filtered('id')))
 
-    assert_equal((ROW_NUM * COL_NUM), len(aCGH.masked('id')))
+    # Multiple col
+    assert_equal(ROW_NUM * COL_NUM, len(aCGH[['id', 'mask']]))
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.filtered(['id', 'mask'])))
+
+    # Masked and different number of columns
+    assert_equal((ROW_NUM * COL_NUM), len(aCGH.masked(['id', 'mask'])))
     assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.masked('id').compressed()))
 
+def test_adding():
+    aCGH = ArrayCGH(*input)
 
-class _TestArrayCGH(object):    
+    ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
+    assert_equal(ROW_NUM * COL_NUM, len(ratio))
 
+    aCGH['ratio'] = ratio
+    assert_equal(ratio, aCGH['ratio'])
+    assert_equal(np.compress(~aCGH['mask'], ratio), aCGH.filtered('ratio'))
+    assert_equal(np.ma.masked_array(aCGH['ratio'], aCGH['mask']),
+                 aCGH.masked('ratio'))
+    assert_('ratio' in aCGH.names)
 
+def test_adding_filtered():
+    mask = np.array([False] * (ROW_NUM * COL_NUM))
+    mask[0:10] = True # 10 values masked
+    aCGH = ArrayCGH(*input, mask=mask)
 
-    def test_adding_unfiltered(self):
-        aCGH = ArrayCGH(*self.input)
+    ratio = np.log2(aCGH.filtered('test_signal') /
+                    aCGH.filtered('reference_signal'))
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(ratio))
 
-        ratio = np.log2(aCGH.unfiltered('test_signal')/aCGH.unfiltered('reference_signal'))
-        assert_equals(ROW_NUM*COL_NUM, len(ratio))
+    aCGH['ratio'] = ratio # automatic filtering
+    assert_equal(ratio, aCGH.filtered('ratio'))
+    assert_('ratio' in aCGH.names)
 
-        aCGH['ratio'] = ratio
-        assert_true(np.allclose(ratio, aCGH.unfiltered('ratio')))
-        assert_true('ratio' in aCGH.names)
+    assert_raises(ValueError, aCGH.__setitem__, 'foo', ratio[:-5]) #shorter
+    assert_raises(ValueError, aCGH.__setitem__, 'foo', np.r_[ratio, ratio]) #longer
 
-    def test_adding(self):
-        mask = np.array([False]*(ROW_NUM*COL_NUM))
-        mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(*self.input, mask=mask)
+def test_adding_masked():
+    mask = np.array([False] * (ROW_NUM * COL_NUM))
+    mask[0:10] = True # 10 values masked
+    aCGH = ArrayCGH(*input, mask=mask)
 
-        ratio = np.log2(aCGH['test_signal']/aCGH['reference_signal'])
-        assert_equals((ROW_NUM*COL_NUM) - 10, len(ratio))
+    ratio = np.log2(aCGH.masked('test_signal') /
+                    aCGH.masked('reference_signal'))
+    assert_equal((ROW_NUM * COL_NUM), len(ratio))
 
-        aCGH['ratio'] = ratio
-        assert_true(np.allclose(ratio, aCGH['ratio']))
-        assert_true('ratio' in aCGH.names)
+    aCGH['ratio'] = ratio
+    assert_equal(ratio, aCGH.masked('ratio')) # in "ma" sense
+    assert_('ratio' in aCGH.names)
 
-        assert_raises(ValueError, aCGH.__setitem__, 'foo', ratio[:-5]) #shorter
-        assert_raises(ValueError, aCGH.__setitem__, 'foo', np.r_[ratio, ratio]) #longer
+def test_update():
+    aCGH = ArrayCGH(*input)
+    new_mask = np.array([True] * (ROW_NUM * COL_NUM))
+    aCGH['mask'] = new_mask
 
-    def test_adding_masked(self):
-        mask = np.array([False]*(ROW_NUM*COL_NUM))
-        mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(*self.input, mask=mask)
+    assert_equal(new_mask, aCGH['mask'])
+    assert_equal(0, len(aCGH.filtered('id')))
 
-        ratio = np.log2(aCGH.masked('test_signal')/aCGH.masked('reference_signal'))
-        assert_equals((ROW_NUM*COL_NUM), len(ratio))
+def test_update():
+    mask = np.array([False] * (ROW_NUM * COL_NUM))
+    mask[0:10] = True # 10 values masked
+    aCGH = ArrayCGH(*input, mask=mask)
 
-        aCGH['ratio'] = ratio
-        assert_true(np.ma.allclose(ratio, aCGH.masked('ratio'))) # in "ma" sense
-        assert_true('ratio' in aCGH.names)
+    filt_test = aCGH.filtered('test_signal') + 1.
+    assert_(not np.allclose(filt_test, aCGH.filtered('test_signal')))
 
-    def test_update_unfiltered(self):
-        aCGH = ArrayCGH(*self.input)
-        new_mask = np.array([True]*(ROW_NUM*COL_NUM))
-        aCGH['mask'] = new_mask
+    aCGH['test_signal'] = filt_test
+    assert_equal(filt_test, aCGH.filtered('test_signal'))
 
-        assert_true(np.allclose(new_mask, aCGH.unfiltered('mask')))
-        assert_equals(0, len(aCGH['id']))
+    assert_raises(ValueError, aCGH.__setitem__, 'test_signal',
+                  filt_test[:-5]) #shorter
+    assert_raises(ValueError, aCGH.__setitem__, 'test_signal',
+                  np.r_[filt_test, filt_test]) #longer
 
-    def test_update(self):
-        mask = np.array([False]*(ROW_NUM*COL_NUM))
-        mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(*self.input, mask=mask)
+def test_update_masked():
+    mask = np.array([False] * (ROW_NUM * COL_NUM))
+    mask[0:10] = True # 10 values masked
+    aCGH = ArrayCGH(*input, mask=mask)
 
-        filt_test = aCGH['test_signal']
-        filt_test += 1.
-        assert_equals((~mask).sum(), len(filt_test))
+    mask_test = aCGH.masked('test_signal', copy=True) + 1# Force copying
+    assert_equal((ROW_NUM * COL_NUM), len(mask_test))
+    assert_(not np.ma.allclose(mask_test, aCGH.masked('test_signal')))
 
-        assert_false(np.allclose(filt_test, aCGH['test_signal']))
+    aCGH['test_signal'] = mask_test
+    assert_equal(mask_test, aCGH.masked('test_signal'))
 
-        aCGH['test_signal'] = filt_test
-        assert_true(np.allclose(filt_test, aCGH['test_signal']))
+def test_order():
+    # Call this in-place ordering may be useful before saving the data
+    # or before the estraction
+    aCGH = ArrayCGH(*input)
 
-        assert_raises(ValueError, aCGH.__setitem__, 'test_signal', filt_test[:-5]) #shorter
-        assert_raises(ValueError, aCGH.__setitem__, 'test_signal', np.r_[filt_test, filt_test]) #longer
+    chr = aCGH['chromosome'].copy()
+    idx = np.argsort(chr)
+    aCGH.sort('chromosome')
 
-    def test_update_masked(self):
-        mask = np.array([False]*(ROW_NUM*COL_NUM))
-        mask[0:10] = True # 10 values masked
-        aCGH = ArrayCGH(*self.input, mask=mask)
+    assert_equal(chr[idx], aCGH['chromosome'])
 
-        mask_test = aCGH.masked('test_signal', copy=True) # Force copying
-        mask_test += 1.
-        assert_equals((ROW_NUM*COL_NUM), len(mask_test))
-        assert_equals((~mask).sum(), len(mask_test.compressed()))
-        assert_false(np.ma.allclose(mask_test, aCGH.masked('test_signal')))
-
-        aCGH['test_signal'] = mask_test
-        assert_true(np.ma.allclose(mask_test, aCGH.masked('test_signal')))
-
-    def test_order(self):
-        # Call this in-place ordering may be useful before saving the data
-        # or before the estraction
-        aCGH = ArrayCGH(*self.input)
-
-        chr = aCGH['chromosome'].copy()
-        idx = np.argsort(chr)
-
-        aCGH.sort('chromosome')
-        assert_true(np.allclose(chr[idx], aCGH['chromosome']))
-
-
-
+## Testing IO -----------------------------------------------------------------
 
 aCGHContent = """\
-ProbeId, col, row, Ref, Test, chromosome, start_base, end_base, mask, myflag
-Probe01, 1, 1, 10, 20, 1, 10, 20, 0, 1
-Probe02, 2, 1, 10, 20, 2, 10, 20, 0, 1
-Probe 03, 1, 2, 10, 20, 3, 10, 20, 0, 1
-Control , 2, 2, 10, 20, nan, nan, nan, 1, 1
-"""
-
-"""\
 id, col, row, Reference_signal, test_signal, chromosome, start_base, end_base, mask, myflag
 Probe01, 1, 1, 10, 10, 1, 10, 10.123456, 0, 1
 Probe02, 2, 1, 10, 10, 2, 10, 20, 0, 1
 Probe 03, 1, 2, 10, 10, 3, 10000.1039478, 20, 0, 1
+######
+# This is a Comment
+######
 Control, 2, 2, 10, 10, nan, nan, nan, 1, 1
 """
 
+aCGHContentNotStandard = """\
+ProbeId, col, row, Ref, Test, chromosome, start_base, end_base, mask, myflag
+Probe01, 1, 1, 10, 20, 1, 10, 20, 0, 1
+Probe02, 2, 1, 10, 20, 2, 10, 20, 0, 1
+######
+# This is a Comment
+######
+Probe 03, 1, 2, 10, 20, 3, 10, 20, 0, 1
+Control , 2, 2, 10, 20, nan, nan, nan, 1, 1
+# This is a Comment
+"""
 
-class _TestArrayCGHIO(object):
+def test_loading_file():
+    aCGH = ArrayCGH.load(StringIO(aCGHContent))
+    assert_equal([1, 1, 2, 2], aCGH['row'])
+    assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
 
-    def test_loading_file(self):
-        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh.txt'))
-        assert_true(np.all(np.array([1, 1, 2, 2]) == aCGH.unfiltered('row')))
+def test_loading_fields():
+    aCGH = ArrayCGH.load(StringIO(aCGHContentNotStandard),
+                         fields={'id':'ProbeID',
+                                 'reference_signal':'Ref',
+                                 'test_signal': 'Test',
+                                 'flag': 'myflag'}) # Renaming
+    assert_equal([0, 0, 0, 1], aCGH['mask'])
+    assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
 
-    def test_loading_fields(self):
-        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh2.txt'),
-                             fields={'id':'ProbeID',
-                                     'reference_signal':'Ref',
-                                     'test_signal': 'Test',
-                                     'flag': 'myflag'}) # Name change
-        assert_true(np.all(np.array([0, 0, 0, 1]) == aCGH.unfiltered('mask')))
+def test_save():
+    aCGH = ArrayCGH.load(StringIO(aCGHContent),
+                         fields={'orig_mask':'mask', #renaming
+                                 'mask':'myflag'})
+    # Saving
+    out = StringIO()
+    aCGH.save(out)
 
-    def test_save(self):
-        import tempfile
-        out = os.path.join(tempfile.gettempdir(), 'acgh.txt')
+    # Reading saved file
+    out.seek(0)
+    aCGH2 = ArrayCGH.load(out)
 
-        aCGH = ArrayCGH.load(os.path.join(PAR_DIR, 'test_acgh.txt'),
-                             fields={'orig_mask':'mask', #renaming
-                                     'mask':'myflag'})
-        aCGH.save(out)
-        aCGH2 = ArrayCGH.load(out)
+    assert_equal(len(aCGH), len(aCGH2))
+    assert_equal(aCGH.names, aCGH2.names)
+    assert_('orig_mask' in aCGH2.names)
+    assert_(not 'myflag' in aCGH2.names)
 
-        assert_equals(len(aCGH), len(aCGH2))
-        assert_equals(aCGH.names, aCGH2.names)
-        for a, b in zip(aCGH, aCGH):
-            assert_equals(a[0], b[0])
+    for n in aCGH.names:
+        assert_equal(aCGH[n], aCGH2[n])
