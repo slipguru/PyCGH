@@ -90,7 +90,7 @@ class ArrayCGH(object):
         """ Returns a copy """
         return self._rdata[~self._rdata['mask']][key]
 
-    def sort(self, order):
+    def sort(self, order=['chromosome', 'start_base']):
         self._rdata.sort(order=order)
 
     def __setitem__(self, key, value):
@@ -141,4 +141,3 @@ class ArrayCGH(object):
         fh = _file_handle(path, mode='w')
         fh.write('%s\n' % delimiter.join(self.names))
         np.savetxt(fh, self._rdata, fmt="%s", delimiter=delimiter)
-

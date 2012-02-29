@@ -167,6 +167,25 @@ def test_order():
 
     assert_equal(chr[idx], aCGH['chromosome'])
 
+def test_default_order():
+    # Standard input is not sorted by chromosome and bases
+    aCGH = ArrayCGH(*input)
+    chr = aCGH['chromosome'].copy()
+    aCGH.sort('chromosome')
+
+    assert_(not np.allclose(chr, aCGH['chromosome']))
+
+    # Default sorting, sorts by chromosome and start_base
+    aCGH = ArrayCGH(*input)
+    input_pairs = [tuple(x) for x in aCGH[['chromosome', 'start_base']]]
+
+    aCGH.sort()
+    input_pairs.sort()
+
+    assert_equal(input_pairs,
+                 [tuple(x) for x in aCGH[['chromosome', 'start_base']]])
+
+
 ## Testing IO -----------------------------------------------------------------
 
 aCGHContent = """\
