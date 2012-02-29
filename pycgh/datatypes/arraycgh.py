@@ -9,6 +9,7 @@ import numpy as np
 from numpy.lib import recfunctions
 
 from ..io.utils import _file_handle
+from cytobands import _chr2int
 
 class ArrayCGH(object):
     """ Main data structure repersenting a generic Array CGH.
@@ -30,7 +31,30 @@ class ArrayCGH(object):
     def __init__(self, id, row, col, reference_signal, test_signal,
                  chromosome, start_base, end_base, mask=None, **kwargs):
 
+        # Force type for some arguments
+        row = np.asanyarray(row, dtype=np.int)
+        col = np.asanyarray(col, dtype=np.int)
+        reference_signal = np.asanyarray(reference_signal, dtype=np.float)
+        test_signal = np.asanyarray(test_signal, dtype=np.float)
+        start_base = np.asanyarray(start_base, dtype=np.int)
+        end_base = np.asanyarray(end_base, dtype=np.int)
         # Mask indicates probes to hide... default all False
+
+        # Chromosome conversion
+        def _conversion(chr):
+            chr = str(chr).strip()
+            if chr in [str(x) for x in xrange(1, 25)]:
+                return int(chr)
+            elif chr == 'X':
+                return 23
+            elif chr == 'Y':
+                return 24
+            else:
+                return -1
+
+        chromosome = np.asanyarray([_conversion(chr)
+                                    for chr in chromosome],
+                                   dtype=np.int)
 
         # Default: no optional inputs
         buffer = [id, row, col, reference_signal, test_signal,
@@ -117,11 +141,12 @@ class ArrayCGH(object):
         return str(self._rdata)
 
     @staticmethod
-    def load(acgh_file, fields=None, delimiter=','):
+    def load(acgh_file, fields=None, delimiter=',', missing_values='NA,--'):
         fh = _file_handle(acgh_file)
         data = np.genfromtxt(fh, delimiter=delimiter, comments='#',
                              names=True, dtype=None, case_sensitive='lower',
-                             autostrip=True, invalid_raise=True)
+                             autostrip=True, invalid_raise=True,
+                             missing_values=missing_values)
 
         # chiavi sono campi aCHG, valori cosa leggere da input
         file_fields = dict((v, v) for v in data.dtype.names)

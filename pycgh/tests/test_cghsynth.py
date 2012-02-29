@@ -5,6 +5,16 @@ import numpy as np
 from numpy.testing.utils import *
 
 from ..utils import ArrayCGHSynth
+from ..datatypes.arraycgh import ArrayCGH
+
+def test_foo():
+    cgh_src = ArrayCGHSynth()
+
+    assert_equal(ArrayCGH, type(cgh_src.draw()))
+
+
+
+
 
 #def setup(module):
 #    ROW_NUM = COL_NUM = 10

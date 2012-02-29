@@ -279,15 +279,28 @@ class CytoStructure(object):
 
 # Private utils ---------------------------------------------------------------
 def _chr2int(value):
-    converted = value.strip()
-    if converted == 'X': return 23
-    if converted == 'Y': return 24
-    return int(converted)
+    converted = str(value).strip()
+    if converted == 'X':
+        return 23
+    elif converted == 'Y':
+        return 24
+    elif converted in [str(x) for x in xrange(1, 23)]:
+        return int(converted)
+    else:
+        raise ValueError('incorrect chromosome number %s'% converted)
 
 def _int2chr(value):
-    if value < 23: return str(value)
-    elif value == 23: return 'X'
-    elif value == 24: return 'Y'
+    converted = int(value)
+
+    if converted < 23:
+        return str(value)
+    elif converted == 23:
+        return 'X'
+    elif converted == 24:
+        return 'Y'
+    else:
+        raise ValueError('incorrect chromosome number %d'% converted)
+
 
 def _check_label(label):
     label = label.strip()

@@ -26,6 +26,37 @@ def setup(module):
     module.ROW_NUM = ROW_NUM
     module.COL_NUM = COL_NUM
 
+def test_types():
+    aCGH = ArrayCGH(id=['a', 'b'], row=[1., 1], col=[1., 2.],
+                    reference_signal=[1, '2'], test_signal=[1., 2],
+                    chromosome=[1, 2], start_base=[1, 1], end_base=[2, 2])
+
+    assert_equal(['a', 'b'], aCGH['id'])
+    assert_equal([1, 1], aCGH['row'])
+    assert_equal([1, 2], aCGH['col'])
+    assert_equal([1., 2.], aCGH['reference_signal'])
+    assert_equal([1., 2.], aCGH['test_signal'])
+    assert_equal([1., 2.], aCGH['chromosome'])
+    assert_equal([1, 1], aCGH['start_base'])
+    assert_equal([2, 2], aCGH['end_base'])
+
+    assert_equal(np.dtype('|S1'), aCGH['id'].dtype)
+    assert_equal(int, aCGH['row'].dtype)
+    assert_equal(int, aCGH['col'].dtype)
+    assert_equal(float, aCGH['reference_signal'].dtype)
+    assert_equal(float, aCGH['test_signal'].dtype)
+    assert_equal(int, aCGH['chromosome'].dtype)
+    assert_equal(int, aCGH['start_base'].dtype)
+    assert_equal(int, aCGH['end_base'].dtype)
+
+def test_chromosome_conversion():
+    aCGH = ArrayCGH(id=['a', 'b'], row=[1., 1], col=[1., 2.],
+                    reference_signal=[1, '2'], test_signal=[1., 2],
+                    chromosome=['X', 'Y'], start_base=[1, 1], end_base=[2, 2])
+
+    assert_equal([23, 24], aCGH['chromosome'])
+    assert_equal(int, aCGH['chromosome'].dtype)
+
 def test_simple_creation():
     aCGH = ArrayCGH(*input)
     assert_equal(100, len(aCGH))
@@ -190,13 +221,13 @@ def test_default_order():
 
 aCGHContent = """\
 id, col, row, Reference_signal, test_signal, chromosome, start_base, end_base, mask, myflag
-Probe01, 1, 1, 10, 10, 1, 10, 10.123456, 0, 1
-Probe02, 2, 1, 10, 10, 2, 10, 20, 0, 1
-Probe 03, 1, 2, 10, 10, 3, 10000.1039478, 20, 0, 1
+Probe01, 1, 1, 10., 10, 1, 10, 10.123456, 0, 1
+Probe02, 2, 1, 10., 10, 2, 10, 20, 0, 1
+Probe 03, 1, 2, 10., 10, X, 10000.1039478, 20, 0, 1
 ######
 # This is a Comment
 ######
-Control, 2, 2, 10, 10, nan, nan, nan, 1, 1
+Control, 2, 2, --, 10, NA, NA, --, 1, 1
 """
 
 aCGHContentNotStandard = """\
@@ -207,7 +238,7 @@ Probe02, 2, 1, 10, 20, 2, 10, 20, 0, 1
 # This is a Comment
 ######
 Probe 03, 1, 2, 10, 20, 3, 10, 20, 0, 1
-Control , 2, 2, 10, 20, nan, nan, nan, 1, 1
+Control , 2, 2, 10, 20, --, NA, NA, 1, 1
 # This is a Comment
 """
 
@@ -215,6 +246,9 @@ def test_loading_file():
     aCGH = ArrayCGH.load(StringIO(aCGHContent))
     assert_equal([1, 1, 2, 2], aCGH['row'])
     assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
+
+    assert_equal([1, 2, 23, -1], aCGH['chromosome'])
+    assert_equal([10., 10., 10., np.nan], aCGH['reference_signal'])
 
 def test_loading_fields():
     aCGH = ArrayCGH.load(StringIO(aCGHContentNotStandard),

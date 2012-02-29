@@ -43,5 +43,19 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
 
 
 #-----------
+from .datatypes.arraycgh import ArrayCGH
+
 class ArrayCGHSynth(object):
-    pass
+
+    def draw(self):
+        tmp = np.zeros(10)
+        #id, row, col, reference_signal, test_signal,
+        #         chromosome, start_base, end_base, mask=None, **kwargs):
+        return ArrayCGH(id = tmp,
+                        row = tmp,
+                        col = tmp,
+                        reference_signal = tmp,
+                        test_signal = tmp,
+                        chromosome = tmp,
+                        start_base = tmp,
+                        end_base = tmp)
