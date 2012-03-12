@@ -92,7 +92,7 @@ def test_reading():
     assert_equal(input[0], submatrix['id'])
     assert_equal(input[5], submatrix['chromosome'])
 
-def test_masked():
+def test_masked_filtered():
     mask = np.array([False] * (ROW_NUM * COL_NUM))
     mask[0:10] = True # 10 masked values
     aCGH = ArrayCGH(*input, mask=mask)
@@ -100,14 +100,19 @@ def test_masked():
     # Single col
     assert_equal(ROW_NUM * COL_NUM, len(aCGH['id']))
     assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.filtered('id')))
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.F['id'])) # alternative
 
     # Multiple col
     assert_equal(ROW_NUM * COL_NUM, len(aCGH[['id', 'mask']]))
     assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.filtered(['id', 'mask'])))
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.F[['id', 'mask']]))
 
     # Masked and different number of columns
     assert_equal((ROW_NUM * COL_NUM), len(aCGH.masked(['id', 'mask'])))
     assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.masked('id').compressed()))
+
+    assert_equal((ROW_NUM * COL_NUM), len(aCGH.M[['id', 'mask']])) # alt
+    assert_equal((ROW_NUM * COL_NUM) - 10, len(aCGH.M['id'].compressed()))
 
 def test_adding():
     aCGH = ArrayCGH(*input)
@@ -143,12 +148,12 @@ def test_adding_masked():
     mask[0:10] = True # 10 values masked
     aCGH = ArrayCGH(*input, mask=mask)
 
-    ratio = np.log2(aCGH.masked('test_signal') /
-                    aCGH.masked('reference_signal'))
+    ratio = np.log2(aCGH.M['test_signal'] /
+                    aCGH.M['reference_signal'])
     assert_equal((ROW_NUM * COL_NUM), len(ratio))
 
-    aCGH['ratio'] = ratio
-    assert_equal(ratio, aCGH.masked('ratio')) # in "ma" sense
+    aCGH['ratio'] = ratio # automatic masking
+    assert_equal(ratio, aCGH.M['ratio']) # in "ma" sense
     assert_('ratio' in aCGH.names)
 
 def test_update():
@@ -164,11 +169,11 @@ def test_update():
     mask[0:10] = True # 10 values masked
     aCGH = ArrayCGH(*input, mask=mask)
 
-    filt_test = aCGH.filtered('test_signal') + 1.
-    assert_(not np.allclose(filt_test, aCGH.filtered('test_signal')))
+    filt_test = aCGH.F['test_signal'] + 1.
+    assert_(not np.allclose(filt_test, aCGH.F['test_signal']))
 
     aCGH['test_signal'] = filt_test
-    assert_equal(filt_test, aCGH.filtered('test_signal'))
+    assert_equal(filt_test, aCGH.F['test_signal'])
 
     assert_raises(ValueError, aCGH.__setitem__, 'test_signal',
                   filt_test[:-5]) #shorter
@@ -182,10 +187,10 @@ def test_update_masked():
 
     mask_test = aCGH.masked('test_signal', copy=True) + 1# Force copying
     assert_equal((ROW_NUM * COL_NUM), len(mask_test))
-    assert_(not np.ma.allclose(mask_test, aCGH.masked('test_signal')))
+    assert_(not np.ma.allclose(mask_test, aCGH.M['test_signal']))
 
     aCGH['test_signal'] = mask_test
-    assert_equal(mask_test, aCGH.masked('test_signal'))
+    assert_equal(mask_test, aCGH.M['test_signal'])
 
 def test_order():
     # Call this in-place ordering may be useful before saving the data

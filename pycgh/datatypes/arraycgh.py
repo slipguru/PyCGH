@@ -88,6 +88,10 @@ class ArrayCGH(object):
         # Access by probe is probably not so useful... than the rec array,
         # could be a simple interface to with operate
 
+        # filtered and masked proxies
+        self.F = _ProxyFilter(self.filtered)
+        self.M = _ProxyFilter(self.masked)
+
     def __len__(self):
         """ mumble mumble """
         return len(self._rdata)
@@ -166,3 +170,11 @@ class ArrayCGH(object):
         fh = _file_handle(path, mode='w')
         fh.write('%s\n' % delimiter.join(self.names))
         np.savetxt(fh, self._rdata, fmt="%s", delimiter=delimiter)
+
+
+class _ProxyFilter(object):
+    def __init__(self, getter):
+        self._getter = getter # reference to main object
+
+    def __getitem__(self, key):
+        return self._getter(key)
