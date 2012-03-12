@@ -44,18 +44,160 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
 
 #-----------
 from .datatypes.arraycgh import ArrayCGH
+from .datatypes.cytobands import _check_label, ChromosomeBand
+import random as rnd
+import itertools as it
+
+def sampler(pmf):
+    import bisect
+    #pmf = ((0, 0.1), (1, 0.2), (2, 0.5), (3, 0.2))
+    #pmf = ((2, 1.0),) # default
+
+    pmf = sorted(pmf)
+    events, prob = zip(*pmf)
+    cdf = np.cumsum(prob)
+    assert(cdf[-1] == 1.0)
+
+    def _sampler(p):
+        index = bisect.bisect(cdf, p)
+        if p == cdf[index-1]: # bound check
+            return events[index-1]
+        else:
+            return  events[index]
+
+    return _sampler
+
+    #p = np.random.random()
+    #test_value = event(p)
 
 class ArrayCGHSynth(object):
 
+    def __init__(self, geometry, design, alterations=None, cytostructure=None):
+        self._nrow, self._ncol = geometry
+
+        design = dict(design) # ensure dict structure
+
+        # Fullfilled id-list (with standard "unused ids" )
+        self._id = (design.keys() +
+                    ['--'] * ((self._nrow * self._ncol) - len(design)))
+        # Associated mask
+        self._mask = np.ones(len(self._id), dtype=bool)
+        self._mask[:len(design)] = False
+
+        # Chip coordinates
+        self._row, self._col = zip(*it.product(xrange(self._nrow),
+                                               xrange(self._ncol)))
+
+        # Shuffling across chip
+        # sampling without replacement
+        order = rnd.sample(range(len(self._id)), len(self._id))
+        self._id = np.asarray([self._id[i] for i in order])
+        self._mask = np.asarray([self._mask[i] for i in order])
+
+        # Coordinates (following shuffled ids order)
+        self._chr = []
+        self._sb = []
+        self._eb = []
+        for id in self._id:
+            if id in design:
+                chr, sb, eb = design[id]
+            else:
+                chr = sb = eb = -1
+
+            self._chr.append(chr)
+            self._sb.append(sb)
+            self._eb.append(eb)
+
+        self._chr = np.asarray(self._chr)
+        self._sb = np.asarray(self._sb)
+        self._eb = np.asarray(self._eb)
+
+
+        if alterations:
+            if  not cytostructure:
+                raise ValueError('mandatory')
+
+            probe_bands = []
+            for c, s, e in zip(self._chr, self._sb, self._eb):
+                try:
+                    probe_bands.append(cytostructure[c][s:e][0])
+                except:
+                    probe_bands.append('--')
+
+            samplers = list()
+            for a in alterations:
+                chr, arm, band = _check_label(a)
+                bands = cytostructure[chr].band(arm + band).expand()
+
+                pmf = alterations[a]
+
+                samplers.append((sampler(pmf),
+                                 [i for i, b in enumerate(probe_bands) if b in bands]))
+
+
+            print self._chr
+            print samplers
+
+
     def draw(self):
-        tmp = np.zeros(10)
+        ref_sigma = np.random.uniform(0.1, 0.2)
+        reference = np.random.normal(loc=2.0, scale=ref_sigma,
+                                     size=sum(~self._mask))
+
+
+        import bisect
+        #pmf = ((0, 0.1), (1, 0.2), (2, 0.5), (3, 0.2))
+
+        pmf = ((2, 1.0),) # default
+
+        pmf = sorted(pmf)
+        events, prob = zip(*pmf)
+        cdf = np.cumsum(prob)
+        assert(cdf[-1] == 1.0)
+
+        def event(p):
+            index = bisect.bisect(cdf, p)
+            if p == cdf[index-1]: # bound check
+                return events[index-1]
+            else:
+                return  events[index]
+
+        p = np.random.random()
+        test_value = event(p)
+
+
+        #test_value = 2.0
+        tissue_prop = np.random.uniform(0.3, 0.7)
+
+        test_sigma = np.random.uniform(0.1, 0.2)
+        test_error = np.random.normal(loc=0.0, scale=test_sigma,
+                                      size=sum(~self._mask))
+
+        test = (np.ones_like(test_error) * (test_value * tissue_prop +
+                                            2 * (1.0 - tissue_prop)) +
+                test_error)
+
+        tmp = -np.ones(self._nrow * self._ncol)
+
+        tmpr = tmp.copy()
+        tmpr[~self._mask] = reference
+        reference = tmpr
+
+        tmpt = tmp.copy()
+        tmpt[~self._mask] = test
+        test = tmpt
+
+
         #id, row, col, reference_signal, test_signal,
         #         chromosome, start_base, end_base, mask=None, **kwargs):
-        return ArrayCGH(id = tmp,
-                        row = tmp,
-                        col = tmp,
-                        reference_signal = tmp,
-                        test_signal = tmp,
-                        chromosome = tmp,
-                        start_base = tmp,
-                        end_base = tmp)
+        return ArrayCGH(id = self._id,
+                        row = self._row,
+                        col = self._col,
+
+                        reference_signal = reference,
+                        test_signal = test,
+
+                        chromosome = self._chr,
+                        start_base = self._sb,
+                        end_base = self._eb,
+                        mask = self._mask)

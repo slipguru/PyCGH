@@ -73,7 +73,8 @@ class ChromosomeBand(object):
         # Overlapping bands
         if first.end_base >= last.start_base:
             raise RuntimeError('ambigous comparison between '
-                               '%s and %s' % (self.label, other.label))
+                               '%s%s and %s%s' % (self.chromosome, self.label,
+                                                  other.chromosome, other.label))
 
         return cmp(self.start_base, other.start_base)
 
@@ -313,7 +314,7 @@ def _check_label(label):
         arm = 'q'
     elif len(label) <= 2:
         chr = label.strip()
-        band = arm = None
+        band = arm = ''
     else:
         raise ValueError('wrong chromosome arm in %s' % label)
 
@@ -333,4 +334,4 @@ def _check_label(label):
         except ValueError:
             raise ValueError('wrong chromosome band code in %s' % label)
 
-    return label
+    return chr, arm, band

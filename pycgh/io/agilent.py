@@ -3,7 +3,7 @@ import itertools as it
 
 import numpy as np
 
-from _arrayCGH import ArrayCGH
+from ..datatypes.arraycgh import ArrayCGH
 
 # Utility functions -----------------------------------------------------------
             # Agilent -> (conversion, dtype)

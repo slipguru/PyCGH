@@ -7,14 +7,79 @@ from numpy.testing.utils import *
 from ..utils import ArrayCGHSynth
 from ..datatypes.arraycgh import ArrayCGH
 
-def test_foo():
-    cgh_src = ArrayCGHSynth()
+CHIP_DESIGN = {
+    'P01': (1, 1, 200),
+    'P02': (1, 300, 400),
+    'P03': (1, 500, 600),
+    'P04': (1, 700, 800),
+    'P05': (2, 1, 200),
+}
 
-    assert_equal(ArrayCGH, type(cgh_src.draw()))
+# UCSC format
+CytoFileContent = """\
+chr1	0	200	p12	    gpos50
+chr1	200	400	p11.2	gneg
+chr1	400	800	p11.1	acen
+chr2	0	150	q11.2	gneg
+"""
 
 
+NROW = NCOL = 10
+NPROBES = NROW * NCOL
 
+def test_default():
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL),
+                            design=CHIP_DESIGN) # replicas??
 
+    acgh = cgh_src.draw()
+    assert_equal(ArrayCGH, type(acgh))
+    assert_equal(NPROBES, len(acgh))
+    assert_equal(len(CHIP_DESIGN), len(acgh.F['id']))
+
+def test_order():
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL),
+                            design=CHIP_DESIGN)
+    acgh = cgh_src.draw()
+
+    # Sorting by chromosome order
+    acgh.sort()
+    CHIP_SORTED = sorted(CHIP_DESIGN.items())
+
+    assert_equal([x[0] for x in CHIP_SORTED], acgh.F['id'])
+    assert_equal([x[1][0] for x in CHIP_SORTED], acgh.F['chromosome'])
+    assert_equal([x[1][1] for x in CHIP_SORTED], acgh.F['start_base'])
+    assert_equal([x[1][2] for x in CHIP_SORTED], acgh.F['end_base'])
+
+def test_signal():
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL),
+                            design=CHIP_DESIGN)
+    acgh = cgh_src.draw()
+
+    # Almost healty sample
+    #assert_almost_equal(acgh['test_signal'].median(),
+                        #acgh['reference_signal'].mean(), 1)
+
+def test_alteration():
+    from ..datatypes.cytobands import CytoStructure
+    from cStringIO import StringIO
+
+    cs = CytoStructure(StringIO(CytoFileContent))
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL),
+                            design=CHIP_DESIGN,
+                            alterations={
+                                '1': [(3, 0.8), (2, 0.2)] # Chr1 trisomy
+                            },
+                            cytostructure=cs)
+    acgh = cgh_src.draw()
+
+    #assert_almost_equal(2.0, acgh.F['reference_signal'], decimal=1)
+    #assert_almost_equal(2.0, acgh.F['reference_signal'], decimal=1)
+
+    print
+    print acgh.F['reference_signal']
+    print acgh.F['test_signal']
+
+    #print cs[1]
 
 #def setup(module):
 #    ROW_NUM = COL_NUM = 10
