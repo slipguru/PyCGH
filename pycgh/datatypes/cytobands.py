@@ -78,6 +78,11 @@ class ChromosomeBand(object):
 
         return cmp(self.start_base, other.start_base)
 
+    def __contains__(self, item):
+        return (item.chromosome == self.chromosome and
+                self.start_base <= item.start_base <= self.end_base and
+                self.start_base <= item.end_base <= self.end_base)
+
     def __str__(self):
         return '%s%s [%d-%d]' % (_int2chr(self.chromosome), self.label,
                                  self.start_base, self.end_base)

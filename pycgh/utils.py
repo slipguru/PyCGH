@@ -77,6 +77,11 @@ class ArrayCGHSynth(object):
 
         design = dict(design) # ensure dict structure
 
+        if not alterations is None and cytostructure is None:
+            raise ValueError('mandatory')
+        elif alterations is None:
+            alterations = tuple() # default: empty iterable!
+
         # Fullfilled id-list (with standard "unused ids" )
         self._id = (design.keys() +
                     ['--'] * ((self._nrow * self._ncol) - len(design)))
@@ -112,31 +117,31 @@ class ArrayCGHSynth(object):
         self._sb = np.asarray(self._sb)
         self._eb = np.asarray(self._eb)
 
+        # Try to merge following loop with the previous one!
 
-        if alterations:
-            if  not cytostructure:
-                raise ValueError('mandatory')
+        # For each probe we check if it belongs to a specified
+        # alteration
 
-            probe_bands = []
-            for c, s, e in zip(self._chr, self._sb, self._eb):
-                try:
-                    probe_bands.append(cytostructure[c][s:e][0])
-                except:
-                    probe_bands.append('--')
+        samplers = dict((a, (alterations[a], [])) for a in alterations)
+        for i in xrange(len(self._id)):
+            c, s, e = self._chr[i], self._sb[i], self._eb[i]
 
-            samplers = list()
+            if c < 0: continue
+            probe_bands = cytostructure[c][s:e]
+
             for a in alterations:
                 chr, arm, band = _check_label(a)
-                bands = cytostructure[chr].band(arm + band).expand()
+                altered_band = cytostructure[chr].band(arm + band)
 
-                pmf = alterations[a]
+                if any(pb in altered_band for pb in probe_bands):
+                    samplers[a][1].append(i)
 
-                samplers.append((sampler(pmf),
-                                 [i for i, b in enumerate(probe_bands) if b in bands]))
+        for a in alterations:
+            print samplers[a]
+            print self._id[samplers[a][1]]
 
-
-            print self._chr
-            print samplers
+        #print self._chr
+        #print samplers
 
 
     def draw(self):
