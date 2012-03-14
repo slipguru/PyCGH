@@ -2,8 +2,9 @@ import itertools as it
 
 import numpy as np
 
-from rpy2 import robjects
-import rpy2.robjects.numpy2ri
+from rpy2 import robjects as ro
+from rpy2.robjects.numpy2ri import numpy2ri
+ro.conversion.py2ri = numpy2ri
 
 def lowess(x, y, **kwargs):
     """ Lowess from R """
@@ -44,9 +45,10 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
 
 #-----------
 from .datatypes.arraycgh import ArrayCGH
-from .datatypes.cytobands import _check_label, ChromosomeBand
+from .datatypes.cytobands import _check_label, ChromosomeBand, _chr2int
 import random as rnd
 import itertools as it
+from collections import defaultdict
 
 def sampler(pmf):
     import bisect
@@ -76,122 +78,154 @@ class ArrayCGHSynth(object):
         self._nrow, self._ncol = geometry
 
         design = dict(design) # ensure dict structure
+        CHIP_LEN = (self._nrow * self._ncol)
 
-        if not alterations is None and cytostructure is None:
-            raise ValueError('mandatory')
-        elif alterations is None:
-            alterations = tuple() # default: empty iterable!
+        if alterations and not cytostructure:
+            raise ValueError('missing cytostructure reference')
 
         # Fullfilled id-list (with standard "unused ids" )
-        self._id = (design.keys() +
-                    ['--'] * ((self._nrow * self._ncol) - len(design)))
+        self._id = np.asarray((design.keys() +
+                              ['--'] * (CHIP_LEN - len(design)))) # unsused ids
+
         # Associated mask
         self._mask = np.ones(len(self._id), dtype=bool)
         self._mask[:len(design)] = False
+
+        # Coordinates
+        self._chr = -np.ones(len(self._id), dtype=int)
+        self._sb =  -np.ones(len(self._id), dtype=int)
+        self._eb =  -np.ones(len(self._id), dtype=int)
+
+        chr, sb, eb = zip(*design.values()) # Same order as keys
+        self._chr[:len(design)] = chr #[_chr2int(c) for c in chr]
+        self._sb[:len(design)] = sb
+        self._eb[:len(design)] = eb
 
         # Chip coordinates
         self._row, self._col = zip(*it.product(xrange(self._nrow),
                                                xrange(self._ncol)))
 
-        # Shuffling across chip
-        # sampling without replacement
-        order = rnd.sample(range(len(self._id)), len(self._id))
-        self._id = np.asarray([self._id[i] for i in order])
-        self._mask = np.asarray([self._mask[i] for i in order])
+        # Shuffling order across chip (using sampling without replacement)
+        order = rnd.sample(xrange(len(self._id)), len(self._id))
 
-        # Coordinates (following shuffled ids order)
-        self._chr = []
-        self._sb = []
-        self._eb = []
-        for id in self._id:
-            if id in design:
-                chr, sb, eb = design[id]
-            else:
-                chr = sb = eb = -1
 
-            self._chr.append(chr)
-            self._sb.append(sb)
-            self._eb.append(eb)
+        # For each probe we check if it belongs to a specified alteration
+        # This step is perfomed befor shuffling to iterate only on
+        # valid probes
+        # resulting variable 'samplers' is a list of pairs
+        # (sampler_fun, probe_indexes)
+        if alterations:
+            rev_order = np.argsort(np.array(order))[:len(design)]
+            indexes = defaultdict(list)
 
-        self._chr = np.asarray(self._chr)
-        self._sb = np.asarray(self._sb)
-        self._eb = np.asarray(self._eb)
+            for i in xrange(len(design)):
+                c, s, e = self._chr[i], self._sb[i], self._eb[i]
 
-        # Try to merge following loop with the previous one!
+                probe_bands = cytostructure[c][s:e]
 
-        # For each probe we check if it belongs to a specified
-        # alteration
+                for a in alterations:
+                    chr, arm, band = _check_label(a) # split-label
+                    altered_band = cytostructure[chr].band(arm + band)
 
-        samplers = dict((a, (alterations[a], [])) for a in alterations)
-        for i in xrange(len(self._id)):
-            c, s, e = self._chr[i], self._sb[i], self._eb[i]
+                    if any(pb in altered_band for pb in probe_bands):
+                        indexes[a].append(rev_order[i])
 
-            if c < 0: continue
-            probe_bands = cytostructure[c][s:e]
+            self._samplers = [(sampler(alterations[a]),
+                               np.asarray(indexes[a], dtype=int))
+                              for a in alterations]
 
-            for a in alterations:
-                chr, arm, band = _check_label(a)
-                altered_band = cytostructure[chr].band(arm + band)
+        else:
+            self._samplers = []
 
-                if any(pb in altered_band for pb in probe_bands):
-                    samplers[a][1].append(i)
-
-        for a in alterations:
-            print samplers[a]
-            print self._id[samplers[a][1]]
-
-        #print self._chr
-        #print samplers
+        # Then we can perform data shuffling across chip
+        self._id = self._id[order]
+        self._mask = self._mask[order]
+        self._chr = self._chr[order]
+        self._sb = self._sb[order]
+        self._eb = self._eb[order]
 
 
     def draw(self):
-        ref_sigma = np.random.uniform(0.1, 0.2)
-        reference = np.random.normal(loc=2.0, scale=ref_sigma,
-                                     size=sum(~self._mask))
+        # -- Reference signal --
+        Smin, Smax = 0.1, 0.2 #########
+        ref_sigma = np.random.uniform(Smin, Smax) #########
+        reference = -np.ones(len(self._id))
+        reference[~self._mask] = np.random.normal(loc=2.0, scale=ref_sigma,
+                                                  size=sum(~self._mask))
 
+        # -- Test signal --
+        test = -np.ones(len(self._id))
+        test[~self._mask] = 2.0 # Standard value
 
-        import bisect
-        #pmf = ((0, 0.1), (1, 0.2), (2, 0.5), (3, 0.2))
+        # * Adding alterations (resampling)
+        for sampler, indexes in self._samplers:
+            test[indexes] = sampler(np.random.random())
 
-        pmf = ((2, 1.0),) # default
+        #print
+        #print reference[~self._mask]
+        #print test[~self._mask]
 
-        pmf = sorted(pmf)
-        events, prob = zip(*pmf)
-        cdf = np.cumsum(prob)
-        assert(cdf[-1] == 1.0)
+        # * Adding tissue proportion bias
+        Tmin, Tmax = 0.3, 0.7 #########
+        tissue_prop = np.random.uniform(Tmin, Tmax) #########
+        test_sigma = np.random.uniform(Smin, Smax) #########
 
-        def event(p):
-            index = bisect.bisect(cdf, p)
-            if p == cdf[index-1]: # bound check
-                return events[index-1]
-            else:
-                return  events[index]
+        test[~self._mask] = ((test[~self._mask] * tissue_prop) +
+                             (               2  * (1.0 - tissue_prop)) +
+                             np.random.normal(loc=0.0,              # Error
+                                              scale=test_sigma,
+                                              size=sum(~self._mask)),
+                            )
 
-        p = np.random.random()
-        test_value = event(p)
+        #print
+        #print reference[~self._mask]
+        #print test[~self._mask]
 
+        # * Adding outliers and Dye Bias
+        Bmin, Bmax = 100, 500 #########
+        #reference[~self._mask] = ((reference[~self._mask] +
+        #                           np.abs(np.random.normal(loc=0.0,
+        #                                            scale=4, #########
+        #                                            size=sum(~self._mask)))) *
+        #                           np.random.uniform(Bmin, Bmax) #########
+        #                         )
+        #
+        #test[~self._mask] = ((test[~self._mask] +
+        #                      np.abs(np.random.normal(loc=0.0,
+        #                                       scale=4, #########
+        #                                       size=sum(~self._mask)))) *
+        #                      np.random.uniform(Bmin, Bmax) #########
+        #                    )
 
-        #test_value = 2.0
-        tissue_prop = np.random.uniform(0.3, 0.7)
+        # * Wave effect
+        a = np.random.uniform(0., .5)
+        kl = 3./max(self._eb) ############
+        noise = np.random.normal(0.0, (a/10)**2, size=sum(~self._mask))
 
-        test_sigma = np.random.uniform(0.1, 0.2)
-        test_error = np.random.normal(loc=0.0, scale=test_sigma,
-                                      size=sum(~self._mask))
+        w = a * np.sin(kl * np.pi * self._sb[~self._mask])
 
-        test = (np.ones_like(test_error) * (test_value * tissue_prop +
-                                            2 * (1.0 - tissue_prop)) +
-                test_error)
+        O = np.random.uniform(0.1, 2.0)
 
-        tmp = -np.ones(self._nrow * self._ncol)
+        reference[~self._mask] = ((reference[~self._mask] +
+                                   np.abs(np.random.normal(loc=0.0,
+                                                    scale=O, #########
+                                                    size=sum(~self._mask))) +
+                                   2**(w + noise)
+                                   ) *
+                                   np.random.uniform(Bmin, Bmax) #########
+                                 )
 
-        tmpr = tmp.copy()
-        tmpr[~self._mask] = reference
-        reference = tmpr
+        test[~self._mask] = ((test[~self._mask] +
+                              np.abs(np.random.normal(loc=0.0,
+                                               scale=O, #########
+                                               size=sum(~self._mask))) +
+                              4**(w + noise)
+                              ) *
+                              np.random.uniform(Bmin, Bmax) #########
+                            )
 
-        tmpt = tmp.copy()
-        tmpt[~self._mask] = test
-        test = tmpt
-
+    wave = -np.ones_like(reference)
+    wave[~self._mask] = w
 
         #id, row, col, reference_signal, test_signal,
         #         chromosome, start_base, end_base, mask=None, **kwargs):
@@ -205,4 +239,5 @@ class ArrayCGHSynth(object):
                         chromosome = self._chr,
                         start_base = self._sb,
                         end_base = self._eb,
-                        mask = self._mask)
+                        mask = self._mask,
+                        wave = wave)

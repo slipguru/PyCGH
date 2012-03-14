@@ -114,9 +114,9 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
 
         chridx = np.array(np.zeros(len(aCGH)), dtype=bool)
         for chr in chr_filtered:
-            np.logical_or(chridx, aCGH['chromosome'] == chr, chridx)
+            np.logical_or(chridx, aCGH.F['chromosome'] == chr, chridx)
 
-        aCGH = aCGH[chridx]
+        aCGH = aCGH.F[chridx]
         chromosomes = sorted(chr_filtered)
 
         # Signal and segmentation filtering
@@ -125,17 +125,17 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
         if not segmentation is None:
             segmentation = segmentation[chridx]
     else:
-        chromosomes = np.unique(aCGH['chromosome'])
+        chromosomes = np.unique(aCGH.F['chromosome'])
 
     # Signal Calculation (chromosome filtering included)
     if signal is None:
-        test_signal = aCGH['test_signal']
-        reference_signal = aCGH['reference_signal']
-        signal = np.log2(test_signal) - np.log2(reference_signal)
+        test_signal = aCGH.F['test_signal']
+        reference_signal = aCGH.F['reference_signal']
+        signal = np.log2(test_signal / reference_signal)
 
     # Plot-Coordinates Calculation
     from matplotlib import mlab as ml
-    positions = aCGH[['chromosome', 'start_base']]
+    positions = aCGH.F[['chromosome', 'start_base']]
     coords = positions['start_base']
 
     summary = ml.rec_groupby(positions,
