@@ -3,8 +3,8 @@ import pylab as pl
 from scipy import signal
 
 from pycgh.datatypes.cytobands import CytoStructure, _chr2int
-from pycgh.utils import ArrayCGHSynth, loess
-from pycgh.plots import profile, spatial
+from pycgh.utils import ArrayCGHSynth
+from pycgh.plots import profile
 
 cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')
 
@@ -32,26 +32,29 @@ print 'Creating data source'
 acgh_source = ArrayCGHSynth((430, 103), CHIP_DESIGN,
                             {'17': [(3, 0.8), (2, 0.2)],
                              '2p': [(1, 0.8), (2, 0.2)]}, cs)
+print 'Created.'
 
-print 'Starting plotting'
+print 'Starting Draw'
 acgh = acgh_source.draw()
+print 'drown'
+
 log2 = np.log2(acgh.F['test_signal']) - np.log2(acgh.F['reference_signal'])
 log2 -= np.median(log2) # global median normalization
 acgh['log2'] = log2 # automatic defiltering
 
 
-#pl.figure()
-#profile(acgh, acgh.F['test_signal'])
+pl.figure()
+profile(acgh, acgh.F['test_signal'])
 
-#pl.figure()
-#profile(acgh, acgh.F['reference_signal'])
+pl.figure()
+profile(acgh, acgh.F['reference_signal'])
 
 pl.figure()
 acgh.sort()
 coords, cidx = profile(acgh, acgh.F['log2'],
                        segmentation=signal.medfilt(acgh.F['log2'], 101))
 
-pl.plot(coords, acgh.F['wave']) # acgh already sorted
+pl.plot(coords, acgh.F['wave'], alpha=0.9) # acgh already sorted
 
 
 pl.show()
