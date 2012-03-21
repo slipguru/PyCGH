@@ -156,13 +156,29 @@ def test_parameters_outliers():
     # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
                   (NROW, NCOL), CHIP_DESIGN, outliers=(-0.5, 0.2))
-    
+
 def test_created_signals():
-    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL),
-                            design=CHIP_DESIGN)
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN)
     acgh = cgh_src.draw()
 
     for v in ('mask', 'test_signal', 'reference_signal',
-              'start_base', 'end_base', 'chromosome', 'id'):
+              'start_base', 'end_base', 'chromosome', 'id',
+              'true_test_signal'):
         assert_equal(acgh[v][~acgh['mask']], acgh.F[v])
+
+    assert_equal(2., acgh.F['true_test_signal'])
+
+def test_alterated_signal():
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN,
+                            alterations={'1p12':[(4, 1.0)]},
+                            cytostructure=CytoStructure(StringIO(CytoFileContent)))
+    acgh = cgh_src.draw()
+    acgh.sort()
+
+    # Alterated
+    assert_equal('P01', acgh.F['id'][0])
+    assert_equal(4., acgh.F['true_test_signal'][0])
+
+    # Normal
+    assert_equal(2., acgh.F['true_test_signal'][1:])
 

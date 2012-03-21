@@ -3,8 +3,8 @@ import pylab as pl
 from scipy import signal
 
 from pycgh.datatypes.cytobands import CytoStructure, _chr2int
-from pycgh.utils import ArrayCGHSynth
-from pycgh.plots import profile
+from pycgh.utils import ArrayCGHSynth, array_trend
+from pycgh.plots import profile, spatial
 
 cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')
 
@@ -54,7 +54,19 @@ acgh.sort()
 coords, cidx = profile(acgh, acgh.F['log2'],
                        segmentation=signal.medfilt(acgh.F['log2'], 101))
 
-pl.plot(coords, acgh.F['wave'], alpha=0.9) # acgh already sorted
+ # acgh already sorted
+pl.plot(coords, np.log2(acgh.F['true_test_signal'] / 2.), '-')
 
+pl.figure()
+signal = (np.log2(acgh.F['test_signal']) -
+          np.log2(acgh.F['reference_signal']))
+signal = array_trend(signal, acgh.F['col'], acgh.F['row'])
+spatial(acgh, signal=signal)#acgh.F['trend'])
+
+pl.figure()
+spatial(acgh, signal=acgh.F['trend'])
+
+pl.figure()
+spatial(acgh, median_center=True)
 
 pl.show()

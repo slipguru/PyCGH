@@ -12,12 +12,12 @@ def spatial(aCGH, signal=None, title=None, median_center=False,
             cmap=None, cbticks=None):
     plt.title('CGH Spatial plot' if title is None else title)
 
-    rows = aCGH['row']
-    cols = aCGH['col']
+    rows = aCGH.F['row']
+    cols = aCGH.F['col']
 
     if signal is None:
-        signal = (np.log2(aCGH['test_signal']) -
-                  np.log2(aCGH['reference_signal']))
+        signal = (np.log2(aCGH.F['test_signal']) -
+                  np.log2(aCGH.F['reference_signal']))
 
     try:
         array_image = signal.reshape((rows.max(), cols.max()))

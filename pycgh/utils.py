@@ -49,12 +49,14 @@ from .datatypes.cytobands import _check_label, ChromosomeBand, _chr2int
 import random as rnd
 import itertools as it
 from collections import defaultdict
+import bisect
+
+try:
+    from scipy import linalg as la
+except ImportError:
+    from numpy import linalg as la
 
 def sampler(pmf):
-    import bisect
-    #pmf = ((0, 0.1), (1, 0.2), (2, 0.5), (3, 0.2))
-    #pmf = ((2, 1.0),) # default
-
     pmf = sorted(pmf)
     events, prob = zip(*pmf)
     cdf = np.cumsum(prob)
@@ -69,8 +71,23 @@ def sampler(pmf):
 
     return _sampler
 
-    #p = np.random.random()
-    #test_value = event(p)
+def _mask_signal(signal, mask, dtype=float):
+    full_signal = -np.ones(len(mask), dtype=dtype)
+    full_signal[~mask] = signal
+    return full_signal
+
+def mvnpdf(mu, cov):
+    mu = np.asarray(mu)
+    cov = np.asarray(cov)
+
+    # Precalculation
+    covI = la.inv(cov)
+
+    def _mvn(x, y):
+        dev = (np.c_[x, y] - mu)
+        return np.exp(-0.5 * (np.dot(dev, covI) * dev).sum(axis=1))
+
+    return _mvn
 
 class ArrayCGHSynth(object):
 
@@ -136,6 +153,8 @@ class ArrayCGHSynth(object):
         # Chip coordinates
         self._row, self._col = zip(*it.product(xrange(self._nrow),
                                                xrange(self._ncol)))
+        self._row = np.asarray(self._row)
+        self._col = np.asarray(self._col)
 
         # Shuffling order across chip (using sampling without replacement)
         order = np.asarray(rnd.sample(xrange(len(self._id)), len(self._id)))
@@ -211,6 +230,7 @@ class ArrayCGHSynth(object):
         # * Adding alterations (resampling)
         for sampler, indexes in self._samplers:
             t[indexes] = sampler(np.random.random())
+        true_test_signal = _mask_signal(t, self._mask) # Saving true Signal
 
         # * Adding tissue proportion bias
         tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
@@ -237,35 +257,47 @@ class ArrayCGHSynth(object):
         r += 2**w
         t += 4**w
 
+        # * Spatial bias
+        # Trend position
+        mu = np.array([np.random.randint(0, self._nrow),
+                       np.random.randint(0, self._ncol)])
+
+        # Trend shape
+        var = (np.random.uniform(0, self._nrow),
+               np.random.uniform(0, self._ncol))
+        cov = np.random.uniform(-1, 1) * np.mean(var)
+        Sigma = np.array([[var[0], cov],
+                          [cov, var[1]]])
+
+        # Bias calculation (random peak orientation)
+        pdf = mvnpdf(mu, Sigma)
+        bias = pdf(self._row[~self._mask],
+                   self._col[~self._mask]) * rnd.choice([1, -1])
+
+        # Randomly applied on reference or test
+        signal = rnd.choice([r, t])
+        signal += (bias + np.random.normal(0.0, 0.1, size=C))
+
+        # Thresholding!
+        r[r <= 0] = r[r > 0].min()
+        t[t <= 0] = t[t > 0].min()
+
         # * Multiplicative Dye Bias
         r *= np.random.uniform(self._Dmin, self._Dmax)
         t *= np.random.uniform(self._Dmin, self._Dmax)
 
-        # Thresholding!
-        r[r < 0] = 0.0
-        t[t < 0] = 0.0
-
         # -- Producing final signal --
-        wave = -np.ones(len(self._id), dtype=float)
-        wave[~self._mask] = w
-
-        reference = -np.ones_like(wave)
-        reference[~self._mask] = r
-
-        test = -np.ones_like(wave)
-        test[~self._mask] = t
-
-        #id, row, col, reference_signal, test_signal,
-        #         chromosome, start_base, end_base, mask=None, **kwargs):
         return ArrayCGH(id = self._id,
                         row = self._row,
                         col = self._col,
 
-                        reference_signal = reference,
-                        test_signal = test,
+                        reference_signal = _mask_signal(r, self._mask),
+                        test_signal = _mask_signal(t, self._mask),
 
                         chromosome = self._chr,
                         start_base = self._sb,
                         end_base = self._eb,
                         mask = self._mask,
-                        wave = wave)
+
+                        trend = _mask_signal(bias, self._mask),
+                        true_test_signal = true_test_signal)
