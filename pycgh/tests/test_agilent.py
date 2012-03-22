@@ -1,5 +1,4 @@
 import os
-from cStringIO import StringIO
 
 import numpy as np
 from numpy.testing import *
