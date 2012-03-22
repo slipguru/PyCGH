@@ -8,7 +8,7 @@ import itertools as it
 import numpy as np
 from numpy.lib import recfunctions
 
-from ..io.utils import _file_handle
+from ..utils import _file_handle
 from cytobands import _chr2int
 
 class ArrayCGH(object):
@@ -27,6 +27,11 @@ class ArrayCGH(object):
                  'reference_signal', 'test_signal',
                  'chromosome', 'start_base', 'end_base')
     # 'mask' has a special meaning but it is not mandatory
+
+    # Common constant    
+    MISSING_INT = -1
+    MISSING_FLOAT = np.nan
+    MISSING_STRING = '--'
 
     def __init__(self, id, row, col, reference_signal, test_signal,
                  chromosome, start_base, end_base, mask=None, **kwargs):
@@ -50,7 +55,7 @@ class ArrayCGH(object):
             elif chr == 'Y':
                 return 24
             else:
-                return -1
+                return self.MISSING_INT
 
         chromosome = np.asanyarray([_conversion(chr)
                                     for chr in chromosome],
@@ -145,31 +150,54 @@ class ArrayCGH(object):
         return str(self._rdata)
 
     @staticmethod
-    def load(acgh_file, fields=None, delimiter=',', missing_values='NA,--'):
-        fh = _file_handle(acgh_file)
-        data = np.genfromtxt(fh, delimiter=delimiter, comments='#',
+    def loadtxt(acgh_file, fields=None, delimiter=',', missing_values='--'):
+        data = np.genfromtxt(acgh_file, delimiter=delimiter, comments='#',
                              names=True, dtype=None, case_sensitive='lower',
                              autostrip=True, invalid_raise=True,
-                             missing_values=missing_values)
+                             missing_values=missing_values,
+                             filling_values={   # Default missing values
+                                'id': ArrayCGH.MISSING_STRING,     
+                                'row': ArrayCGH.MISSING_INT,
+                                'col': ArrayCGH.MISSING_INT,
+                                'reference_signal': ArrayCGH.MISSING_FLOAT,
+                                'test_signal': ArrayCGH.MISSING_FLOAT,
+                                'chromosome': ArrayCGH.MISSING_INT,
+                                'start_base': ArrayCGH.MISSING_INT,
+                                'end_base': ArrayCGH.MISSING_INT}
+                             )
+        
+        mandatory, optionals = _load(data, fields)
+        return ArrayCGH(*mandatory, **optionals)
+    
+    @staticmethod
+    def load(acgh_file, fields=None):
+        mandatory, optionals = _load(np.load(acgh_file), fields)
+        return ArrayCGH(*mandatory, **optionals)
 
-        # chiavi sono campi aCHG, valori cosa leggere da input
-        file_fields = dict((v, v) for v in data.dtype.names)
-        if not fields is None:
-            for name in fields:
-                fields[name] = fields[name].lower()
-                del file_fields[fields[name]]
-            file_fields.update(fields)
-
-        optional_columns = set(file_fields.keys()).difference(ArrayCGH.COL_NAMES)
-        optional_inputs = dict((k, data[file_fields[k]]) for k in optional_columns)
-
-        return ArrayCGH(*[data[file_fields[k]] for k in ArrayCGH.COL_NAMES],
-                        **optional_inputs)
-
-    def save(self, path, delimiter=','):
+    def savetxt(self, path, fmt="%s", delimiter=', '):
         fh = _file_handle(path, mode='w')
-        fh.write('%s\n' % delimiter.join(self.names))
-        np.savetxt(fh, self._rdata, fmt="%s", delimiter=delimiter)
+        fh.write('%s\n' % delimiter.join(self.names))      
+        np.savetxt(fh, self._rdata, fmt=fmt, delimiter=delimiter)
+        
+    def save(self, path):
+        np.save(path, self._rdata)
+
+
+def _load(data, fields):
+    # keys: expected aCGH fields; values: input fields
+    file_fields = dict((v, v) for v in data.dtype.names)
+    if not fields is None:
+        for name in fields:
+            fields[name] = fields[name].lower()
+            del file_fields[fields[name]]
+        file_fields.update(fields)
+
+    optional_columns = set(file_fields.keys()).difference(ArrayCGH.COL_NAMES)
+    optional_inputs = dict((k, data[file_fields[k]]) for k in optional_columns)
+    
+    mandatory_inputs = [data[file_fields[k]] for k in ArrayCGH.COL_NAMES]
+    
+    return mandatory_inputs, optional_inputs
 
 
 class _ProxyFilter(object):

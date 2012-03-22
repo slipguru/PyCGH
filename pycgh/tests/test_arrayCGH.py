@@ -6,25 +6,21 @@ from numpy.testing.utils import *
 
 from ..datatypes.arraycgh import ArrayCGH
 
-def setup(module):
-    ROW_NUM = COL_NUM = 10
-    row, col =  zip(*it.product(range(1, ROW_NUM+1),
-                                range(1, COL_NUM+1)))
+# Setup global variables ------------------------------------------------------
+ROW_NUM = COL_NUM = 10
+row, col =  zip(*it.product(range(1, ROW_NUM+1),
+                            range(1, COL_NUM+1)))
 
-    # 10x10 aCGH support with 100 probes
-    input = (['Probe%d' % x for x in range(1, len(row)+1)],         #ID
-             list(row),                                             #Row
-             list(col),                                             #Col
-             [10] * (ROW_NUM * COL_NUM),                            #Ref
-             [20] * (ROW_NUM * COL_NUM),                            #Test
-             (range(1, 25) * 5)[:(ROW_NUM * COL_NUM)],              #Chr
-             range(1, (ROW_NUM * COL_NUM) +1 ),                     #Start
-             [x + 10 for x in range(1, (ROW_NUM * COL_NUM) + 1)])   #End
-
-    # Setup global variables
-    module.input = input
-    module.ROW_NUM = ROW_NUM
-    module.COL_NUM = COL_NUM
+# 10x10 aCGH support with 100 probes
+input = (['Probe%d' % x for x in range(1, len(row)+1)],         #ID
+         list(row),                                             #Row
+         list(col),                                             #Col
+         [10] * (ROW_NUM * COL_NUM),                            #Ref
+         [20] * (ROW_NUM * COL_NUM),                            #Test
+         (range(1, 25) * 5)[:(ROW_NUM * COL_NUM)],              #Chr
+         range(1, (ROW_NUM * COL_NUM) +1 ),                     #Start
+         [x + 10 for x in range(1, (ROW_NUM * COL_NUM) + 1)])   #End
+# -----------------------------------------------------------------------------
 
 def test_types():
     aCGH = ArrayCGH(id=['a', 'b'], row=[1., 1], col=[1., 2.],
@@ -232,7 +228,7 @@ Probe 03, 1, 2, 10., 10, X, 10000.1039478, 20, 0, 1
 ######
 # This is a Comment
 ######
-Control, 2, 2, --, 10, NA, NA, --, 1, 1
+Control, 2, 2, --, 10, --, --, --, 1, 1
 """
 
 aCGHContentNotStandard = """\
@@ -243,20 +239,24 @@ Probe02, 2, 1, 10, 20, 2, 10, 20, 0, 1
 # This is a Comment
 ######
 Probe 03, 1, 2, 10, 20, 3, 10, 20, 0, 1
-Control , 2, 2, 10, 20, --, NA, NA, 1, 1
+Control , 2, 2, 10, 20, --, --, --, 1, 1
 # This is a Comment
 """
 
 def test_loading_file():
-    aCGH = ArrayCGH.load(StringIO(aCGHContent))
+    aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent))
     assert_equal([1, 1, 2, 2], aCGH['row'])
     assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
 
     assert_equal([1, 2, 23, -1], aCGH['chromosome'])
     assert_equal([10., 10., 10., np.nan], aCGH['reference_signal'])
+    
+    # Automatic truncated
+    assert_equal([10, 10, 10000, -1], aCGH['start_base'])
+    assert_equal([10, 20, 20, -1], aCGH['end_base'])
 
 def test_loading_fields():
-    aCGH = ArrayCGH.load(StringIO(aCGHContentNotStandard),
+    aCGH = ArrayCGH.loadtxt(StringIO(aCGHContentNotStandard),
                          fields={'id':'ProbeID',
                                  'reference_signal':'Ref',
                                  'test_signal': 'Test',
@@ -264,18 +264,41 @@ def test_loading_fields():
     assert_equal([0, 0, 0, 1], aCGH['mask'])
     assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
 
-def test_save():
-    aCGH = ArrayCGH.load(StringIO(aCGHContent),
+def test_savetxt():   
+    aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
                          fields={'orig_mask':'mask', #renaming
                                  'mask':'myflag'})
+   
     # Saving
     out = StringIO()
+    aCGH.savetxt(out)
+
+    # Reading saved file
+    out.seek(0)
+    aCGH2 = ArrayCGH.loadtxt(out)
+    
+    assert_equal(len(aCGH), len(aCGH2))
+    assert_equal(aCGH.names, aCGH2.names)
+    assert_('orig_mask' in aCGH2.names)
+    assert_(not 'myflag' in aCGH2.names)
+
+    for n in aCGH.names:
+        assert_equal(aCGH[n], aCGH2[n])
+        
+def test_save():   
+    aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
+                         fields={'orig_mask':'mask', #renaming
+                                 'mask':'myflag'})
+   
+    # Saving
+    from tempfile import TemporaryFile
+    out = TemporaryFile()
     aCGH.save(out)
 
     # Reading saved file
     out.seek(0)
     aCGH2 = ArrayCGH.load(out)
-
+    
     assert_equal(len(aCGH), len(aCGH2))
     assert_equal(aCGH.names, aCGH2.names)
     assert_('orig_mask' in aCGH2.names)
