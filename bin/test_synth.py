@@ -32,7 +32,8 @@ print len(CHIP_DESIGN)
 print 'Creating data source'
 acgh_source = ArrayCGHSynth((430, 103), CHIP_DESIGN,
                             {'17': [(3, 0.8), (2, 0.2)],
-                             '2p': [(1, 0.8), (2, 0.2)]}, cs)
+                             '2p': [(1, 0.8), (2, 0.2)],
+                             '1q': [(1, 0.8)]}, cs)
 print 'Created.'
 
 print 'Starting Draw'

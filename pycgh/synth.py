@@ -27,9 +27,12 @@ def _sampler(pmf):
 
     return sampler
 
-def _mask_signal(signal, mask, dtype=float):
-    full_signal = -np.ones(len(mask), dtype=dtype)
+def _mask_signal(signal, mask,
+                 missing_value=ArrayCGH.MISSING_FLOAT, dtype=float):
+    full_signal = np.empty(len(mask), dtype=dtype)
+    full_signal.fill(missing_value)
     full_signal[~mask] = signal
+    
     return full_signal
 
 def _mvnpdf(mu, cov):
@@ -84,22 +87,39 @@ class ArrayCGHSynth(object):
 
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
-
-        if alterations and not cytostructure:
-            raise ValueError('missing cytostructure reference')
+      
+        # Checking and filling alteration probabilities
+        if alterations:
+            if not cytostructure:
+                raise ValueError('missing cytostructure reference')
+                
+            for a in alterations:
+                levels, p = zip(*alterations[a])
+                
+                p_sum = sum(p)
+                if p_sum > 1.0:
+                    raise ValueError("sum of probabilities for "
+                                     "'%s' greater than 1.0" % a)
+                elif p_sum < 1.0:
+                    if 2 in levels:
+                        raise ValueError("sum of probabilities for "
+                                         "'%s' less than 1.0" % a)
+                    else: #filling
+                        alterations[a].append((2, 1.0 - p_sum))
 
         # Fullfilled id-list (with standard "unused ids" )
-        self._id = np.asarray((design.keys() +
-                              ['--'] * (CHIP_LEN - len(design)))) # unsused ids
+        missing_num = (CHIP_LEN - len(design))
+        self._id = np.asarray((design.keys() +      # unsused ids
+                               [ArrayCGH.MISSING_STRING] * missing_num)) 
 
         # Associated mask
         self._mask = np.ones(len(self._id), dtype=bool)
         self._mask[:len(design)] = False
 
         # Coordinates
-        self._chr = -np.ones(len(self._id), dtype=int)
-        self._sb =  -np.ones(len(self._id), dtype=int)
-        self._eb =  -np.ones(len(self._id), dtype=int)
+        self._chr = ArrayCGH.MISSING_INT * np.ones(len(self._id), dtype=int)
+        self._sb = ArrayCGH.MISSING_INT * np.ones(len(self._id), dtype=int)
+        self._eb = ArrayCGH.MISSING_INT * np.ones(len(self._id), dtype=int)
 
         chr, sb, eb = zip(*design.values()) # Same order as keys
         self._chr[:len(design)] = chr #[_chr2int(c) for c in chr]
@@ -186,7 +206,7 @@ class ArrayCGHSynth(object):
         # * Adding alterations (resampling)
         for sampler, indexes in self._samplers:
             t[indexes] = sampler(np.random.random())
-        true_test_signal = _mask_signal(t, self._mask) # Saving true Signal
+        true_test_signal = _mask_signal(t, self._mask)  # Saving true Signal
 
         # * Adding tissue proportion bias
         tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
