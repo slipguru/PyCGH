@@ -1,10 +1,9 @@
-#import itertools as it
 from cStringIO import StringIO
 
 import numpy as np
 from numpy.testing.utils import *
 
-from ..utils import ArrayCGHSynth
+from ..synth import ArrayCGHSynth
 from ..datatypes.arraycgh import ArrayCGH
 from ..datatypes.cytobands import CytoStructure
 
