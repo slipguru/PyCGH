@@ -1,7 +1,7 @@
 import itertools as it
 import operator as op
 
-from ..io.utils import _file_handle
+from ..utils import _file_handle
 
 # Cytostructure is a parser
 # ChromosomeStructure is the resulting object
