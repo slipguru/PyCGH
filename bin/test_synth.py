@@ -3,7 +3,8 @@ import pylab as pl
 from scipy import signal
 
 from pycgh.datatypes.cytobands import CytoStructure, _chr2int
-from pycgh.utils import ArrayCGHSynth, array_trend
+from pycgh.synth import ArrayCGHSynth
+from pycgh.utils import array_trend
 from pycgh.plots import profile, spatial
 
 cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')

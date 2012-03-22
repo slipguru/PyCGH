@@ -234,14 +234,14 @@ class ArrayCGHSynth(object):
         signal = rnd.choice([r, t])
         signal += (bias + np.random.normal(0.0, 0.1, size=C))
 
+        # * Multiplicative Dye Bias
+        r *= np.random.uniform(self._Dmin, self._Dmax)
+        t *= np.random.uniform(self._Dmin, self._Dmax)
+        
         # Thresholding!
         for signal in (r, t):
             pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
             np.clip(signal, pos.min(), np.inf, out=signal)   # In-place
-
-        # * Multiplicative Dye Bias
-        r *= np.random.uniform(self._Dmin, self._Dmax)
-        t *= np.random.uniform(self._Dmin, self._Dmax)
 
         # -- Producing final signal --
         return ArrayCGH(id = self._id,
