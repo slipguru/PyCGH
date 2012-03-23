@@ -26,7 +26,7 @@ class ArrayCGH(object):
                  'chromosome', 'start_base', 'end_base')
     # 'mask' has a special meaning but it is not mandatory
 
-    # Common constant    
+    # Common constant
     MISSING_INT = -1
     MISSING_FLOAT = np.nan
     MISSING_STRING = '--'
@@ -149,12 +149,13 @@ class ArrayCGH(object):
 
     @staticmethod
     def loadtxt(acgh_file, fields=None, delimiter=',', missing_values='--'):
-        data = np.genfromtxt(acgh_file, delimiter=delimiter, comments='#',
+        fh = _file_handle(acgh_file)
+        data = np.genfromtxt(fh, delimiter=delimiter, comments='#',
                              names=True, dtype=None, case_sensitive='lower',
                              autostrip=True, invalid_raise=True,
                              missing_values=missing_values,
                              filling_values={   # Default missing values
-                                'id': ArrayCGH.MISSING_STRING,     
+                                'id': ArrayCGH.MISSING_STRING,
                                 'row': ArrayCGH.MISSING_INT,
                                 'col': ArrayCGH.MISSING_INT,
                                 'reference_signal': ArrayCGH.MISSING_FLOAT,
@@ -163,22 +164,24 @@ class ArrayCGH(object):
                                 'start_base': ArrayCGH.MISSING_INT,
                                 'end_base': ArrayCGH.MISSING_INT}
                              )
-        
+
         mandatory, optionals = _load(data, fields)
         return ArrayCGH(*mandatory, **optionals)
-    
+
     @staticmethod
     def load(acgh_file, fields=None):
-        mandatory, optionals = _load(np.load(acgh_file), fields)
+        fh = _file_handle(acgh_file)
+        mandatory, optionals = _load(np.load(fh), fields)
         return ArrayCGH(*mandatory, **optionals)
 
     def savetxt(self, path, fmt="%s", delimiter=', '):
         fh = _file_handle(path, mode='w')
-        fh.write('%s\n' % delimiter.join(self.names))      
+        fh.write('%s\n' % delimiter.join(self.names))
         np.savetxt(fh, self._rdata, fmt=fmt, delimiter=delimiter)
-        
+
     def save(self, path):
-        np.save(path, self._rdata)
+        fh = _file_handle(path, mode='w')
+        np.save(fh, self._rdata)
 
 
 def _load(data, fields):
@@ -192,9 +195,9 @@ def _load(data, fields):
 
     optional_columns = set(file_fields.keys()).difference(ArrayCGH.COL_NAMES)
     optional_inputs = dict((k, data[file_fields[k]]) for k in optional_columns)
-    
+
     mandatory_inputs = [data[file_fields[k]] for k in ArrayCGH.COL_NAMES]
-    
+
     return mandatory_inputs, optional_inputs
 
 

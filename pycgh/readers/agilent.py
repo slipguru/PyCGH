@@ -2,7 +2,10 @@ import itertools as it
 
 import numpy as np
 
+from .ucsc import ucsc_mapping as ucsc_reader
 from ..datatypes.arraycgh import ArrayCGH
+from ..utils import _file_handle
+
 
 # Constants -------------------------------------------------------------------
 QC_FLAGS = ('gIsFeatNonUnifOL', 'rIsFeatNonUnifOL',
@@ -25,7 +28,7 @@ def agilent(path, delimiter='\t', test_channel='r',
     if not test_channel in ('r', 'g'):
         raise ValueError("test_channel must be 'r' (default) or 'g'")
 
-    with open(path, 'r') as acgh:
+    with _file_handle(path) as acgh:
         # Reading FEPARAMS
         params = _read_info_line(acgh, delimiter)
         # Reading STATS
@@ -51,24 +54,22 @@ def agilent(path, delimiter='\t', test_channel='r',
 
     # Mapping between probe and chromosomal position
     if not ucsc_mapping is None:
-        rel_data = np.genfromtxt(ucsc_mapping, dtype=None,
-                                 usecols=(4, 1, 2, 3),
-                                 names=('id', 'chr', 'sb', 'eb'))
-        rel_data['sb'] += 1 # ucsc starts from zero
-        rel_map = dict((id, '%s:%d-%d' % (c, s, e))
-                       for id, c, s, e in rel_data)
+        INVALID_PROBE_ID_VALUE = (ArrayCGH.MISSING_INT, # chr
+                                  ArrayCGH.MISSING_INT, # sb
+                                  ArrayCGH.MISSING_INT, # eb
+                                  True)                 # mask
 
-        # If an id is missing in the release,
-        # the probe is marked as unmapped
-        locations = (rel_map.get(id, 'unmapped')
+        rel_map = ucsc_reader(ucsc_mapping)
+        locations = (rel_map.get(id, INVALID_PROBE_ID_VALUE)
                      for id in features['ProbeName'])
     else:
-        locations = features['SystematicName']
+        # Standard mapping included into agilent file
+        locations = (split_location(x) for x in features['SystematicName'])
 
     # Chromosome Position extraction (X=23, Y=24)
     # Note that the control probe will be automatically removed
     # during this step
-    loc_buff = zip(*(_split_mapping(x) for x in locations))
+    loc_buff = zip(*locations)
 
     # Data extraction
     data = it.chain([features[k] for k in agilent_names], loc_buff[:-1])
@@ -149,7 +150,7 @@ def _read_info_block(acgh, delimiter='\t'):
                         out[k] = out[k][:-1]
                 break
         else:
-            num += 1 #number of lines              
+            num += 1 #number of lines
 
     # Conversion in numpy array
     for i, t in zip(info, types):
@@ -162,8 +163,9 @@ def _return_headers(acgh, delimiter='\t'):
     info = acgh.readline().strip().split(delimiter)[1:]
     return types, info
 
-# Conversions algoritm --------------------------------------------------------
-def _split_mapping(location):
+# Splitting algoritm ----------------------------------------------------------
+from .ucsc import _split_mapping
+def split_location(location):
     try:
         chr, interval = location.split(':')
         start, end = (int(x) for x in interval.split('-'))
@@ -172,19 +174,4 @@ def _split_mapping(location):
                 ArrayCGH.MISSING_INT,
                 ArrayCGH.MISSING_INT, True)
 
-    # in some files the range is swapped :-/
-    if start > end:
-        start, end = end, start
-
-    chr = chr.split('_', 1)[0].replace('chr', '') # from chrXX_bla_bla to XX
-    if chr == 'X':
-        return 23, start, end, False
-    elif chr=='Y':
-        return 24, start, end, False
-    else:
-        try:
-            return int(chr), start, end, False
-        except ValueError: # unplaceable probe eg chrUn
-            return (ArrayCGH.MISSING_INT,
-                    ArrayCGH.MISSING_INT,
-                    ArrayCGH.MISSING_INT, True)
+    return _split_mapping(chr, start, end)
