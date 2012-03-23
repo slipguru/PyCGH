@@ -13,7 +13,7 @@ from .datatypes.cytobands import ChromosomeBand, _check_label, _chr2int
 
 def _sampler(pmf):
     import bisect
-    
+
     pmf = sorted(pmf)
     events, prob = zip(*pmf)
     cdf = np.cumsum(prob)
@@ -32,7 +32,7 @@ def _mask_signal(signal, mask,
     full_signal = np.empty(len(mask), dtype=dtype)
     full_signal.fill(missing_value)
     full_signal[~mask] = signal
-    
+
     return full_signal
 
 def _mvnpdf(mu, cov):
@@ -53,7 +53,8 @@ class ArrayCGHSynth(object):
     def __init__(self, geometry, design,
                  alterations=None, cytostructure=None,
                  noise=(0.1, 0.2), tissue_prop=(0.3, 0.7),
-                 dyes=(100, 500), outliers=(0.2, 0.5)):
+                 outliers_prop=(0.001, 0.002),
+                 dyes=(100, 500), spatial_bias=0.5):
 
         # Check Geometry
         self._nrow, self._ncol = (int(x) for x in geometry)
@@ -73,29 +74,34 @@ class ArrayCGHSynth(object):
             raise ValueError('wrong tissue proportion extremes '
                              '(%s, %s)' % (self._Tmin, self._Tmax))
 
+        # Check Outliers Proportion
+        self._Omin, self._Omax = sorted(outliers_prop)
+        if not 0 <= self._Omin <=1 or not 0 <= self._Omax <= 1:
+            raise ValueError('wrong outliers proportion extremes '
+                             '(%s, %s)' % (self._Omin, self._Omax))
+
         # Check Dyes
         self._Dmin, self._Dmax = sorted(int(x) for x in dyes)
         if self._Dmin < 0 or self._Dmax < 0:
             raise ValueError('wrong dyes extremes (%s, %s)' % (self._Dmin,
                                                                self._Dmax))
 
-        # Check Outliers
-        self._Omin, self._Omax = sorted(outliers)
-        if self._Omin < 0 or self._Omax < 0:
-            raise ValueError('wrong outliers noise extremes '
-                             '(%s, %s)' % (self._Omin, self._Omax))
+        # Spatial Bias Probability
+        self._SB = spatial_bias
+        if not 0.0 <= self._SB <= 1.0:
+            raise ValueError('wrong spatial bias probability %s' % self._SB)
 
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
-      
+
         # Checking and filling alteration probabilities
         if alterations:
             if not cytostructure:
                 raise ValueError('missing cytostructure reference')
-                
+
             for a in alterations:
                 levels, p = zip(*alterations[a])
-                
+
                 p_sum = sum(p)
                 if p_sum > 1.0:
                     raise ValueError("sum of probabilities for "
@@ -110,7 +116,7 @@ class ArrayCGHSynth(object):
         # Fullfilled id-list (with standard "unused ids" )
         missing_num = (CHIP_LEN - len(design))
         self._id = np.asarray((design.keys() +      # unsused ids
-                               [ArrayCGH.MISSING_STRING] * missing_num)) 
+                               [ArrayCGH.MISSING_STRING] * missing_num))
 
         # Associated mask
         self._mask = np.ones(len(self._id), dtype=bool)
@@ -136,10 +142,8 @@ class ArrayCGHSynth(object):
         order = np.asarray(rnd.sample(xrange(len(self._id)), len(self._id)))
 
         # For each probe we check if it belongs to a specified alteration
-        # This step is perfomed befor shuffling to iterate only on
-        # valid probes
-        # resulting variable 'samplers' is a list of pairs
-        # (sampler_fun, probe_indexes)
+        # This step is perfomed iteratint only on valid probes
+        # Resulting variable is a list of pairs (sampler_fun, probe_indexes)
         if alterations:
             order_masked = order[~self._mask[order]]
             rev_order = np.argsort(order_masked)
@@ -185,12 +189,16 @@ class ArrayCGHSynth(object):
         return self._Tmin, self._Tmax
 
     @property
+    def outliers_prop(self):
+        return self._Omin, self._Omax
+
+    @property
     def dyes(self):
         return self._Dmin, self._Dmax
 
     @property
-    def outliers(self):
-        return self._Omin, self._Omax
+    def spatial_bias(self):
+        return self._SB
 
     def draw(self):
         # valid number of clones
@@ -218,13 +226,9 @@ class ArrayCGHSynth(object):
 
         # -- Noises ---
 
-        # * Adding outliers
-        O = np.random.uniform(0.2, 0.5)
-        r += np.abs(np.random.normal(0.0, O, size=C))
-        t += np.abs(np.random.normal(0.0, O, size=C))
-
         # * Wave effect
-        a = np.random.uniform(0., (np.log2(t) - np.log2(r)).std())
+        pos_tr = np.ma.masked_less(t/r, 0.0) # Only Positive values
+        a = np.random.uniform(0., pos_tr.std()/2.)
         kl = 2./max(self._eb[~self._mask])
 
         w = (a * np.sin(kl * np.pi * self._sb[~self._mask]) +
@@ -234,30 +238,41 @@ class ArrayCGHSynth(object):
         t += 4**w
 
         # * Spatial bias
-        # Trend position
-        mu = np.array([np.random.randint(0, self._nrow),
-                       np.random.randint(0, self._ncol)])
+        for signal in (r, t):
+            if np.random.uniform(0.0, 1.0) > self._SB:
+                # Trend position
+                mu = np.array([np.random.randint(0, self._nrow),
+                               np.random.randint(0, self._ncol)])
 
-        # Trend shape
-        var = (np.random.uniform(0, self._nrow),
-               np.random.uniform(0, self._ncol))
-        cov = np.random.uniform(-1, 1) * np.mean(var)
-        Sigma = np.array([[var[0], cov],
-                          [cov, var[1]]])
+                # Trend shape
+                var = (np.random.uniform(0, self._nrow),
+                       np.random.uniform(0, self._ncol))
+                cov = np.random.uniform(-1, 1) * np.mean(var)
+                Sigma = np.array([[var[0], cov],
+                                  [cov, var[1]]])
 
-        # Bias calculation (random peak orientation)
-        mvn = _mvnpdf(mu, Sigma)
-        bias = mvn(self._row[~self._mask],
-                   self._col[~self._mask]) * rnd.choice([1, -1])
+                # Bias calculation (random peak orientation)
+                mvn = _mvnpdf(mu, Sigma)
+                bias = mvn(self._row[~self._mask],
+                           self._col[~self._mask]) * rnd.choice([1, -1])
 
-        # Randomly applied on reference or test
-        signal = rnd.choice([r, t])
-        signal += (bias + np.random.normal(0.0, 0.1, size=C))
+                # Randomly applied on reference or test
+                signal += (bias + np.random.normal(0.0, 0.1, size=C))
 
         # * Multiplicative Dye Bias
         r *= np.random.uniform(self._Dmin, self._Dmax)
         t *= np.random.uniform(self._Dmin, self._Dmax)
-        
+
+        # * Adding outliers
+        for signal in (r, t):
+            proportion = np.random.uniform(self._Omin, self._Omax)
+            number = int(proportion * len(signal))
+            indexes = rnd.sample(range(len(signal)), number)
+
+            sigma = np.random.uniform(signal.std(), signal.std()*10.)
+
+            signal[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+
         # Thresholding!
         for signal in (r, t):
             pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
@@ -276,5 +291,4 @@ class ArrayCGHSynth(object):
                         end_base = self._eb,
                         mask = self._mask,
 
-                        trend = _mask_signal(bias, self._mask),
                         true_test_signal = true_test_signal)
