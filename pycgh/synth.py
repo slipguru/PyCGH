@@ -86,11 +86,11 @@ class ArrayCGHSynth(object):
             raise ValueError('wrong dyes extremes (%s, %s)' % (self._Dmin,
                                                                self._Dmax))
 
-        # Spatial Bias Probability
+        # Check Spatial Bias Probability
         self._SB = spatial_bias
         if not 0.0 <= self._SB <= 1.0:
             raise ValueError('wrong spatial bias probability %s' % self._SB)
-
+            
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
 
@@ -142,7 +142,7 @@ class ArrayCGHSynth(object):
         order = np.asarray(rnd.sample(xrange(len(self._id)), len(self._id)))
 
         # For each probe we check if it belongs to a specified alteration
-        # This step is perfomed iteratint only on valid probes
+        # This step is perfomed iterating only on valid probes
         # Resulting variable is a list of pairs (sampler_fun, probe_indexes)
         if alterations:
             order_masked = order[~self._mask[order]]
@@ -153,7 +153,11 @@ class ArrayCGHSynth(object):
             for i in valid_clones_indexes:
                 c, s, e = self._chr[i], self._sb[i], self._eb[i]
 
-                probe_bands = cytostructure[c][s:e]
+                try:
+                    probe_bands = cytostructure[c][s:e]
+                except KeyError:
+                    raise ValueError('cytostructure cannot include all clones '
+                                     'chromosome location')
 
                 for a in alterations:
                     chr, arm, band = _check_label(a) # split-label
@@ -175,6 +179,10 @@ class ArrayCGHSynth(object):
         self._chr = self._chr[order]
         self._sb = self._sb[order]
         self._eb = self._eb[order]
+        
+        # Assuming Male
+        self._Xindexes = (self._chr == 23)[~self._mask]
+        self._Yindexes = (self._chr == 24)[~self._mask]
 
     @property
     def geometry(self):
@@ -200,16 +208,21 @@ class ArrayCGHSynth(object):
     def spatial_bias(self):
         return self._SB
 
-    def draw(self):
+    def draw(self, gender='male'):
         # valid number of clones
         C = sum(~self._mask)
 
-        # -- Base (noisy) Reference signal --
-        ref_sigma = np.random.uniform(self._Smin, self._Smax)
-        r = np.random.normal(2.0, ref_sigma, size=C)
-
-        # -- Base (noisy) Test signal --
-        t = 2.0 * np.ones(C)
+        # -- Base signals --
+        gender = gender.lower()
+        r = 2.0 * np.ones(C)
+        if gender == 'male':
+            r[self._Xindexes] = 1.0
+            r[self._Yindexes] = 1.0
+        elif gender == 'female':
+            r[self._Yindexes] = 0.0
+        else:
+            raise ValueError('not recognized gender %s' % self._gender)
+        t = r.copy()
 
         # * Adding alterations (resampling)
         for sampler, indexes in self._samplers:
@@ -218,13 +231,15 @@ class ArrayCGHSynth(object):
 
         # * Adding tissue proportion bias
         tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
-        test_sigma = np.random.uniform(self._Smin, self._Smax)
-
-        t = ((t * tissue_prop) +
-             (   2 * (1.0 - tissue_prop)) +
-             np.random.normal(0.0, test_sigma, size=C))
-
+        t = ((t * tissue_prop) + (r * (1.0 - tissue_prop)))
+        
         # -- Noises ---
+    
+        # Signal noise
+        test_sigma = np.random.uniform(self._Smin, self._Smax)
+        ref_sigma = np.random.uniform(self._Smin, self._Smax)
+        t += np.random.normal(0.0, test_sigma, size=C)
+        r += np.random.normal(0.0, ref_sigma, size=C)
 
         # * Wave effect
         pos_tr = np.ma.masked_less(t/r, 0.0) # Only Positive values

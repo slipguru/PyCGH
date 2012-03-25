@@ -13,6 +13,8 @@ CHIP_DESIGN = {
     'P03': (1, 500, 600),
     'P04': (1, 700, 800),
     'P05': (2, 1, 200),
+    'P06': (23, 1, 100),
+    'P07': (24, 1, 100),
 }
 
 # UCSC format
@@ -21,6 +23,8 @@ chr1	0	200	p12	    gpos50
 chr1	200	400	p11.2	gneg
 chr1	400	800	p11.1	acen
 chr2	0	150	q11.2	gneg
+chrX    0       100     q1      gpos
+chrY    0       100     q1      gpos
 """
 
 NROW = NCOL = 10
@@ -185,7 +189,21 @@ def test_created_signals():
               'true_test_signal'):
         assert_equal(acgh[v][~acgh['mask']], acgh.F[v])
 
-    assert_equal(2., acgh.F['true_test_signal'])
+    acgh.sort()
+    assert_equal(2., acgh.F['true_test_signal'][:-2])
+    assert_equal(1., acgh.F['true_test_signal'][-2:])
+    
+def test_gender():
+    cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN)
+
+    acgh = cgh_src.draw()
+    acgh.sort()
+    assert_equal(1., acgh.F['true_test_signal'][-2:])
+    
+    acgh = cgh_src.draw('female')
+    acgh.sort()
+    assert_equal(2., acgh.F['true_test_signal'][-2])
+    assert_equal(0., acgh.F['true_test_signal'][-1])
 
 def test_alterated_signal():
     cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN,
@@ -193,11 +211,11 @@ def test_alterated_signal():
                             cytostructure=CytoStructure(StringIO(CytoFileContent)))
     acgh = cgh_src.draw()
     acgh.sort()
-
+    
     # Alterated
-    assert_equal('P01', acgh.F['id'][0])
     assert_equal(4., acgh.F['true_test_signal'][0])
 
     # Normal
-    assert_equal(2., acgh.F['true_test_signal'][1:])
+    assert_equal(2., acgh.F['true_test_signal'][1:-2])
+    assert_equal(1., acgh.F['true_test_signal'][-2:])
 
