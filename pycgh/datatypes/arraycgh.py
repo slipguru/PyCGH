@@ -81,15 +81,7 @@ class ArrayCGH(object):
             raise ValueError('optional parameters name duplication')
 
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
-
-        # We have to evaluate the efficency to have a record array
-        # or to have a dictionary of column vector...
-        # With a record array we can also access a Probe row... is it useful?
-        # In order to have this feature, are we sacrifying efficiency
-        # accessing columns??
-
-        # Access by probe is probably not so useful... than the rec array,
-        # could be a simple interface to with operate
+        self._rdata.sort(order=['chromosome', 'start_base'])
 
         # filtered and masked proxies
         self.F = _ProxyFilter(self.filtered)
@@ -120,9 +112,6 @@ class ArrayCGH(object):
     def filtered(self, key):
         """ Returns a copy """
         return self._rdata[~self._rdata['mask']][key]
-
-    def sort(self, order=['chromosome', 'start_base']):
-        self._rdata.sort(order=order)
 
     def __setitem__(self, key, value):
         value = np.asanyarray(value)

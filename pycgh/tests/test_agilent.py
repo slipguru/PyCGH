@@ -11,9 +11,9 @@ SAMPLE_PATH = os.path.join(PAR_PATH, 'agilent_sample.txt')
 
 def test_access_features():
     aCGH = agilent(SAMPLE_PATH)
-    assert_equal(4460, len(aCGH))
-    assert_equal(4460, len(aCGH['id']))
-    assert_equal(4233, len(aCGH.F['id']))
+    assert_equal(4456, len(aCGH))
+    assert_equal(4456, len(aCGH['id']))
+    assert_equal(4229, len(aCGH.F['id']))
 
     assert_raises(ValueError, aCGH.__getitem__, 'fake')
 
@@ -28,18 +28,18 @@ def test_fill_missing():
 
 def test_qc_cleaning():
     aCGH = agilent(SAMPLE_PATH, qc_masking=False)
-    assert_equal(4460, len(aCGH))
+    assert_equal(4456, len(aCGH))
     assert_equal(227, aCGH['mask'].sum())
 
     aCGH = agilent(SAMPLE_PATH, qc_masking=True)
-    assert_equal(4460, len(aCGH))
+    assert_equal(4456, len(aCGH))
     assert_equal(227 + 3, aCGH['mask'].sum())
 
 @dec.slow
 def test_qc_missings():
     aCGH = agilent(SAMPLE_PATH, fill_missings=True, qc_masking=True)
     assert_equal(45220, len(aCGH))
-    assert_equal(227 + 3 + (45220 - 4460), aCGH['mask'].sum())
+    assert_equal(227 + 3 + (45220 - 4456), aCGH['mask'].sum())
 
 @dec.slow
 def test_content():
@@ -71,14 +71,14 @@ def test_content():
 def test_swapping():
     aCGH_1 = agilent(SAMPLE_PATH, test_channel='r')
     aCGH_2 = agilent(SAMPLE_PATH, test_channel='g')
+    
+    ref1 = aCGH_1.F['reference_signal']
+    test1 = aCGH_1.F['test_signal']
 
-    ref1 = aCGH_1['reference_signal']
-    test1 = aCGH_1['test_signal']
+    ref2 = aCGH_2.F['reference_signal']
+    test2 = aCGH_2.F['test_signal']
 
-    ref2 = aCGH_2['reference_signal']
-    test2 = aCGH_2['test_signal']
-
-    assert_equal(ref1, test2)
+    assert_equal(ref1, test2)   
     assert_equal(test1, ref2)
 
 @dec.slow
@@ -87,7 +87,8 @@ def test_masked():
     aCGH_2 = agilent(SAMPLE_PATH, fill_missings=False)
 
     mask_1 = aCGH_1['mask']
-    mask_2 = aCGH_2['mask']
+    mask_2 = aCGH_2['mask']  
+    
     assert_equal(aCGH_1['reference_signal'][~mask_1],
                  aCGH_2['reference_signal'][~mask_2])
     assert_equal(aCGH_1.F['reference_signal'], aCGH_2.F['reference_signal'])

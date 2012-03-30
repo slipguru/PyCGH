@@ -80,13 +80,13 @@ def test_optional_inputs():
 
 def test_reading():
     aCGH = ArrayCGH(*input)
+    
+    pairs = sorted((a, b) for a, b in zip(input[5], input[6]))
+    chr, sb = zip(*pairs)
 
-    id = aCGH['id']
-    assert_equal(input[0], id)
-
-    submatrix = aCGH[['id', 'chromosome']]
-    assert_equal(input[0], submatrix['id'])
-    assert_equal(input[5], submatrix['chromosome'])
+    submatrix = aCGH[['chromosome', 'start_base']]
+    assert_equal(chr, submatrix['chromosome'])
+    assert_equal(sb, submatrix['start_base'])
 
 def test_masked_filtered():
     mask = np.array([False] * (ROW_NUM * COL_NUM))
@@ -188,32 +188,12 @@ def test_update_masked():
     aCGH['test_signal'] = mask_test
     assert_equal(mask_test, aCGH.M['test_signal'])
 
-def test_order():
-    # Call this in-place ordering may be useful before saving the data
-    # or before the estraction
-    aCGH = ArrayCGH(*input)
-
-    chr = aCGH['chromosome'].copy()
-    idx = np.argsort(chr)
-    aCGH.sort('chromosome')
-
-    assert_equal(chr[idx], aCGH['chromosome'])
-
 def test_default_order():
     # Standard input is not sorted by chromosome and bases
     aCGH = ArrayCGH(*input)
-    chr = aCGH['chromosome'].copy()
-    aCGH.sort('chromosome')
-
-    assert_(not np.allclose(chr, aCGH['chromosome']))
-
-    # Default sorting, sorts by chromosome and start_base
-    aCGH = ArrayCGH(*input)
     input_pairs = [tuple(x) for x in aCGH[['chromosome', 'start_base']]]
 
-    aCGH.sort()
     input_pairs.sort()
-
     assert_equal(input_pairs,
                  [tuple(x) for x in aCGH[['chromosome', 'start_base']]])
 
@@ -245,24 +225,24 @@ Control , 2, 2, 10, 20, --, --, --, 1, 1
 
 def test_loading_file():
     aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent))
-    assert_equal([1, 1, 2, 2], aCGH['row'])
-    assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
+    assert_equal([2, 1, 1, 2], aCGH['row'])
+    assert_equal(['Control', 'Probe01', 'Probe02', 'Probe 03'], aCGH['id'])
 
-    assert_equal([1, 2, 23, -1], aCGH['chromosome'])
-    assert_equal([10., 10., 10., np.nan], aCGH['reference_signal'])
+    assert_equal([-1, 1, 2, 23], aCGH['chromosome'])
+    assert_equal([np.nan, 10., 10., 10.], aCGH['reference_signal'])
     
     # Automatic truncated
-    assert_equal([10, 10, 10000, -1], aCGH['start_base'])
-    assert_equal([10, 20, 20, -1], aCGH['end_base'])
+    assert_equal([-1, 10, 10, 10000], aCGH['start_base'])
+    assert_equal([-1, 10, 20, 20], aCGH['end_base'])
 
 def test_loading_fields():
     aCGH = ArrayCGH.loadtxt(StringIO(aCGHContentNotStandard),
-                         fields={'id':'ProbeID',
-                                 'reference_signal':'Ref',
-                                 'test_signal': 'Test',
-                                 'flag': 'myflag'}) # Renaming
-    assert_equal([0, 0, 0, 1], aCGH['mask'])
-    assert_equal(['Probe01', 'Probe02', 'Probe 03', 'Control'], aCGH['id'])
+                            fields={'id':'ProbeID',
+                                    'reference_signal':'Ref',
+                                    'test_signal': 'Test',
+                                    'flag': 'myflag'}) # Renaming
+    assert_equal([1, 0, 0, 0], aCGH['mask'])
+    assert_equal(['Control', 'Probe01', 'Probe02', 'Probe 03'], aCGH['id'])
 
 def test_savetxt():   
     aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
