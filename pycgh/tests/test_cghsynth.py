@@ -45,7 +45,6 @@ def test_order():
     acgh = cgh_src.draw()
 
     # Sorting by chromosome order
-    acgh.sort()
     CHIP_SORTED = sorted(CHIP_DESIGN.items())
 
     assert_equal([x[0] for x in CHIP_SORTED], acgh.F['id'])
@@ -81,8 +80,8 @@ def test_parameters_noise():
     assert_equal((0.1, 0.2), cgh_src.noise)
 
     # Not tuple
-    assert_raises(TypeError, ArrayCGHSynth, (NROW, NCOL), CHIP_DESIGN,
-                                            noise=0.2)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=0.2)
+    assert_equal((0.2, 0.2), cgh_src.noise)                                           
 
     # Sorting
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=(0.5, 0.2))
@@ -91,94 +90,109 @@ def test_parameters_noise():
     # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
                   (NROW, NCOL), CHIP_DESIGN, noise=(-0.5, 0.2))
+    assert_raises(ValueError, ArrayCGHSynth,
+                  (NROW, NCOL), CHIP_DESIGN, noise=-0.5)
 
 def test_parameter_tissue_proportion():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, tissue_prop=(0.2, 0.4))
-    assert_equal((0.2, 0.4), cgh_src.tissue_prop)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            tissue_proportion=(0.2, 0.4))
+    assert_equal((0.2, 0.4), cgh_src.tissue_proportion)
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((0.3, 0.7), cgh_src.tissue_prop)
+
 
     # Not tuple
-    assert_raises(TypeError, ArrayCGHSynth, (NROW, NCOL), CHIP_DESIGN,
-                                            tissue_prop=0.2)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            tissue_proportion=0.2)
+    assert_equal((0.2, 0.2), cgh_src.tissue_proportion)
+                                            
 
     # Sorting
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, tissue_prop=(0.5, 0.2))
-    assert_equal((0.2, 0.5), cgh_src.tissue_prop)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            tissue_proportion=(0.5, 0.2))
+    assert_equal((0.2, 0.5), cgh_src.tissue_proportion)
 
     # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, tissue_prop=(-0.5, 0.2))
+                  (NROW, NCOL), CHIP_DESIGN, tissue_proportion=(-0.5, 0.2))
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, tissue_prop=(0.5, 1.01))
+                  (NROW, NCOL), CHIP_DESIGN, tissue_proportion=(0.5, 1.01))
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, tissue_prop=(1.1, 1.))
+                  (NROW, NCOL), CHIP_DESIGN, tissue_proportion=(1.1, 1.))
+    assert_raises(ValueError, ArrayCGHSynth,
+                  (NROW, NCOL), CHIP_DESIGN, tissue_proportion=-0.5)
 
 def test_parameter_outliers_proportion():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, outliers_prop=(0.2, 0.4))
-    assert_equal((0.2, 0.4), cgh_src.outliers_prop)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            outliers_proportion=(0.2, 0.4))
+    assert_equal((0.2, 0.4), cgh_src.outliers_proportion)
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((0.001, 0.002), cgh_src.outliers_prop)
+    assert_equal((0.001, 0.002), cgh_src.outliers_proportion)
 
     # Not tuple
-    assert_raises(TypeError, ArrayCGHSynth, (NROW, NCOL), CHIP_DESIGN,
-                                            outliers_prop=0.2)
-
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, outliers_proportion=0.2)
+    assert_equal((0.2, 0.2), cgh_src.outliers_proportion)
+                                            
     # Sorting
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, outliers_prop=(0.5, 0.2))
-    assert_equal((0.2, 0.5), cgh_src.outliers_prop)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            outliers_proportion=(0.5, 0.2))
+    assert_equal((0.2, 0.5), cgh_src.outliers_proportion)
 
     # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_prop=(-0.5, 0.2))
+                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(-0.5, 0.2))
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_prop=(0.5, 1.01))
+                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(0.5, 1.01))
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_prop=(1.1, 1.))
+                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(1.1, 1.))
+    assert_raises(ValueError, ArrayCGHSynth,
+                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=1.1)
 
 def test_parameters_dyes():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dyes=(50, 100))
-    assert_equal((50, 100), cgh_src.dyes)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dye_intensity=(50, 100))
+    assert_equal((50, 100), cgh_src.dye_intensity)
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((100, 500), cgh_src.dyes)
+    assert_equal((100, 500), cgh_src.dye_intensity)
 
     # Not tuple
-    assert_raises(TypeError, ArrayCGHSynth, (NROW, NCOL), CHIP_DESIGN,
-                                            dyes=0.2)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dye_intensity=2)
+    assert_equal((2, 2), cgh_src.dye_intensity)
+                                            
 
     # Sorting
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dyes=(500, 200))
-    assert_equal((200, 500), cgh_src.dyes)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dye_intensity=(500, 200))
+    assert_equal((200, 500), cgh_src.dye_intensity)
 
-    ## Bad tuple
+    # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, dyes=(-500, 200))
+                  (NROW, NCOL), CHIP_DESIGN, dye_intensity=(-500, 200))
 
     # Truncated
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dyes=(50.30, 2.5))
-    assert_equal((2, 50), cgh_src.dyes)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            dye_intensity=(50.30, 2.5))
+    assert_equal((2, 50), cgh_src.dye_intensity)
 
 def test_parameters_spatial_bias():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, spatial_bias=0.7)
-    assert_equal(0.7, cgh_src.spatial_bias)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
+                            spatial_bias_threshold=0.7)
+    assert_equal(0.7, cgh_src.spatial_bias_threshold)
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal(0.5, cgh_src.spatial_bias)
+    assert_equal(0.5, cgh_src.spatial_bias_threshold)
 
     # Not float
     assert_raises(TypeError, ArrayCGHSynth, (NROW, NCOL), CHIP_DESIGN,
-                                            spatial_bias=(0.2, 0.5))
+                                            spatial_bias_threshold=(0.2, 0.5))
 
     # Bad float
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, spatial_bias=-0.5)
+                  (NROW, NCOL), CHIP_DESIGN, spatial_bias_threshold=-0.5)
 
 def test_created_signals():
     cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN)
@@ -189,7 +203,6 @@ def test_created_signals():
               'true_test_signal'):
         assert_equal(acgh[v][~acgh['mask']], acgh.F[v])
 
-    acgh.sort()
     assert_equal(2., acgh.F['true_test_signal'][:-2])
     assert_equal(1., acgh.F['true_test_signal'][-2:])
     
@@ -197,11 +210,9 @@ def test_gender():
     cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN)
 
     acgh = cgh_src.draw()
-    acgh.sort()
     assert_equal(1., acgh.F['true_test_signal'][-2:])
     
     acgh = cgh_src.draw('female')
-    acgh.sort()
     assert_equal(2., acgh.F['true_test_signal'][-2])
     assert_equal(0., acgh.F['true_test_signal'][-1])
 
@@ -210,7 +221,6 @@ def test_alterated_signal():
                             alterations={'1p12':[(4, 1.0)]},
                             cytostructure=CytoStructure(StringIO(CytoFileContent)))
     acgh = cgh_src.draw()
-    acgh.sort()
     
     # Alterated
     assert_equal(4., acgh.F['true_test_signal'][0])

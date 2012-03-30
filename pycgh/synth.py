@@ -48,13 +48,22 @@ def _mvnpdf(mu, cov):
 
     return mvnpdf
 
+def _ensure_tuple(value):
+    #operator.isNumberType(obj) py2.6
+    import numbers
+    if isinstance(value, numbers.Number):
+        return (value, value)
+    return value
+
 class ArrayCGHSynth(object):
 
     def __init__(self, geometry, design,
                  alterations=None, cytostructure=None,
-                 noise=(0.1, 0.2), tissue_prop=(0.3, 0.7),
-                 outliers_prop=(0.001, 0.002),
-                 dyes=(100, 500), spatial_bias=0.5):
+                 tissue_proportion=(0.3, 0.7),
+                 noise=(0.1, 0.2),
+                 dye_intensity=(100, 500), 
+                 outliers_proportion=(0.001, 0.002),
+                 spatial_bias_threshold=0.5):
 
         # Check Geometry
         self._nrow, self._ncol = (int(x) for x in geometry)
@@ -63,33 +72,35 @@ class ArrayCGHSynth(object):
                                                           self._ncol))
 
         # Check Sigma
-        self._Smin, self._Smax = sorted(noise)
+        self._Smin, self._Smax = sorted(_ensure_tuple(noise))
         if self._Smin < 0 or self._Smax < 0:
             raise ValueError('wrong noise extremes (%s, %s)' % (self._Smin,
                                                                 self._Smax))
 
         # Check Tissue Proportion
-        self._Tmin, self._Tmax = sorted(tissue_prop)
+        self._Tmin, self._Tmax = sorted(_ensure_tuple(tissue_proportion))
         if not 0 <= self._Tmin <=1 or not 0 <= self._Tmax <= 1:
             raise ValueError('wrong tissue proportion extremes '
                              '(%s, %s)' % (self._Tmin, self._Tmax))
 
         # Check Outliers Proportion
-        self._Omin, self._Omax = sorted(outliers_prop)
+        self._Omin, self._Omax = sorted(_ensure_tuple(outliers_proportion))
         if not 0 <= self._Omin <=1 or not 0 <= self._Omax <= 1:
             raise ValueError('wrong outliers proportion extremes '
                              '(%s, %s)' % (self._Omin, self._Omax))
 
         # Check Dyes
-        self._Dmin, self._Dmax = sorted(int(x) for x in dyes)
+        self._Dmin, self._Dmax = sorted(int(x) for x in
+                                        _ensure_tuple(dye_intensity))
         if self._Dmin < 0 or self._Dmax < 0:
             raise ValueError('wrong dyes extremes (%s, %s)' % (self._Dmin,
                                                                self._Dmax))
 
         # Check Spatial Bias Probability
-        self._SB = spatial_bias
+        self._SB = spatial_bias_threshold
         if not 0.0 <= self._SB <= 1.0:
-            raise ValueError('wrong spatial bias probability %s' % self._SB)
+            raise ValueError('wrong spatial bias probability threshold '
+                             '%s' % self._SB)
             
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
@@ -193,22 +204,22 @@ class ArrayCGHSynth(object):
         return self._Smin, self._Smax
 
     @property
-    def tissue_prop(self):
+    def tissue_proportion(self):
         return self._Tmin, self._Tmax
 
     @property
-    def outliers_prop(self):
+    def outliers_proportion(self):
         return self._Omin, self._Omax
 
     @property
-    def dyes(self):
+    def dye_intensity(self):
         return self._Dmin, self._Dmax
 
     @property
-    def spatial_bias(self):
+    def spatial_bias_threshold(self):
         return self._SB
 
-    def draw(self, gender='male'):
+    def draw(self, gender='male'):        
         # valid number of clones
         C = sum(~self._mask)
 
@@ -227,67 +238,73 @@ class ArrayCGHSynth(object):
         # * Adding alterations (resampling)
         for sampler, indexes in self._samplers:
             t[indexes] = sampler(np.random.random())
-        true_test_signal = _mask_signal(t, self._mask)  # Saving true Signal
-
+        
+        # Saving true Signals
+        true_test_signal = _mask_signal(t, self._mask)  
+        true_reference_signal = _mask_signal(r, self._mask)
+        
+        # ----- Noises ----- #
+        
         # * Adding tissue proportion bias
         tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
         t = ((t * tissue_prop) + (r * (1.0 - tissue_prop)))
-        
-        # -- Noises ---
-    
-        # Signal noise
-        test_sigma = np.random.uniform(self._Smin, self._Smax)
-        ref_sigma = np.random.uniform(self._Smin, self._Smax)
-        t += np.random.normal(0.0, test_sigma, size=C)
-        r += np.random.normal(0.0, ref_sigma, size=C)
-
+               
         # * Wave effect
-        pos_tr = np.ma.masked_less(t/r, 0.0) # Only Positive values
-        a = np.random.uniform(0., pos_tr.std()/2.)
+        a = np.random.uniform(0.0, 0.1)
         kl = 2./max(self._eb[~self._mask])
 
         w = (a * np.sin(kl * np.pi * self._sb[~self._mask]) +
-             np.random.normal(0.0, (a/2.)**2, size=C))
+             np.random.normal(0.0, a, size=C))
 
-        r += 2**w
         t += 4**w
+        r += 2**w
 
         # * Spatial bias
         for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) > self._SB:
+            if np.random.uniform(0.0, 1.0) > 0.0:#self._SB:
                 # Trend position
                 mu = np.array([np.random.randint(0, self._nrow),
                                np.random.randint(0, self._ncol)])
 
-                # Trend shape
+                # Shape
                 var = (np.random.uniform(0, self._nrow),
                        np.random.uniform(0, self._ncol))
-                cov = np.random.uniform(-1, 1) * np.mean(var)
-                Sigma = np.array([[var[0], cov],
-                                  [cov, var[1]]])
 
+                # Rotation                
+                theta = np.random.uniform(0.0, 2 * np.pi)
+                U = np.array([[np.cos(theta), np.sin(theta)], 
+                              [-np.sin(theta), np.cos(theta)]])
+                
                 # Bias calculation (random peak orientation)
+                Sigma = np.dot(np.dot(U, np.diag(var))  , U.T)
                 mvn = _mvnpdf(mu, Sigma)
                 bias = mvn(self._row[~self._mask],
                            self._col[~self._mask]) * rnd.choice([1, -1])
 
-                # Randomly applied on reference or test
                 signal += (bias + np.random.normal(0.0, 0.1, size=C))
 
-        # * Multiplicative Dye Bias
-        r *= np.random.uniform(self._Dmin, self._Dmax)
-        t *= np.random.uniform(self._Dmin, self._Dmax)
+        # * Signal intensity (Dye Bias and Noise)
+        r_dye = np.random.uniform(self._Dmin, self._Dmax)
+        t_dye = np.random.uniform(self._Dmin, self._Dmax)
+                       
+        r_noise = np.random.uniform(self._Smin * (r_dye / 2.0),
+                                    self._Smax * (r_dye / 2.0))
+        t_noise = np.random.uniform(self._Smin * (t_dye / 2.0),
+                                    self._Smax * (t_dye / 2.0))        
+        
+        r *= np.random.normal(r_dye, r_noise, size=C)
+        t *= np.random.normal(t_dye, t_noise, size=C)
 
         # * Adding outliers
         for signal in (r, t):
             proportion = np.random.uniform(self._Omin, self._Omax)
             number = int(proportion * len(signal))
             indexes = rnd.sample(range(len(signal)), number)
-
+        
             sigma = np.random.uniform(signal.std(), signal.std()*10.)
-
+        
             signal[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
-
+            
         # Thresholding!
         for signal in (r, t):
             pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
@@ -306,4 +323,6 @@ class ArrayCGHSynth(object):
                         end_base = self._eb,
                         mask = self._mask,
 
-                        true_test_signal = true_test_signal)
+                        wave = _mask_signal(w, self._mask),
+                        true_test_signal = true_test_signal,
+                        true_reference_signal = true_reference_signal)
