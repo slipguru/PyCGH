@@ -35,8 +35,6 @@ if SYNTH:
     synth_acgh['log2'] = global_median(synth_acgh)
     synth_acgh['true_log2'] = (np.log2(synth_acgh.F['true_test_signal']) -
                                np.log2(synth_acgh.F['true_reference_signal']))
-
-    synth_acgh.sort()
     
     pl.figure()
     coords, cidx = profile(synth_acgh, signal=synth_acgh.F['log2'],

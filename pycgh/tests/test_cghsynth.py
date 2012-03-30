@@ -77,7 +77,7 @@ def test_parameters_noise():
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((0.1, 0.2), cgh_src.noise)
+    assert_equal((0.05, 0.1), cgh_src.noise)
 
     # Not tuple
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=0.2)

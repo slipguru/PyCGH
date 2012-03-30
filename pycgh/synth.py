@@ -60,7 +60,7 @@ class ArrayCGHSynth(object):
     def __init__(self, geometry, design,
                  alterations=None, cytostructure=None,
                  tissue_proportion=(0.3, 0.7),
-                 noise=(0.1, 0.2),
+                 noise=(0.05, 0.1),
                  dye_intensity=(100, 500), 
                  outliers_proportion=(0.001, 0.002),
                  spatial_bias_threshold=0.5):
@@ -261,7 +261,7 @@ class ArrayCGHSynth(object):
 
         # * Spatial bias
         for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) > 0.0:#self._SB:
+            if np.random.uniform(0.0, 1.0) > self._SB:
                 # Trend position
                 mu = np.array([np.random.randint(0, self._nrow),
                                np.random.randint(0, self._ncol)])
@@ -274,7 +274,7 @@ class ArrayCGHSynth(object):
                 theta = np.random.uniform(0.0, 2 * np.pi)
                 U = np.array([[np.cos(theta), np.sin(theta)], 
                               [-np.sin(theta), np.cos(theta)]])
-                
+                               
                 # Bias calculation (random peak orientation)
                 Sigma = np.dot(np.dot(U, np.diag(var))  , U.T)
                 mvn = _mvnpdf(mu, Sigma)
@@ -287,10 +287,8 @@ class ArrayCGHSynth(object):
         r_dye = np.random.uniform(self._Dmin, self._Dmax)
         t_dye = np.random.uniform(self._Dmin, self._Dmax)
                        
-        r_noise = np.random.uniform(self._Smin * (r_dye / 2.0),
-                                    self._Smax * (r_dye / 2.0))
-        t_noise = np.random.uniform(self._Smin * (t_dye / 2.0),
-                                    self._Smax * (t_dye / 2.0))        
+        r_noise = np.random.uniform(self._Smin * r_dye, self._Smax * r_dye)
+        t_noise = np.random.uniform(self._Smin * t_dye, self._Smax * t_dye)        
         
         r *= np.random.normal(r_dye, r_noise, size=C)
         t *= np.random.normal(t_dye, t_noise, size=C)
@@ -323,6 +321,5 @@ class ArrayCGHSynth(object):
                         end_base = self._eb,
                         mask = self._mask,
 
-                        wave = _mask_signal(w, self._mask),
                         true_test_signal = true_test_signal,
                         true_reference_signal = true_reference_signal)
