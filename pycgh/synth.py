@@ -41,6 +41,7 @@ def _mvnpdf(mu, cov):
 
     # Precalculation
     covI = la.inv(cov)
+    #factor = 1 / ((2*np.pi) * np.sqrt(la.det(cov)))
 
     def mvnpdf(x, y):
         dev = (np.c_[x, y] - mu)
@@ -61,7 +62,7 @@ class ArrayCGHSynth(object):
                  alterations=None, cytostructure=None,
                  tissue_proportion=(0.3, 0.7),
                  noise=(0.05, 0.1),
-                 dye_intensity=(100, 500),
+                 dye_intensity=(50, 300),
                  outliers_proportion=(0.001, 0.002),
                  spatial_bias_threshold=0.5):
 
@@ -242,58 +243,69 @@ class ArrayCGHSynth(object):
         # Saving true Signals
         true_test_signal = _mask_signal(t, self._mask)
         true_reference_signal = _mask_signal(r, self._mask)
-
-        # ----- Noises ----- #
-
+        
         # * Adding tissue proportion bias
         tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
         t = ((t * tissue_prop) + (r * (1.0 - tissue_prop)))
+        
+        # * Signal intensity (Dye Bias)
+        r_dye = np.random.uniform(self._Dmin, self._Dmax)
+        t_dye = r_dye + np.random.uniform(-r_dye/3., r_dye/3.)
+        
+        SNRmin, SNRmax = (20.0, 25.0)  #default value
+        SNR = np.random.uniform(SNRmin, SNRmax)
+        
+        r_noise = (2*r_dye) / SNR
+        t_noise = (2*t_dye) / SNR
+        
+        r *= (r_dye + np.random.normal(0.0, r_noise, size=C))
+        t *= (t_dye + np.random.normal(0.0, t_noise, size=C))
 
         # * Spatial bias
-        for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) > 2.0:#self._SB:
-                # Trend position
-                mu = np.array([np.random.randint(0, self._nrow),
-                               np.random.randint(0, self._ncol)])
-
-                # Shape
-                vars = (np.random.uniform(0, self._nrow),
-                        np.random.uniform(0, self._ncol))
-
-                # Rotation
-                theta = np.random.uniform(0.0, 2 * np.pi)
-                U = np.array([[np.cos(theta), np.sin(theta)],
-                              [-np.sin(theta), np.cos(theta)]])
-
-                # Bias calculation (random peak orientation)
-                Sigma = np.dot(np.dot(U, np.diag(vars)), U.T)
-                mvn = _mvnpdf(mu, Sigma)
-                bias = mvn(self._row[~self._mask],
-                           self._col[~self._mask]) * rnd.choice([1, -1])
-
-                signal += (bias + np.random.normal(0.0, 0.1, size=C))
-
-        # * Signal intensity (Dye Bias and Noise)
-        r_dye = np.random.uniform(self._Dmin, self._Dmax)
-        t_dye = np.random.uniform(self._Dmin, self._Dmax)
-
-        SNRmin, SNRmax = (10.0, 10.0)  #default value
-        SNR = np.random.uniform(SNRmin, SNRmax)
-        print SNR
-
-        r_noise = r_dye / SNR
-        t_noise = t_dye / SNR
-
-        r *= np.random.normal(r_dye, r_noise, size=C)
-        t *= np.random.normal(t_dye, t_noise, size=C)
+        #for signal, dye in ((r, r_dye), (t, t_dye)):
+        #    if np.random.uniform(0.0, 1.0) < self._SB:
+        #        # Trend position
+        #        mu = np.array([np.random.randint(0, self._nrow),
+        #                       np.random.randint(0, self._ncol)])
+        #
+        #        # Shape
+        #        vars = (np.random.uniform(0, self._nrow),
+        #                np.random.uniform(0, self._ncol))
+        #
+        #        # Rotation
+        #        theta = np.random.uniform(0.0, 2 * np.pi)
+        #        U = np.array([[np.cos(theta), np.sin(theta)],
+        #                      [-np.sin(theta), np.cos(theta)]])
+        #
+        #        # Bias calculation (random peak orientation)
+        #        Sigma = np.dot(np.dot(U, np.diag(vars)), U.T)
+        #        mvn = _mvnpdf(mu, Sigma)
+        #        bias = mvn(self._row[~self._mask],
+        #                   self._col[~self._mask])
+        #
+        #        s = np.random.normal(0.0, dye*0.5)
+        #        signal +=  (s * bias)
+        #        
+        #        print s
 
         # * Wave effect
-        a = np.random.uniform(0.0, 0.025) # TODO: MAX A AS PARAMETER!!
-        kl = 8./max(self._eb[~self._mask])
-        w = a * np.sin(kl * np.pi * self._sb[~self._mask])
+        #a = np.random.uniform(0.0, 0.025) # TODO: MAX A AS PARAMETER!!
+        #kl = 8./max(self._eb[~self._mask])
+        #w = a * np.sin(kl * np.pi * self._sb[~self._mask])
+        #        
+        #r *= 2**w
+        #t *= 4**w
+
+        # * Signal Noise
+        #SNRmin, SNRmax = (10.0, 15.0)  #default value
+        #SNR = np.random.uniform(SNRmin, SNRmax)
         #
-        #t *= 4**(w + np.random.normal(0.0, a, size=C))
-        #r *= 2**(w + np.random.normal(0.0, a, size=C))
+        #r_noise = (2*r_dye) / SNR
+        #t_noise = (2*t_dye) / SNR
+        #
+        #print r_noise, t_noise, SNR
+        #r += np.random.normal(0.0, r_noise, size=C)
+        #t += np.random.normal(0.0, t_noise, size=C)
 
         ## * Adding outliers
         #for signal in (r, t):
@@ -304,11 +316,11 @@ class ArrayCGHSynth(object):
         #    sigma = np.random.uniform(signal.std(), signal.std()*10.)
         #
         #    signal[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
-        #
-        ## Thresholding!
-        #for signal in (r, t):
-        #    pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
-        #    np.clip(signal, pos.min(), np.inf, out=signal)   # In-place
+        
+        # Thresholding!
+        for signal in (r, t):
+            pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
+            np.clip(signal, pos.min(), np.inf, out=signal)   # In-place
 
         # -- Producing final signal --
         return ArrayCGH(id = self._id,
@@ -323,6 +335,6 @@ class ArrayCGHSynth(object):
                         end_base = self._eb,
                         mask = self._mask,
 
-                        wave = _mask_signal(w, self._mask),
+                        #wave = _mask_signal(w, self._mask),
                         true_test_signal = true_test_signal,
                         true_reference_signal = true_reference_signal)

@@ -25,9 +25,11 @@ if SYNTH:
     print 'Creating data source'
     acgh_source = ArrayCGHSynth((430, 103), CHIP_DESIGN,
                                 {'17': [(4, 0.8), (2, 0.2)],
-                                 '12': [(4, 0.8), (2, 0.2)],
+                                 '12': [(2, 0.8), (2, 0.2)],
                                  '2p': [(1, 0.8), (2, 0.2)],
-                                 '1q': [(1, 0.8)]}, cs)
+                                 '1q': [(1, 0.8)]}, cs,
+                                tissue_proportion = 1.0,
+                                dye_intensity = 100)
     print 'Created.'
 
     print 'Drawing synthetic CGH (median normalization, wrt X)'
@@ -41,7 +43,7 @@ if SYNTH:
                            segmentation=synth_acgh.F['true_log2'])
 
     pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
-    pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
+    #pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
     pl.title('Synthetic')
 
     pl.figure()
@@ -52,20 +54,19 @@ if SYNTH:
 
     pl.figure()
     spatial(synth_acgh, signal=synth_acgh.F['log2'], median_center=True)
-
-    chrX = synth_acgh.F['chromosome'] == 23
-    print synth_acgh.F['log2'][chrX].mean()
-    print synth_acgh.F['log2'][chrX].std()
-
 else:
     print 'Reading Real CGH (median normalization wrt X)'
+    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/1562_G3.txt'
+    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/1026_G2.txt'
     PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/10003_G1_Cologne.txt'
+    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/3383_G3_Cologne.txt'
     real_acgh = agilent(PATH, test_channel='g',
                         ucsc_mapping='data/ucsc/hg19/agilentCgh4x44k.txt.gz')
     real_acgh['log2'] = global_median(real_acgh)
 
     pl.figure()
-    profile(real_acgh, signal=real_acgh.F['log2'])
+    profile(real_acgh, signal=real_acgh.F['log2'],
+            segmentation=signal.medfilt(real_acgh.F['log2'], 101))
     pl.title('10003_G1_Cologne')
 
     pl.figure()
@@ -73,6 +74,10 @@ else:
 
     pl.figure()
     profile(real_acgh, signal=real_acgh.F['reference_signal'])
+    
+    chrX = real_acgh.F['chromosome'] == 23
+    print real_acgh.F['test_signal'][chrX].mean()
+    print real_acgh.F['reference_signal'][chrX].mean()
 
 pl.show()
 
