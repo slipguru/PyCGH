@@ -10,7 +10,8 @@ from pycgh.readers import agilent, ucsc_mapping
 
 def global_median(acgh):
     chrX = acgh.F['chromosome'] == 23
-    log2 = np.log2(acgh.F['test_signal']) - np.log2(acgh.F['reference_signal'])
+    #log2 = np.log2(acgh.F['test_signal']) - np.log2(acgh.F['reference_signal'])
+    log2 = np.log2(acgh.F['test_signal'] / acgh.F['reference_signal'])
     log2 -= np.median(log2[chrX]) # global median normalization
     return log2 # automatic defiltering
 
@@ -24,12 +25,10 @@ if SYNTH:
 
     print 'Creating data source'
     acgh_source = ArrayCGHSynth((430, 103), CHIP_DESIGN,
-                                {'17': [(4, 0.8), (2, 0.2)],
+                                {'17q': [(4, 0.8), (2, 0.2)],
                                  '12': [(2, 0.8), (2, 0.2)],
                                  '2p': [(1, 0.8), (2, 0.2)],
-                                 '1q': [(1, 0.8)]}, cs,
-                                tissue_proportion = 1.0,
-                                dye_intensity = 100)
+                                 '1q': [(1, 0.8)]}, cs)
     print 'Created.'
 
     print 'Drawing synthetic CGH (median normalization, wrt X)'
@@ -43,69 +42,51 @@ if SYNTH:
                            segmentation=synth_acgh.F['true_log2'])
 
     pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
-    #pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
+    pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
     pl.title('Synthetic')
 
     pl.figure()
-    profile(synth_acgh, signal=synth_acgh.F['test_signal'])
+    profile(synth_acgh, signal=synth_acgh.F['test_signal'],
+            segmentation=signal.medfilt(synth_acgh.F['test_signal'], 101))
+    a = pl.axis()
 
     pl.figure()
-    profile(synth_acgh, signal=synth_acgh.F['reference_signal'])
+    profile(synth_acgh, signal=synth_acgh.F['reference_signal'],
+            segmentation=signal.medfilt(synth_acgh.F['reference_signal'], 101))
+    pl.axis(a)
 
     pl.figure()
     spatial(synth_acgh, signal=synth_acgh.F['log2'], median_center=True)
 else:
+    import os
+    PATH = '/home/sabba/Phd/Tonini_IST/Dati/GEO/Samples/'
+    #PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/'
+
     print 'Reading Real CGH (median normalization wrt X)'
-    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/1562_G3.txt'
-    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/1026_G2.txt'
-    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/10003_G1_Cologne.txt'
-    PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/3383_G3_Cologne.txt'
-    real_acgh = agilent(PATH, test_channel='g',
+    PATH = os.path.join(PATH, '1562_G3.txt')
+    #PATH = os.path.join(PATH, '1026_G2.txt')
+    #PATH = os.path.join(PATH, '10003_G1_Cologne.txt')
+    #PATH = os.path.join(PATH, '3383_G3_Cologne.txt')
+    real_acgh = agilent(PATH, test_channel='r',
                         ucsc_mapping='data/ucsc/hg19/agilentCgh4x44k.txt.gz')
     real_acgh['log2'] = global_median(real_acgh)
 
     pl.figure()
     profile(real_acgh, signal=real_acgh.F['log2'],
             segmentation=signal.medfilt(real_acgh.F['log2'], 101))
-    pl.title('10003_G1_Cologne')
+    pl.title('Real')
 
     pl.figure()
-    profile(real_acgh, signal=real_acgh.F['test_signal'])
+    profile(real_acgh, signal=real_acgh.F['test_signal'],
+            segmentation=signal.medfilt(real_acgh.F['test_signal'], 101))
+    a = pl.axis()
 
     pl.figure()
-    profile(real_acgh, signal=real_acgh.F['reference_signal'])
-    
-    chrX = real_acgh.F['chromosome'] == 23
-    print real_acgh.F['test_signal'][chrX].mean()
-    print real_acgh.F['reference_signal'][chrX].mean()
+    profile(real_acgh, signal=real_acgh.F['reference_signal'],
+            segmentation=signal.medfilt(real_acgh.F['reference_signal'], 101))
+    pl.axis(a)
 
-pl.show()
+    pl.figure()
+    spatial(real_acgh, signal=real_acgh.F['log2'], median_center=True)
 
-#
-#
-
-#
-#pl.figure()
-#profile(acgh, acgh.F['reference_signal'])
-#
-#pl.figure()
-#acgh.sort()
-#coords, cidx = profile(acgh, acgh.F['log2'],
-#                       segmentation=signal.medfilt(acgh.F['log2'], 101))
-#
-# # acgh already sorted
-#pl.plot(coords, np.log2(acgh.F['true_test_signal'] / 2.), '-')
-#
-#pl.figure()
-#signal = (np.log2(acgh.F['test_signal']) -
-#          np.log2(acgh.F['reference_signal']))
-#signal = array_trend(signal, acgh.F['col'], acgh.F['row'])
-#spatial(acgh, signal=signal)#acgh.F['trend'])
-#
-#pl.figure()
-#spatial(acgh, signal=acgh.F['trend'])
-#
-#pl.figure()
-#spatial(acgh, median_center=True)
-#
 pl.show()
