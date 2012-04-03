@@ -10,8 +10,7 @@ from pycgh.readers import agilent, ucsc_mapping
 
 def global_median(acgh):
     chrX = acgh.F['chromosome'] == 23
-    #log2 = np.log2(acgh.F['test_signal']) - np.log2(acgh.F['reference_signal'])
-    log2 = np.log2(acgh.F['test_signal'] / acgh.F['reference_signal'])
+    log2 = np.log2(acgh.F['test_signal']) - np.log2(acgh.F['reference_signal'])
     log2 -= np.median(log2[chrX]) # global median normalization
     return log2 # automatic defiltering
 
@@ -32,7 +31,7 @@ if SYNTH:
     print 'Created.'
 
     print 'Drawing synthetic CGH (median normalization, wrt X)'
-    synth_acgh = acgh_source.draw()
+    synth_acgh = acgh_source.draw()    
     synth_acgh['log2'] = global_median(synth_acgh)
     synth_acgh['true_log2'] = (np.log2(synth_acgh.F['true_test_signal']) -
                                np.log2(synth_acgh.F['true_reference_signal']))
@@ -41,8 +40,8 @@ if SYNTH:
     coords, cidx = profile(synth_acgh, signal=synth_acgh.F['log2'],
                            segmentation=synth_acgh.F['true_log2'])
 
-    pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
-    pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
+    #pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
+    #pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
     pl.title('Synthetic')
 
     pl.figure()

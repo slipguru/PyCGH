@@ -262,50 +262,43 @@ class ArrayCGHSynth(object):
                 # Trend position
                 mu = np.array([np.random.randint(0, self._nrow),
                                np.random.randint(0, self._ncol)])
-
+        
                 # Shape
                 vars = (np.random.uniform(0, self._nrow),
                         np.random.uniform(0, self._ncol))
-
+        
                 # Rotation
                 theta = np.random.uniform(0.0, 2 * np.pi)
                 U = np.array([[np.cos(theta), np.sin(theta)],
                               [-np.sin(theta), np.cos(theta)]])
-
+        
                 # Bias calculation (random peak orientation)
                 Sigma = np.dot(np.dot(U, np.diag(vars)), U.T)
                 mvn = _mvnpdf(mu, Sigma)
                 bias = mvn(self._row[~self._mask],
                            self._col[~self._mask])
-
+        
                 # Random intensity
                 signal += (np.random.uniform(0.0, 1.0) * bias)
-
+        
         # * Wave effect
         a = np.random.uniform(self._Wmin, self._Wmax)
         kl = 8./max(self._eb[~self._mask])
         w = a * np.sin(kl * np.pi * self._sb[~self._mask])
-
+        
         r *= 2**w
         t *= 4**w
 
-        print a
-
         # * Signal intensity (Dye Bias + Noise)
         r_dye = np.random.uniform(self._Dmin, self._Dmax)
-        t_dye = r_dye + np.random.uniform(-r_dye/3., r_dye/3.) # dye Bias
+        t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.)) # dye Bias
 
-        SNR = .11#np.random.uniform(self._SNRmin, self._SNRmax)
+        SNR = .2#np.random.uniform(self._SNRmin, self._SNRmax)
         r_noise = (r_dye) * SNR #* response_noise
         t_noise = (t_dye) * SNR #* response_noise
 
-        r *= r_dye #np.random.normal(r_dye, r_noise, size=C)
-        t *= t_dye #np.random.normal(t_dye, t_noise, size=C)
-        r += np.random.normal(0.0, r_noise, size=C)
-        t += np.random.normal(0.0, t_noise, size=C)
-
-        print r[-100:].mean(), r[-100:].std(), r_noise, r_dye
-        print t[-100:].mean(), t[-100:].std(), t_noise, t_dye
+        r *= np.random.normal(r_dye, r_noise, size=C)
+        t *= np.random.normal(t_dye, t_noise, size=C)
 
         # * Adding outliers
         proportion = np.random.uniform(self._Omin, self._Omax)
@@ -315,24 +308,25 @@ class ArrayCGHSynth(object):
             sigma = np.random.uniform(signal.std(), signal.std()*50.)
             signal[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
 
-        # * Thresholding!
-        for signal in (r, t):
-            pos = np.ma.masked_less(signal, 0.0, copy=False) # Positive values
-            np.clip(signal, pos.min(), np.inf, out=signal)   # In-place
+        # * Masking not valid probes!
+        reference_signal = _mask_signal(r, self._mask)
+        test_signal = _mask_signal(t, self._mask)
+        self._mask[reference_signal <= 0.0] = True
+        self._mask[test_signal <= 0.0] = True
 
         # -- Producing final signal --
         return ArrayCGH(id = self._id,
                         row = self._row,
                         col = self._col,
 
-                        reference_signal = _mask_signal(r, self._mask),
-                        test_signal = _mask_signal(t, self._mask),
+                        reference_signal = reference_signal,
+                        test_signal = test_signal, 
 
                         chromosome = self._chr,
                         start_base = self._sb,
                         end_base = self._eb,
                         mask = self._mask,
 
-                        wave = _mask_signal(w, self._mask),
+                        #wave = _mask_signal(w, self._mask),
                         true_test_signal = true_test_signal,
                         true_reference_signal = true_reference_signal)
