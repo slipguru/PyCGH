@@ -71,27 +71,27 @@ def test_parameters_geometry():
     cgh_src = ArrayCGHSynth(design=CHIP_DESIGN, geometry=(1.2, 7.4))
     assert_equal((1, 7), cgh_src.geometry)
 
-def test_parameters_snr():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, snr=(2, 5))
-    assert_equal((2, 5), cgh_src.snr)
+def test_parameters_noise():
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=(2, 5))
+    assert_equal((2, 5), cgh_src.noise)
 
     # Default
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((10, 15), cgh_src.snr)
+    assert_equal((0.15, .35), cgh_src.noise)
 
     # Not tuple
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, snr=2)
-    assert_equal((2, 2), cgh_src.snr)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=2)
+    assert_equal((2, 2), cgh_src.noise)
 
     # Sorting
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, snr=(5, 2))
-    assert_equal((2, 5), cgh_src.snr)
+    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, noise=(5, 2))
+    assert_equal((2, 5), cgh_src.noise)
 
     # Bad tuple
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, snr=(-5, 2))
+                  (NROW, NCOL), CHIP_DESIGN, noise=(-5, 2))
     assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, snr=-5)
+                  (NROW, NCOL), CHIP_DESIGN, noise=-5)
 
 def test_parameter_tissue_proportion():
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
@@ -211,10 +211,12 @@ def test_gender():
 
     acgh = cgh_src.draw()
     assert_equal(1., acgh.F['true_test_signal'][-2:])
+    assert_equal(7, (~acgh['mask']).sum())
 
     acgh = cgh_src.draw('female')
-    assert_equal(2., acgh.F['true_test_signal'][-2])
-    assert_equal(0., acgh.F['true_test_signal'][-1])
+    assert_equal(2., acgh.F['true_test_signal'][-1])
+    assert_equal(6, (~acgh['mask']).sum())
+
 
 def test_alterated_signal():
     cgh_src = ArrayCGHSynth(geometry=(NROW, NCOL), design=CHIP_DESIGN,

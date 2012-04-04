@@ -31,7 +31,7 @@ if SYNTH:
     print 'Created.'
 
     print 'Drawing synthetic CGH (median normalization, wrt X)'
-    synth_acgh = acgh_source.draw()    
+    synth_acgh = acgh_source.draw('male')
     synth_acgh['log2'] = global_median(synth_acgh)
     synth_acgh['true_log2'] = (np.log2(synth_acgh.F['true_test_signal']) -
                                np.log2(synth_acgh.F['true_reference_signal']))
@@ -40,7 +40,7 @@ if SYNTH:
     coords, cidx = profile(synth_acgh, signal=synth_acgh.F['log2'],
                            segmentation=synth_acgh.F['true_log2'])
 
-    #pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
+    pl.plot(coords, signal.medfilt(synth_acgh.F['log2'], 101), 'r-')
     #pl.plot(coords, synth_acgh.F['wave'], 'b-', alpha=0.5)
     pl.title('Synthetic')
 
@@ -62,10 +62,10 @@ else:
     #PATH = '/home/sabba/DISI/IST/GEO_Tonini/Samples/'
 
     print 'Reading Real CGH (median normalization wrt X)'
-    PATH = os.path.join(PATH, '1562_G3.txt')
+    #PATH = os.path.join(PATH, '1562_G3.txt')
     #PATH = os.path.join(PATH, '1026_G2.txt')
     #PATH = os.path.join(PATH, '10003_G1_Cologne.txt')
-    #PATH = os.path.join(PATH, '3383_G3_Cologne.txt')
+    PATH = os.path.join(PATH, '3383_G3_Cologne.txt')
     real_acgh = agilent(PATH, test_channel='r',
                         ucsc_mapping='data/ucsc/hg19/agilentCgh4x44k.txt.gz')
     real_acgh['log2'] = global_median(real_acgh)

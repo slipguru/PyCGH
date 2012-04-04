@@ -63,7 +63,7 @@ class ArrayCGHSynth(object):
                  spatial_bias_probability=0.5,
                  wave_bias_amplitude=(0.0, 0.025),
                  dye_intensity=(50, 300),
-                 snr=(2, 3),
+                 noise=(0.15, 0.35),
                  outliers_proportion=(1e-3, 1e-2)):
 
         # Check Geometry
@@ -96,10 +96,10 @@ class ArrayCGHSynth(object):
                                                                self._Dmax))
 
         # Check Noise
-        self._SNRmin, self._SNRmax = _sorted_pair(snr)
-        if self._SNRmin < 0 or self._SNRmax < 0:
-            raise ValueError('wrong noise extremes (%s, %s)' % (self._SNRmin,
-                                                                self._SNRmax))
+        self._Nmin, self._Nmax = _sorted_pair(noise)
+        if self._Nmin < 0 or self._Nmax < 0:
+            raise ValueError('wrong noise extremes (%s, %s)' % (self._Nmin,
+                                                                self._Nmax))
 
         # Check Outliers Proportion
         self._Omin, self._Omax = _sorted_pair(outliers_proportion)
@@ -205,8 +205,8 @@ class ArrayCGHSynth(object):
         return self._nrow, self._ncol
 
     @property
-    def snr(self):
-        return self._SNRmin, self._SNRmax
+    def noise(self):
+        return self._Nmin, self._Nmax
 
     @property
     def tissue_proportion(self):
@@ -258,34 +258,34 @@ class ArrayCGHSynth(object):
 
         # * Spatial bias
         for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) < self._SBP:
+            if np.random.uniform(0.0, 1.0) < 1.0:#self._SBP:
                 # Trend position
                 mu = np.array([np.random.randint(0, self._nrow),
                                np.random.randint(0, self._ncol)])
-        
+
                 # Shape
-                vars = (np.random.uniform(0, self._nrow),
-                        np.random.uniform(0, self._ncol))
-        
+                vars = (np.random.uniform(0, (self._nrow * 2.)),
+                        np.random.uniform(0, (self._ncol * 2.)))
+
                 # Rotation
                 theta = np.random.uniform(0.0, 2 * np.pi)
                 U = np.array([[np.cos(theta), np.sin(theta)],
                               [-np.sin(theta), np.cos(theta)]])
-        
+
                 # Bias calculation (random peak orientation)
                 Sigma = np.dot(np.dot(U, np.diag(vars)), U.T)
                 mvn = _mvnpdf(mu, Sigma)
                 bias = mvn(self._row[~self._mask],
                            self._col[~self._mask])
-        
+
                 # Random intensity
-                signal += (np.random.uniform(0.0, 1.0) * bias)
-        
+                signal += (np.random.uniform(-1.0, 1.0) * bias)
+
         # * Wave effect
         a = np.random.uniform(self._Wmin, self._Wmax)
-        kl = 8./max(self._eb[~self._mask])
-        w = a * np.sin(kl * np.pi * self._sb[~self._mask])
-        
+        freq = 8./max(self._eb[~self._mask])
+        w = a * np.sin(freq * np.pi * self._sb[~self._mask])
+
         r *= 2**w
         t *= 4**w
 
@@ -293,24 +293,26 @@ class ArrayCGHSynth(object):
         r_dye = np.random.uniform(self._Dmin, self._Dmax)
         t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.)) # dye Bias
 
-        SNR = .2#np.random.uniform(self._SNRmin, self._SNRmax)
-        r_noise = (r_dye) * SNR #* response_noise
-        t_noise = (t_dye) * SNR #* response_noise
-
-        r *= np.random.normal(r_dye, r_noise, size=C)
-        t *= np.random.normal(t_dye, t_noise, size=C)
+        sigma = np.random.uniform(self._Nmin, self._Nmax)
+        r *= np.random.normal(r_dye, 0.5 * sigma * r_dye, size=C)
+        t *= np.random.normal(t_dye, 0.5 * sigma * t_dye, size=C)
 
         # * Adding outliers
         proportion = np.random.uniform(self._Omin, self._Omax)
         number = int(proportion * C)
         indexes = rnd.sample(range(C), number)
-        for signal in (r, t):
-            sigma = np.random.uniform(signal.std(), signal.std()*50.)
-            signal[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        sigma = np.random.uniform(signal.std(), signal.std()*50.)
+        r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
 
-        # * Masking not valid probes!
+        # * Masking not valid probes (out of signal range)
+        #   All Y probes will be marked as not valid if female sample
         reference_signal = _mask_signal(r, self._mask)
         test_signal = _mask_signal(t, self._mask)
+        if gender == 'female':
+            invalid = _mask_signal(self._Yindexes, self._mask,
+                                   False, dtype=bool)
+            self._mask[invalid] = True
         self._mask[reference_signal <= 0.0] = True
         self._mask[test_signal <= 0.0] = True
 
@@ -320,7 +322,7 @@ class ArrayCGHSynth(object):
                         col = self._col,
 
                         reference_signal = reference_signal,
-                        test_signal = test_signal, 
+                        test_signal = test_signal,
 
                         chromosome = self._chr,
                         start_base = self._sb,
