@@ -92,6 +92,16 @@ class ArrayCGH(object):
         return len(self._rdata)
 
     @property
+    def size(self):
+        return len(self._rdata)
+
+    # TODO: caching ~mask... and num
+
+    @property
+    def clones(self):
+        return (~self._rdata['mask']).sum()
+
+    @property
     def names(self):
         return self._rdata.dtype.names
 

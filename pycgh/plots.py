@@ -112,11 +112,11 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
         chr_filtered = np.unique(chr_map[str(chr).strip().upper()]
                                  for chr in chromosomes)
 
-        chridx = np.array(np.zeros(len(aCGH)), dtype=bool)
+        chridx = np.array(np.zeros(len(aCGH.F['chromosome'])), dtype=bool)
         for chr in chr_filtered:
             np.logical_or(chridx, aCGH.F['chromosome'] == chr, chridx)
 
-        aCGH = aCGH.F[chridx]
+        #aCGH = aCGH.F[chridx]
         chromosomes = sorted(chr_filtered)
 
         # Signal and segmentation filtering
@@ -169,6 +169,7 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
     # Visual effects
     plt.colorbar(extend='both')
     plt.axhline(0.0, lw=1, color='gray', ls='--')
+    plt.axhline(np.log2(3/2.), lw=1, color='orange', ls='--') # gain
     plt.axhline(1.0, lw=1, color='red', ls='--')
     plt.axhline(-1.0, lw=1, color='blue', ls='--')
 

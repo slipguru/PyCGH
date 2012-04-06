@@ -116,7 +116,11 @@ class ArrayCGHSynth(object):
                 raise ValueError('missing cytostructure reference')
 
             for a in alterations:
-                levels, p = zip(*alterations[a])
+                try:
+                    levels, p = zip(*alterations[a])
+                except TypeError:
+                    alterations[a] = [(alterations[a], 1.0)]
+                    levels, p = zip(*alterations[a])
 
                 p_sum = sum(p)
                 if p_sum > 1.0:
@@ -258,7 +262,7 @@ class ArrayCGHSynth(object):
 
         # * Spatial bias
         for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) < 1.0:#self._SBP:
+            if np.random.uniform(0.0, 1.0) < self._SBP:
                 # Trend position
                 mu = np.array([np.random.randint(0, self._nrow),
                                np.random.randint(0, self._ncol)])
@@ -291,19 +295,31 @@ class ArrayCGHSynth(object):
 
         # * Signal intensity (Dye Bias + Noise)
         r_dye = np.random.uniform(self._Dmin, self._Dmax)
-        t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.)) # dye Bias
+        t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.))
 
         sigma = np.random.uniform(self._Nmin, self._Nmax)
-        r *= np.random.normal(r_dye, 0.5 * sigma * r_dye, size=C)
-        t *= np.random.normal(t_dye, 0.5 * sigma * t_dye, size=C)
+        #noise = np.random.normal(0.0, 4.0 * sigma * np.mean([r_dye, t_dye]), size=C)
+
+        sigma = 0.18
+
+        r *= (r_dye * sigma * np.random.lognormal(0.0, 0.8, size=C))
+        t *= (t_dye * sigma * np.random.lognormal(0.0, 0.8, size=C))
+        #r *= np.random.lognormal(0.0, sigma*0.5, size=C) #np.exp(np.log2(r_dye) + .8 * np.random.normal(size=C))
+        #t *= np.random.lognormal(0.0, sigma*0.5, size=C) #np.exp(np.log2(t_dye) + .8 * np.random.normal(size=C))
+
+        print r_dye, np.log(r_dye), np.log2(r_dye)
+        print np.exp(r_dye*0.01 + .8 * np.random.normal(size=C)).mean()
+        print
+
+        #2**(r_dye + 1.0 * np.random.normal(size=C))
 
         # * Adding outliers
-        proportion = np.random.uniform(self._Omin, self._Omax)
-        number = int(proportion * C)
-        indexes = rnd.sample(range(C), number)
-        sigma = np.random.uniform(signal.std(), signal.std()*50.)
-        r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
-        t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        #proportion = np.random.uniform(self._Omin, self._Omax)
+        #number = int(proportion * C)
+        #indexes = rnd.sample(range(C), number)
+        #sigma = np.random.uniform(signal.std(), signal.std()*50.)
+        #r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        #t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
 
         # * Masking not valid probes (out of signal range)
         #   All Y probes will be marked as not valid if female sample
@@ -313,8 +329,8 @@ class ArrayCGHSynth(object):
             invalid = _mask_signal(self._Yindexes, self._mask,
                                    False, dtype=bool)
             self._mask[invalid] = True
-        self._mask[reference_signal <= 0.0] = True
-        self._mask[test_signal <= 0.0] = True
+        self._mask[reference_signal < 0.0] = True
+        self._mask[test_signal < 0.0] = True
 
         # -- Producing final signal --
         return ArrayCGH(id = self._id,
@@ -329,6 +345,5 @@ class ArrayCGHSynth(object):
                         end_base = self._eb,
                         mask = self._mask,
 
-                        #wave = _mask_signal(w, self._mask),
                         true_test_signal = true_test_signal,
                         true_reference_signal = true_reference_signal)
