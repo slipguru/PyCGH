@@ -298,28 +298,25 @@ class ArrayCGHSynth(object):
         t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.))
 
         sigma = np.random.uniform(self._Nmin, self._Nmax)
-        #noise = np.random.normal(0.0, 4.0 * sigma * np.mean([r_dye, t_dye]), size=C)
+        noise = sigma * np.sqrt(2.) * 0.5
 
-        sigma = 0.18
+        r *= (2.**np.random.normal(np.log2(r_dye), noise, size=C))
+        t *= (2.**np.random.normal(np.log2(t_dye), noise, size=C))
 
-        r *= (r_dye * sigma * np.random.lognormal(0.0, 0.8, size=C))
-        t *= (t_dye * sigma * np.random.lognormal(0.0, 0.8, size=C))
-        #r *= np.random.lognormal(0.0, sigma*0.5, size=C) #np.exp(np.log2(r_dye) + .8 * np.random.normal(size=C))
-        #t *= np.random.lognormal(0.0, sigma*0.5, size=C) #np.exp(np.log2(t_dye) + .8 * np.random.normal(size=C))
-
-        print r_dye, np.log(r_dye), np.log2(r_dye)
-        print np.exp(r_dye*0.01 + .8 * np.random.normal(size=C)).mean()
-        print
-
-        #2**(r_dye + 1.0 * np.random.normal(size=C))
+        # * Response Bias
+        noise = np.random.uniform(sigma * 4, sigma * 10) # Random??
+        response_bias = 2.**np.random.normal(0.0, noise, size=C)
+        r*= response_bias
+        t*= response_bias
 
         # * Adding outliers
-        #proportion = np.random.uniform(self._Omin, self._Omax)
-        #number = int(proportion * C)
-        #indexes = rnd.sample(range(C), number)
-        #sigma = np.random.uniform(signal.std(), signal.std()*50.)
-        #r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
-        #t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        proportion = np.random.uniform(self._Omin, self._Omax)
+        number = int(proportion * C)
+        indexes = rnd.sample(range(C), number)
+        signal_std = max(r.std(), t.std())
+        sigma = np.random.uniform(signal_std, signal_std*3.)
+        r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
 
         # * Masking not valid probes (out of signal range)
         #   All Y probes will be marked as not valid if female sample

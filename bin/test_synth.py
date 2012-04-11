@@ -14,12 +14,11 @@ def global_median(acgh):
     log2 -= np.median(log2[chrX]) # global median normalization
 
     print log2[chrX].std()
-    print acgh.F['test_signal'].std()# / acgh.F['test_signal'].mean()
-    print acgh.F['reference_signal'].std()# / acgh.F['reference_signal'].mean()
+    print log2[~chrX].std()
 
     return log2 # automatic defiltering
 
-SYNTH = not True
+SYNTH = True
 if SYNTH:
     cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')
 
@@ -38,7 +37,7 @@ if SYNTH:
                                     '17q': 4
                                 },
                                 cytostructure = cs,
-                                noise = 0.1,
+                                noise = 0.18, # doc: only an indication!
                                 tissue_proportion = 0.5,
                                 wave_bias_amplitude = 0.0)
     print 'Created.'
@@ -62,48 +61,24 @@ else:
                         ucsc_mapping='data/ucsc/hg19/agilentCgh4x44k.txt.gz')
     acgh['log2'] = global_median(acgh)
 
-#exit()
-
-#pl.figure()
-#coords, cidx = profile(acgh, signal=acgh.F['log2'],
-#                       segmentation=signal.medfilt(acgh.F['log2'], 101))
-#a = pl.axis()
-#pl.axis([a[0], a[1], -1.5, 1.5])
-#
-#pl.figure()
-#pl.scatter(coords, acgh.F['test_signal'], marker='.', c='k')
-#pl.plot(coords, signal.medfilt(acgh.F['test_signal'], 101))
-#a = pl.axis()
-##a = [a[0], a[1], 0, 1000]
-##pl.axis(a)
-#
-#pl.figure()
-#pl.scatter(coords, acgh.F['reference_signal'], marker='.', c='k')
-#pl.plot(coords, signal.medfilt(acgh.F['reference_signal'], 101))
-#pl.axis(a)
 
 pl.figure()
-count, bins, ignored = pl.hist(acgh.F['reference_signal'], 100, normed=True)
-print 'Reference'
-mu = np.mean(np.log(acgh.F['reference_signal']))
-sigma = np.std(np.log(acgh.F['reference_signal']))
-
-x = np.linspace(0.0, max(bins), 10000)
-pdf = (np.exp(-(np.log(x) - mu)**2 / (2 * sigma**2)) / (x * sigma * np.sqrt(2 * np.pi)))
-pl.plot(x, pdf, linewidth=2, color='r')
-pl.axis('tight')
-pl.show()
+coords, cidx = profile(acgh, signal=acgh.F['log2'],
+                       segmentation=signal.medfilt(acgh.F['log2'], 101))
 
 pl.figure()
-pl.hist(acgh.F['test_signal'], bins=100, align='mid', normed=True)
+pl.scatter(coords, acgh.F['test_signal'], marker='.', c='k')
+pl.plot(coords, signal.medfilt(acgh.F['test_signal'], 101))
+a = pl.axis()
 
 pl.figure()
-pl.hist(acgh.F['log2'], bins=100, align='mid', normed=True)
+pl.scatter(coords, acgh.F['reference_signal'], marker='.', c='k')
+pl.plot(coords, signal.medfilt(acgh.F['reference_signal'], 101))
+pl.axis(a)
 
-#pl.figure()
-#coords, cidx = profile(acgh, signal=acgh.F['log2'],
-#                       segmentation=signal.medfilt(acgh.F['log2'], 101))
-#pl.title('Real')
+pl.figure()
+pl.hist(acgh.F['reference_signal'], bins=1000, normed=True)
+
 
 #################
 #chr1 = (acgh.F['chromosome'] == 1)
