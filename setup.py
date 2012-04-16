@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'PyCGH',
-    use_hg_version = True,
+    version = '0.0.1alpha',
     packages = find_packages(),
 
     # Dependencies
-    setup_requires=['hgtools'],
+    #setup_requires = ['hgtools'],
     #install_requires = [],
     requires = ['numpy (>=1.4.0)'], # More??
 
