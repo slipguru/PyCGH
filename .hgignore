@@ -6,3 +6,5 @@ syntax: glob
 *.o
 *.npy
 .idea*
+dist/*
+*.egg*
