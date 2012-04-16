@@ -18,7 +18,7 @@ def global_median(acgh):
 
     return log2 # automatic defiltering
 
-SYNTH = not True
+SYNTH = True
 if SYNTH:
     cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')
 
@@ -64,8 +64,8 @@ else:
 
 pl.figure()
 pl.subplot(221)
-coords, cidx = profile(acgh, signal=acgh.F['log2'],
-                       segmentation=signal.medfilt(acgh.F['log2'], 101))
+coords = profile(acgh, signal=acgh.M['log2'])
+pl.plot(coords, signal.medfilt(acgh.F['log2'], 101), c='gray')
 pl.title('Log2 ratio')
 
 pl.subplot(222)

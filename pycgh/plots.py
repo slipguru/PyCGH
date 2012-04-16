@@ -87,7 +87,8 @@ def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_colo
     plt.legend()
 
 
-def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
+def profile(aCGH, signal=None,
+            #chromosomes=None,
             ymin=None, ymax=None, cmin=-1, cmax=1, cmap=plt.cm.jet):
     """
         - signal: 'custom' cgh values
@@ -107,61 +108,67 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
     inverse_chr_map[23] = 'X'
     inverse_chr_map[24] = 'Y'
 
-    # Chromosomes Fitering
-    if not chromosomes is None:
-        chr_filtered = np.unique(chr_map[str(chr).strip().upper()]
-                                 for chr in chromosomes)
+    ## Chromosomes Fitering
+    #if not chromosomes is None:
+    #    chr_filtered = np.unique(chr_map[str(chr).strip().upper()]
+    #                             for chr in chromosomes)
+    #
+    #    chridx = np.array(np.zeros(len(aCGH.F['chromosome'])), dtype=bool)
+    #    for chr in chr_filtered:
+    #        np.logical_or(chridx, aCGH.F['chromosome'] == chr, chridx)
+    #
+    #    #aCGH = aCGH.F[chridx]
+    #    chromosomes = sorted(chr_filtered)
+    #
+    #    # Signal and segmentation filtering
+    #    if not signal is None:
+    #        signal = signal[chridx]
+    #    if not segmentation is None:
+    #        segmentation = segmentation[chridx]
+    #else:
 
-        chridx = np.array(np.zeros(len(aCGH.F['chromosome'])), dtype=bool)
-        for chr in chr_filtered:
-            np.logical_or(chridx, aCGH.F['chromosome'] == chr, chridx)
-
-        #aCGH = aCGH.F[chridx]
-        chromosomes = sorted(chr_filtered)
-
-        # Signal and segmentation filtering
-        if not signal is None:
-            signal = signal[chridx]
-        if not segmentation is None:
-            segmentation = segmentation[chridx]
-    else:
-        chromosomes = np.unique(aCGH.F['chromosome'])
-
-    # Signal Calculation (chromosome filtering included)
+    # Signal Calculation
     if signal is None:
-        test_signal = aCGH.F['test_signal']
-        reference_signal = aCGH.F['reference_signal']
-        signal = np.log2(test_signal / reference_signal)
+        test_signal = aCGH.M['test_signal']
+        reference_signal = aCGH.M['reference_signal']
+        signal = (np.log2(test_signal) - np.log2(reference_signal)).compressed()
+    elif isinstance(signal, str) or isinstance(signal, unicode):
+        signal = aCGH.F[signal]
+    elif np.ma.getmask(signal) is np.ma.nomask:
+        if len(signal) > aCGH.size: # Not filtered signal wrt current aCGH
+            signal = signal[~aCGH['mask']] # Manual extraction
+    else:
+        signal = signal.compressed()
 
     # Plot-Coordinates Calculation
     from matplotlib import mlab as ml
-    positions = aCGH.F[['chromosome', 'start_base']]
-    coords = positions['start_base']
+    positions = aCGH.F[['chromosome', 'start_base']] # A compressed copy
+    chromosomes = np.unique(positions['chromosome'])
 
+    # Calculation of the max start_base for each Chromosome as shift
+    coords = positions['start_base']
     summary = ml.rec_groupby(positions,
                              groupby=('chromosome',),
                              stats=(('start_base', np.max, 'shifts'),))
-    shifts = np.array([0] + np.cumsum(summary['shifts']).tolist())
+    shifts = np.zeros(len(summary)+1)
+    shifts[1:] = np.cumsum(summary['shifts'])
 
+    # Applying shifts
     for i, chr in enumerate(chromosomes):
-        coords[positions['chromosome'] == chr] += shifts[i]
+         coords[positions['chromosome'] == chr] += shifts[i]
 
     # Chromosomes ticks and separators
     ticks = (shifts[:-1] + shifts[1:])/2.0
     separators = shifts[1:-1]
 
-    # CHG Scatter plot
+    # CGH Scatter plot
     plt.scatter(coords, signal, c=signal, cmap=cmap,
                 vmin=cmin, vmax=cmax, s=8, edgecolors='none')
 
-    # Superimposed segmentation
-    if not segmentation is None:
-        cidx = np.argsort(coords)
-        plt.plot(coords[cidx], segmentation[cidx], color='gray', ls='-', lw=2)
-
     # Axis limits
     if ymax is None:
-        ymax = max(abs(min(np.nanmin(signal), -1.1)), max(np.nanmax(signal), 1.1))
+        ymax = max(abs(min(np.nanmin(signal), -1.1)),
+                   max(np.nanmax(signal), 1.1))
     if ymin is None:
         ymin = -ymax
     plt.axis([coords.min(), coords.max(), ymin, ymax])
@@ -181,8 +188,6 @@ def profile(aCGH, signal=None, chromosomes=None, segmentation=None,
     plt.tick_params(axis='x', direction='out', length=3, colors='black',
                     labelsize='small', labelbottom='on')
 
-    if not segmentation is None:
-        return coords, cidx
     return coords
 
 def profiles(aCGH, signal=None, vmin=-1, vmax=1, cmap=None, *args, **kwargs):

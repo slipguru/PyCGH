@@ -93,12 +93,6 @@ class ArrayCGH(object):
 
     @property
     def size(self):
-        return len(self._rdata)
-
-    # TODO: caching ~mask... and num
-
-    @property
-    def clones(self):
         return (~self._rdata['mask']).sum()
 
     @property

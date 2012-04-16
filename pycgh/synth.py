@@ -290,7 +290,7 @@ class ArrayCGHSynth(object):
 
         # Hybridization noise
         noise = sigma * np.sqrt(2.) * 0.5   # COMMENT
-        response_bias = np.random.normal(0.0, noise*10, size=C)
+        response_bias = np.random.normal(0.0, 1.0, size=C) # Fixed?
 
         r *= (2.**(np.random.normal(np.log2(r_dye), noise, size=C) +
                    response_bias))  # Systematic Hybridization
