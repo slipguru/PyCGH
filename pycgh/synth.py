@@ -101,12 +101,6 @@ class ArrayCGHSynth(object):
             raise ValueError('wrong noise extremes (%s, %s)' % (self._Nmin,
                                                                 self._Nmax))
 
-        # Check Outliers Proportion
-        self._Omin, self._Omax = _sorted_pair(outliers_proportion)
-        if not 0 <= self._Omin <=1 or not 0 <= self._Omax <= 1:
-            raise ValueError('wrong outliers proportion extremes '
-                             '(%s, %s)' % (self._Omin, self._Omax))
-
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
 
@@ -217,10 +211,6 @@ class ArrayCGHSynth(object):
         return self._Tmin, self._Tmax
 
     @property
-    def outliers_proportion(self):
-        return self._Omin, self._Omax
-
-    @property
     def dye_intensity(self):
         return self._Dmin, self._Dmax
 
@@ -296,27 +286,16 @@ class ArrayCGHSynth(object):
         # * Signal intensity (Dye Bias + Noise)
         r_dye = np.random.uniform(self._Dmin, self._Dmax)
         t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.))
-
         sigma = np.random.uniform(self._Nmin, self._Nmax)
-        noise = sigma * np.sqrt(2.) * 0.5
 
-        r *= (2.**np.random.normal(np.log2(r_dye), noise, size=C))
-        t *= (2.**np.random.normal(np.log2(t_dye), noise, size=C))
+        # Hybridization noise
+        noise = sigma * np.sqrt(2.) * 0.5   # COMMENT
+        response_bias = np.random.normal(0.0, noise*10, size=C)
 
-        # * Response Bias
-        noise = np.random.uniform(sigma * 4, sigma * 10) # Random??
-        response_bias = 2.**np.random.normal(0.0, noise, size=C)
-        r*= response_bias
-        t*= response_bias
-
-        # * Adding outliers
-        proportion = np.random.uniform(self._Omin, self._Omax)
-        number = int(proportion * C)
-        indexes = rnd.sample(range(C), number)
-        signal_std = max(r.std(), t.std())
-        sigma = np.random.uniform(signal_std, signal_std*3.)
-        r[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
-        t[indexes] += np.abs(np.random.normal(0.0, sigma, size=number))
+        r *= (2.**(np.random.normal(np.log2(r_dye), noise, size=C) +
+                   response_bias))  # Systematic Hybridization
+        t *= (2.**(np.random.normal(np.log2(t_dye), noise, size=C) +
+                   response_bias))  # Systematic Hybridization
 
         # * Masking not valid probes (out of signal range)
         #   All Y probes will be marked as not valid if female sample

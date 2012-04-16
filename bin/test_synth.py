@@ -18,7 +18,7 @@ def global_median(acgh):
 
     return log2 # automatic defiltering
 
-SYNTH = True
+SYNTH = not True
 if SYNTH:
     cs = CytoStructure('data/ucsc/hg19/cytoBandIdeo.txt.gz')
 
@@ -63,21 +63,61 @@ else:
 
 
 pl.figure()
+pl.subplot(221)
 coords, cidx = profile(acgh, signal=acgh.F['log2'],
                        segmentation=signal.medfilt(acgh.F['log2'], 101))
+pl.title('Log2 ratio')
 
-pl.figure()
+pl.subplot(222)
 pl.scatter(coords, acgh.F['test_signal'], marker='.', c='k')
 pl.plot(coords, signal.medfilt(acgh.F['test_signal'], 101))
 a = pl.axis()
+a = (a[0], a[1], -300, 3700)
+pl.axis(a)
+pl.title('Raw Test Signal')
 
-pl.figure()
+pl.subplot(223)
 pl.scatter(coords, acgh.F['reference_signal'], marker='.', c='k')
 pl.plot(coords, signal.medfilt(acgh.F['reference_signal'], 101))
 pl.axis(a)
+pl.title('Raw Reference Signal')
 
-pl.figure()
-pl.hist(acgh.F['reference_signal'], bins=1000, normed=True)
+pl.subplot(224)
+def lognormal(x, mu, sigma, alog=np.log):
+    factor = alog(np.e)/(x*sigma*np.sqrt(2*np.pi))
+    expo = np.exp(-0.5 * ( ((alog(x) - mu)*(alog(x) - mu)) / (sigma*sigma) ))
+    return factor * expo
+
+s = acgh.F['reference_signal']
+logs = np.log2(s)
+pl.hist(s, bins=1000, normed=True)
+v = np.linspace(s.min(), s.max(), 10000)
+pl.plot(v, lognormal(v, logs.mean(), logs.std(), np.log2), 'r-')
+pl.title('Raw Reference Signal LogNormal Fit')
+
+#### Normalizzazione cretina
+#chrXY = acgh.F['chromosome'] >= 23
+#r = acgh.F['reference_signal'][~chrXY]
+#logr = np.log2(r)
+#mean, std = logr.mean(), logr.std()
+#ref_noise = r - 2**(mean + std*std*0.5) # "filtering" log-normal mean
+#t = acgh.F['test_signal'][~chrXY] - ref_noise
+#r = 2**(mean + std*std*0.5)
+#
+#log2 = np.log2(t) - np.log2(r)
+#log2 -= np.median(log2) # global median normalization
+#pl.figure()
+#pl.scatter(coords[:len(t)], log2, marker='.', c=log2)
+#pl.plot(coords[:len(t)], signal.medfilt(log2, 101))
+#
+#pl.figure()
+#pl.scatter(coords[:len(t)], t, marker='.', c='k')
+#pl.plot(coords[:len(t)], signal.medfilt(t, 101))
+#pl.axis(a)
+
+
+
+
 
 
 #################
