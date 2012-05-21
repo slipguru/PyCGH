@@ -8,3 +8,4 @@ syntax: glob
 .idea*
 dist/*
 *.egg*
+_build/*

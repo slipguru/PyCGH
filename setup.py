@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+import pycgh
+
 setup(
     name = 'PyCGH',
-    version = '0.0.1alpha',
+    version = pycgh.__version__,
     packages = find_packages(),
 
     # Dependencies

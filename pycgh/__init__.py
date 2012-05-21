@@ -4,5 +4,7 @@
 # Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
 # License: New BSD
 
+__version__ = '0.0.1alpha'
+
 class PyCGHException(RuntimeError):
     pass
