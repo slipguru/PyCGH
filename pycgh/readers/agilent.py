@@ -24,6 +24,8 @@ TYPE_MAP = {'text': (unicode, unicode),
 # Main Function ---------------------------------------------------------------
 def agilent(path, delimiter='\t', test_channel='r',
             fill_missings=False, qc_masking=False, ucsc_mapping=None):
+    """ Prova Doc
+    """
 
     if not test_channel in ('r', 'g'):
         raise ValueError("test_channel must be 'r' (default) or 'g'")

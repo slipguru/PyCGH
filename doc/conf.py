@@ -36,8 +36,8 @@ extensions = ['sphinx.ext.autosummary',
               'sphinx.ext.intersphinx',
               'numpydoc',
               #'sphinx.ext.coverage',
-              #'sphinx.ext.pngmath',
-              'sphinx.ext.viewcode']
+              #'sphinx.ext.pngmath'
+              ]
 
 # Extension configurations
 autoclass_content = 'init'

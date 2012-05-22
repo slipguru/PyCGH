@@ -206,7 +206,7 @@ class Dataset(object):
         TODO: Explain that some types need explicitly the dimension.
         eg. if you want samples with an int, a float and a string of maximum
         10 characters you have to pass a type in numpy format:
-            [int, float, 'S10']
+        [int, float, 'S10']
 
         """
 
