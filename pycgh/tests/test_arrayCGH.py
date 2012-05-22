@@ -80,7 +80,7 @@ def test_optional_inputs():
 
 def test_reading():
     aCGH = ArrayCGH(*input)
-    
+
     pairs = sorted((a, b) for a, b in zip(input[5], input[6]))
     chr, sb = zip(*pairs)
 
@@ -230,7 +230,7 @@ def test_loading_file():
 
     assert_equal([-1, 1, 2, 23], aCGH['chromosome'])
     assert_equal([np.nan, 10., 10., 10.], aCGH['reference_signal'])
-    
+
     # Automatic truncated
     assert_equal([-1, 10, 10, 10000], aCGH['start_base'])
     assert_equal([-1, 10, 20, 20], aCGH['end_base'])
@@ -244,11 +244,11 @@ def test_loading_fields():
     assert_equal([1, 0, 0, 0], aCGH['mask'])
     assert_equal(['Control', 'Probe01', 'Probe02', 'Probe 03'], aCGH['id'])
 
-def test_savetxt():   
+def test_savetxt():
     aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
                          fields={'orig_mask':'mask', #renaming
                                  'mask':'myflag'})
-   
+
     # Saving
     out = StringIO()
     aCGH.savetxt(out)
@@ -256,7 +256,7 @@ def test_savetxt():
     # Reading saved file
     out.seek(0)
     aCGH2 = ArrayCGH.loadtxt(out)
-    
+
     assert_equal(len(aCGH), len(aCGH2))
     assert_equal(aCGH.names, aCGH2.names)
     assert_('orig_mask' in aCGH2.names)
@@ -264,12 +264,12 @@ def test_savetxt():
 
     for n in aCGH.names:
         assert_equal(aCGH[n], aCGH2[n])
-        
-def test_save():   
+
+def test_save():
     aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
                          fields={'orig_mask':'mask', #renaming
                                  'mask':'myflag'})
-   
+
     # Saving
     from tempfile import TemporaryFile
     out = TemporaryFile()
@@ -278,7 +278,7 @@ def test_save():
     # Reading saved file
     out.seek(0)
     aCGH2 = ArrayCGH.load(out)
-    
+
     assert_equal(len(aCGH), len(aCGH2))
     assert_equal(aCGH.names, aCGH2.names)
     assert_('orig_mask' in aCGH2.names)

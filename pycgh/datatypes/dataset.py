@@ -39,6 +39,9 @@ class DataTable(object):
         self._rlabels = self._autolabels(rlabels, r, 'r')
         self._clabels = self._autolabels(clabels, c, 'c')
 
+        self._rdict = dict(zip(self._rlabels, xrange(len(self._rlabels))))
+        self._cdict = dict(zip(self._clabels, xrange(len(self._clabels))))
+
     def _create_data(self, data, dtype):
         # Because, if None the type will be automatically inferred by numpy
         if dtype is None:
@@ -55,7 +58,7 @@ class DataTable(object):
             return ['%s%d' % (prefix, i) for i in xrange(dim)]
 
         if len(labels) == dim:
-            return labels
+            return [str(x) for x in labels]
 
         raise PyCGHException('wrong %slabels dimension.' % prefix)
 
@@ -64,95 +67,68 @@ class DataTable(object):
                           'cols: %s' % ', '.join(self.clabels),
                           'data:\n%s' % str(self._data)))
 
+    def _get_indexes(self, item):
+        # Row labels access
+        if str(item) == item:
+            return item, None
+
+        # Index or Tuple access
+        try:
+            ritem, citem = item
+        except TypeError:
+            # Not Iterable object
+            ritem, citem = item, None
+        except ValueError:
+            # Not valid tuple
+            if len(item) > 2:
+                raise PyCGHException('maximum 2 dimension allowed')
+            else:
+                # One-element tuple
+                ritem, citem = item[0], None
+
+        return ritem, citem
+
     def __getitem__(self, item):
+        # Indexes extraction
+        ritem, citem = self._get_indexes(item)
 
-        #### NEEDS a BIG CLEANUP!!!!
+        print 'SABBBBBBBBBBBBBB'
 
-        # Multi-axes access
-        if isinstance(item, tuple):
-            try:
-                ritem, citem = item
-            except ValueError:
-                PyCGHException('only 2 dimension permitted.')
+        print
+        print item, ":", ritem, citem, '***',
 
-            try:
-                if isinstance(ritem, slice):
-                    if ritem.start in self.rlabels:
-                        ritem_start = self.rlabels.index(ritem.start)
-                    else:
-                        ritem_start = ritem.start
+        # Maps or itself
+        def map_item(item, d):
+            if isinstance(item, slice):
+               return slice(d.get(item.start, item.start),
+                            d.get(item.stop,  item.stop),
+                            d.get(item.step,  item.step))
+            elif str(item) == item: # single string
+                return d.get(item, item)
+            elif isinstance(item, tuple): # iterable (eventually mixed)
+                return [d.get(i, i) for i in item]
+            else:
+                return d.get(item, item)     # index
 
-                    if ritem.stop in self.rlabels:
-                        ritem_stop = self.rlabels.index(ritem.stop)
-                    else:
-                        ritem_stop = ritem.stop
+        ritem = map_item(ritem, self._rdict)
+        citem = map_item(citem, self._cdict)
 
-                    ritem = slice(ritem_start, ritem_stop, ritem.step)
-                elif ritem in self.rlabels:
-                    ritem = self.rlabels.index(ritem)
-                else:
-                    ritem = [self.rlabels.index(x) if x in self.rlabels else x for x in ritem]
-            except Exception, e:
-                ritem = int(ritem)
+        print ritem, citem
 
-            try:
-                if isinstance(citem, slice):
-                    if citem.start in self.clabels:
-                        citem_start = self.clabels.index(citem.start)
-                    else:
-                        citem_start = citem.start
-
-                    if citem.stop in self.clabels:
-                        citem_stop = self.clabels.index(citem.stop)
-                    else:
-                        citem_stop = citem.stop
-
-                    citem = slice(citem_start, citem_stop, citem.step)
-                elif citem in self.clabels:
-                    citem = self.clabels.index(citem)
-                else:
-                    citem = [self.clabels.index(x) if x in self.clabels else x for x in citem]
-            except Exception, e:
-                citem = int(citem)
-
-            return self._data[ritem, citem]
-        # Row access
-        else:
-
-            ritem = item
-
-            try:
-                if isinstance(ritem, slice):
-                    if ritem.start in self.rlabels:
-                        ritem_start = self.rlabels.index(ritem.start)
-                    else:
-                        ritem_start = ritem.start
-
-                    if ritem.stop in self.rlabels:
-                        ritem_stop = self.rlabels.index(ritem.stop)
-                    else:
-                        ritem_stop = ritem.stop
-
-                    ritem = slice(ritem_start, ritem_stop, ritem.step)
-                elif ritem in self.rlabels:
-                    ritem = self.rlabels.index(ritem)
-                else:
-                    ritem = [self.rlabels.index(x) if x in self.rlabels else x for x in ritem]
-            except Exception, e:
-                ritem = int(ritem)
-
+        if citem is None:
             return self._data[ritem]
+        return self._data[ritem, citem]
 
     @property
-    def nrow(self):
+    def row_num(self):
         return 2
 
     @property
-    def ncol(self):
+    def col_num(self):
         return 3
 
     def __len__(self):
-        return self.nrow
+        return self.row_num
 
     @property
     def rlabels(self):
