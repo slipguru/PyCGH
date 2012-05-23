@@ -158,6 +158,8 @@ class ArrayCGH(object):
                                 'end_base': ArrayCGH.MISSING_INT}
                              )
 
+        # TODO: tweaking performances! Eg. Loadtxt
+
         mandatory, optionals = _load(data, fields)
         return ArrayCGH(*mandatory, **optionals)
 

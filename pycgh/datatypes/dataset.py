@@ -4,7 +4,10 @@
 # License: New BSD
 
 import numpy as np
+
 from pycgh import PyCGHException
+from ..utils import _file_handle
+
 
 ### L'utilità di questa classe dovrebbe essere limitata alla
 ### possibilità sia di leggere tabelle cliniche (anche se basta il csv reader,
@@ -28,8 +31,24 @@ from pycgh import PyCGHException
 ### Di cosa ho bisogno: lettura scrittura csv, non dimenticarmi delle etichette
 ### larry sarebbe più che sufficiente se non fosse che legge una merda i csv.
 
+    #The class encapsulates the concepts of a collection of omogeneous
+    #labeled samples, described by a fixed number of named variables.
+    #
+    #Another way to handle the class is to imagine it as an abstract
+    #representation of a two-entry table, where on the rows we have the
+    #different labeled sample and on the columns the different named variables.
+    #
+    #In the context of the class, the the two terms `label` and `name` are
+    #respectively associated with `samples` and `variables`
+    #(eg: "the sample label" and "the variable name").
+    #
+    #Moreover, each variables has also a specific type. The internal
+    #representation of the data inherits the data type representation from
+    #the numpy.ndarray data structure.
+
 class DataTable(object):
     def __init__(self, data, rlabels=None, clabels=None, dtype=None):
+        """ Data are not copied if already an ndarray! """
 
         ### TODO: check data dimension == 2
         ### Pur rlabels and clabels into 2 dict
@@ -58,7 +77,7 @@ class DataTable(object):
             return ['%s%d' % (prefix, i) for i in xrange(dim)]
 
         if len(labels) == dim:
-            return [str(x) for x in labels]
+            return [str(x).strip() for x in labels]
 
         raise PyCGHException('wrong %slabels dimension.' % prefix)
 
@@ -89,46 +108,77 @@ class DataTable(object):
         return ritem, citem
 
     def __getitem__(self, item):
-        # Indexes extraction
-        ritem, citem = self._get_indexes(item)
+        """
+        In input we can have:
+            - A Slice
+            - A Label (string-like)
+            - An integer (index)
+            - An iterable of labels or integers
 
-        print 'SABBBBBBBBBBBBBB'
+            - A tuple (pair) of the above types
+        """
 
-        print
-        print item, ":", ritem, citem, '***',
-
-        # Maps or itself
-        def map_item(item, d):
-            if isinstance(item, slice):
-               return slice(d.get(item.start, item.start),
-                            d.get(item.stop,  item.stop),
-                            d.get(item.step,  item.step))
-            elif str(item) == item: # single string
-                return d.get(item, item)
-            elif isinstance(item, tuple): # iterable (eventually mixed)
-                return [d.get(i, i) for i in item]
+        if isinstance(item, tuple):
+            if len(item) == 1: # special case
+                ritem = self._map_item(item[0], self._rdict)
+                citem = None
+            elif len(item) == 2:
+                ritem = self._map_item(item[0], self._rdict)
+                citem = self._map_item(item[1], self._cdict)
             else:
-                return d.get(item, item)     # index
+                raise PyCGHException('maximum 2 dimension allowed')
+        else:
+            ritem = self._map_item(item, self._rdict)
+            citem = None
 
-        ritem = map_item(ritem, self._rdict)
-        citem = map_item(citem, self._cdict)
+        try:
+            if citem is None:
+                return self._data[ritem]
+            return self._data[ritem, citem]
+        except (ValueError, IndexError):
+            raise PyCGHException('invalid labels names or '
+                                 'indexes: %s' % str(item))
 
-        print ritem, citem
 
-        if citem is None:
-            return self._data[ritem]
-        return self._data[ritem, citem]
+    def _map_item(self, item, d): # Exception postoponed
+        if isinstance(item, slice):
+           return slice(d.get(item.start, item.start),
+                        d.get(item.stop,  item.stop),
+                        d.get(item.step,  item.step))
+        elif str(item) == item: # string-like
+            return d.get(item, item)
+        else:
+            try: # iterable (eventually mixed)
+                return [d.get(i, i) for i in item]
+            except TypeError:
+                return d.get(item, item) # index
+
+    def rindex(self, label):
+        try:
+            return self._rdict[label]
+        except KeyError:
+            raise PyCGHException('row label not found: %s' % label)
+
+    def cindex(self, label):
+        try:
+            return self._cdict[label]
+        except KeyError:
+            raise PyCGHException('column label not found: %s' % label)
+
+    def __array__(self):
+        """ Ensures data are not copied """
+        return self._data
 
     @property
-    def row_num(self):
-        return 2
+    def rnum(self):
+        return len(self._rdict)
 
     @property
-    def col_num(self):
-        return 3
+    def cnum(self):
+        return len(self._cdict)
 
     def __len__(self):
-        return self.row_num
+        return self.rnum
 
     @property
     def rlabels(self):
@@ -142,232 +192,25 @@ class DataTable(object):
     def dtype(self):
         return self._data.dtype
 
-class Dataset(object):
-    """Dataset data type.
-
-    The class encapsulates the concepts of a collection of omogeneous
-    labeled samples, described by a fixed number of named variables.
-
-    Another way to handle the class is to imagine it as an abstract
-    representation of a two-entry table, where on the rows we have the
-    different labeled sample and on the columns the different named variables.
-
-    In the context of the class, the the two terms `label` and `name` are
-    respectively associated with `samples` and `variables`
-    (eg: "the sample label" and "the variable name").
-
-    Moreover, each variables has also a specific type. The internal
-    representation of the data inherits the data type representation from
-    the numpy.ndarray data structure.
-
-    """
-
-    def __init__(self, names, types=float,
-                 data=None, labels=None):
-        """ Dataset constructor.
-
-        The class constructor requires only the description of the samples
-        as list of variable `names` and `types`.
-        The input variable `types` may be a simple python (or numpy) type
-        and the class assumes that all the variables have the same type
-        (as default types is `np.float32`).
-
-        Data has to be a list of samples (in a form convertible in a
-        numpy 2d ndarray, eg. list of lists, list of 1d ndarrays ...),
-        where the lenght of each sample must be equal the lenght of `names`.
-
-        Finally, `labels` is the list of sample labels. If it is None,
-        the class automatically will use the labels ['sample0', 'sample1', ...].
-
-        TODO: Explain that some types need explicitly the dimension.
-        eg. if you want samples with an int, a float and a string of maximum
-        10 characters you have to pass a type in numpy format:
-        [int, float, 'S10']
-
-        """
-
-        # 'types' may be a list or a single data type
-        try:
-            if str(types) == types:         # is a single string
-                self._types = (types,)*len(names)
-            elif len(types) == len(names):  # is a list of types
-                self._types = tuple(types)
-            else:
-                raise PyCGHException("lenght mismatch between "
-                                     "'names' and 'types'")
-        except TypeError: # if is a single type 'len' raise a TypeError
-            self._types = (types,)*len(names)
-
-        # Datatype for the iternal representation of the data (raw np.ndarray)
-        datatype = np.dtype({'names': names,
-                             'formats': self._types})
-
-        # Raw data creation
-        if data is None:
-            self._rdata = np.empty((0,), dtype=datatype)
-            self._samples = {}
-        else:
-            try:
-                self._rdata = np.asanyarray([tuple(row) for row in data], dtype=datatype)
-                if labels is None:
-                    self._samples = dict(('sample%d' % i, i)
-                                         for i in xrange(1, len(self._rdata)+1))
-                elif len(labels) == len(self._rdata):
-                    self._samples = dict((name, i) for i, name in enumerate(labels))
-                else:
-                    raise PyCGHException('data not compatible with the types')
-            except ValueError:
-                raise PyCGHException("lenght mismatch between "
-                                     "'data' and 'labels'")
-
-    def __str__(self):
-        return str(self._rdata)
-
-    def __repr__(self):
-        return repr(self._rdata)
-
-    # Variables informations --------------------------------------------------
-    @property
-    def dim(self):
-        """Number of variables."""
-        return len(self._rdata.dtype)
-
-    @property
-    def names(self):
-        """Ordered tuple of variables names."""
-        return self._rdata.dtype.names
-
-    @property
-    def types(self):
-        """Ordered tuple of variables types."""
-        return self._types
-
-    # Samples informations ----------------------------------------------------
-    def __len__(self):
-        """Number of samples."""
-        return len(self._rdata)
-
-    @property
-    def labels(self):
-        """Ordered tuple of sample labels."""
-        import operator as op
-
-        if self._samples:
-            sorted_items = sorted(self._samples.iteritems(),
-                                  key=op.itemgetter(1))
-            return zip(*sorted_items)[0]
-        else:
-            return tuple()
-
-    # Samples managing --------------------------------------------------------
-    def add(self, label, values):
-        """Add the given sample in the dataset collection.
-
-        The position in the matrix is selected for efficiency,
-        you can get it by the `index_of` method.
-        """
-        values = np.asanyarray(tuple(values), dtype=self._rdata.dtype)
-        values.shape = (1,)
-
-        if label is None:
-            label = 'sample%d' % (len(self._rdata) + 1)
-
-        if label in self._samples:
-            raise ValueError('sample already present')
-
-        self._rdata = np.r_[self._rdata, values]
-        self._samples[label] = (len(self._rdata) - 1)
-
-    def __getitem__(self, key):
-        """Get a sample.
-
-        The user can pass a label or an index.
-        """
-        # is a label
-        try:
-            if key in self._samples:
-                return self._rdata[self._samples[key]]
-        except TypeError:
-            pass
-
-        # is an index
-        return self._rdata[key]
-
-    def index_of(self, label):
-        """Return the index of a specified labeled sample."""
-        return self._samples[label]
-
-
-
-    ###############TO TEST
-    def toarray(self):
-        return np.asarray(self._rdata.tolist())
-
-
-
-
-
-
-    def __setitem__(self, key, value):
-        " CHANGE "
-        if not key in self._samples:
-            raise ValueError('sample not existent')
-
-        values = np.asanyarray(value)
-        values.shape = (1, len(values))
-        self._rdata[self._samples[key]] = values
-
-    def __delitem__(self, key):
-        " DELETE not efficient "
-        if not key in self._samples:
-            raise ValueError('sample not existent')
-
-        # Get the sample name of the last row
-        from operator import itemgetter as ig
-        last_key, last_index = max(self._samples.iteritems(), key=ig(1))
-
-        # Copy the last row in the row to eliminate and delete the last one
-        rm_index = self._samples[key]
-        self._rdata[rm_index] = self._rdata[last_index]
-        self._rdata = np.delete(self._rdata, last_index, 0)
-
-        # Update the mapping between sample names and indexes
-        self._samples[last_key] = rm_index
-        del self._samples[key]
-
     @staticmethod
-    def load(file_path, delimiter='\t'):
-        # For some reason genfromtxt removes the '.' in the names string
-        f = open(file_path)
-        header = '#'
-        while header.startswith('#'):
-            header = f.readline()
-        names = header.strip().split(delimiter)
-        attrs = names[1:]
+    def load(dt_file, delimiter='\t', dtype=float):
+        fh = _file_handle(dt_file)
 
-        data = np.genfromtxt(f, dtype=None,
-                             delimiter=delimiter, names=names)
-        dnames = data.dtype.names
+        try:
+            data = np.loadtxt(fh, delimiter=delimiter, dtype='S')
+            clabels = data[0,1:]
+            rlabels = data[1:,0]
+        except:
+            raise PyCGHException('failed loading file %s' % dt_file)
 
-        samples = data[names[0]]
-        data = (data[list(dnames[1:])].view(dtype=np.float)
-                                      .reshape((len(samples), len(attrs)))
-               )
+        return DataTable(data[1:, 1:], rlabels, clabels, dtype)
 
-        return Dataset(names=attrs,
-                             data=data,
-                             labels=samples)
+    def save(self, path, fmt="%s", delimiter=', '):
+        fh = _file_handle(path, mode='w')
+        fh.write('%s%s' % ('*', delimiter))
+        fh.write('%s\n' % delimiter.join(self.clabels))
+        formatter = '%s\n' % delimiter.join((fmt,) * len(self.clabels))
 
-    def save(self, path, delimiter='\t'):
-        from operator import itemgetter as ig
-        import csv
-
-        with open(path, 'wb') as out:
-            writer = csv.writer(open(path, 'wb'), delimiter=delimiter)
-
-            names = [n for n,i in sorted(self._names.iteritems(), key=ig(1))]
-            writer.writerow(['sample'] + names)
-
-            for s in self._samples:
-                idx = self._samples[s]
-                writer.writerow([s] + self._rdata[idx].tolist())
+        for line, label in zip(self._data, self._rlabels):
+            fh.write('%s%s' % (label, delimiter))
+            fh.write(formatter % tuple(line))

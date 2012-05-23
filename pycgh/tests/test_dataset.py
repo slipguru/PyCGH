@@ -3,10 +3,22 @@
 
 import numpy as np
 from numpy.testing.utils import *
+from cStringIO import StringIO
+
 
 from ..datatypes import DataTable
 from .. import PyCGHException
 
+DATA_TEXT = """\
+# This is a Comment
+*, c0, c1, c2
+r0, 1, 2, 3
+#########################
+# This is another Comment
+#########################
+r1, 4, 5, 6
+
+"""
 
 class TestDataTable(object):
     def setup(self):
@@ -16,8 +28,8 @@ class TestDataTable(object):
 
     def test_creation(self):
         dt = DataTable(self.data, self.rlabels, self.clabels)
-        assert_equal(2, dt.row_num)
-        assert_equal(3, dt.col_num)
+        assert_equal(2, dt.rnum)
+        assert_equal(3, dt.cnum)
         assert_equal(2, len(dt))
 
         assert_equal(self.rlabels, dt.rlabels)
@@ -27,6 +39,12 @@ class TestDataTable(object):
         dt = DataTable(self.data)
         assert_equal(self.rlabels, dt.rlabels)
         assert_equal(self.clabels, dt.clabels)
+
+    def test_labels_to_str(self):
+        dt = DataTable(self.data, clabels=['col1', u'col2', 3])
+
+        assert_equal(dt.clabels, ['col1', 'col2', '3'])
+        assert_equal([str, str, str], [type(x) for x in dt.clabels])
 
     def test_wrong_data_dimension(self):
         assert_raises(PyCGHException, DataTable, self.data,
@@ -59,11 +77,11 @@ class TestDataTable(object):
         data = np.array(self.data)
 
         # rows
-        for r in xrange(dt.row_num):
+        for r in xrange(dt.rnum):
             assert_equal(data[r], dt[r])
 
         # columns
-        for c in xrange(dt.col_num):
+        for c in xrange(dt.cnum):
             assert_equal(data[:,c], dt[:,c])
 
         # both
@@ -78,8 +96,6 @@ class TestDataTable(object):
         assert_equal(data[:,0:3], dt[:,0:3])
         assert_equal(data[0:1,0:2], dt[0:1,0:2])
 
-        #print dt['r2']
-
     def test_label_reading(self):
         dt = DataTable(self.data)
 
@@ -91,191 +107,75 @@ class TestDataTable(object):
 
         tests = ( # pairs 'index on ndarray', 'index on DataTable'
             # Row access
-            #(0, 0),
-            #(1, 1),
-            #(0, 'r0'),
-            #(1, 'r1'),
-            #(slice(0, 1, None), slice(0, 1, None)),
-            #(slice(0, None, None), slice(0, None, None)),
-            #(slice(0, 1, None), slice('r0', 'r1', None)),
-            #(slice(0, None, None), slice('r0', None, None)),
-            #
-            ## Column access
-            #((0, slice(0, None, None)), ('r0', slice('c0', None, None))),
-            #((0, slice(0, 2, None)), (0, slice('c0', 'c2', None))),
-            #((0, slice(0, None, 2)), (0, slice('c0', None, 2))),
-            #
-            ## Combined access
-            #( (slice(0, None, None), slice(0, None, None)),
-            #  (slice('r0', None, None), slice('c0', None, None))),
-            #( (slice(0, 1, None), slice(0, 2, None)),
-            #  (slice('r0', 'r1', None), slice('c0', 'c2', None))),
-            #( (slice(0, None, 2), slice(0, None, 2)),
-            #  (slice('r0', None, 2), slice('c0', None, 2))),
+            (0, 0),
+            (1, 1),
+            (0, 'r0'),
+            (1, 'r1'),
+            (slice(0, 1, None), slice(0, 1, None)),
+            (slice(0, None, None), slice(0, None, None)),
+            (slice(0, 1, None), slice('r0', 'r1', None)),
+            (slice(0, None, None), slice('r0', None, None)),
+
+            # Column access
+            ((0, slice(0, None, None)), ('r0', slice('c0', None, None))),
+            ((0, slice(0, 2, None)), (0, slice('c0', 'c2', None))),
+            ((0, slice(0, None, 2)), (0, slice('c0', None, 2))),
+
+            # Combined access
+            ( (slice(0, None, None), slice(0, None, None)),
+              (slice('r0', None, None), slice('c0', None, None))),
+            ( (slice(0, 1, None), slice(0, 2, None)),
+              (slice('r0', 'r1', None), slice('c0', 'c2', None))),
+            ( (slice(0, None, 2), slice(0, None, 2)),
+              (slice('r0', None, 2), slice('c0', None, 2))),
 
             # List access
             ([0, 1], [0, 1]),
-            #([0, 1], ['r0', 'r1']),
-            #(([0, 1, 1], [0, 1, 2]), (['r0', 'r1', 'r1'], ['c0', 'c1', 'c2'])),
+            ([0, 1], ['r0', 'r1']),
+            (([0, 1, 1], [0, 1, 2]), (['r0', 'r1', 'r1'], ['c0', 'c1', 'c2'])),
         )
 
         for nd_test, dt_test in tests:
             assert_equal(data[nd_test], dt[dt_test])
 
+    def test_index_of(self):
+        dt = DataTable(self.data)
 
-#
-#
-#class TestDataset(object):
-#
-#
-#    def test_add_samples(self):
-#        ds = Dataset(['value1', 'value2'])
-#
-#        # Adding
-#        ds.add('sample1', [1, 2])
-#        assert_equal(1, len(ds))
-#
-#        # Reading
-#        assert_equal(1, ds['sample1']['value1'])
-#        assert_equal(2, ds['sample1']['value2'])
-#        assert_equal((1, 2), tuple(ds['sample1']))
-#
-#        # Adding again
-#        ds.add('sample2', [2, 2])
-#        assert_equal(2, len(ds))
-#
-#        # Reading again
-#        assert_equal(2, ds['sample2']['value1'])
-#        assert_equal(2, ds['sample2']['value2'])
-#        assert_equal((2, 2), tuple(ds['sample2']))
-#
-#        # Failed adding
-#        assert_raises(ValueError, ds.add, 'sample1', [3, 3])
-#
-#    def test_index_of(self):
-#        ds = Dataset(['value1', 'value2'])
-#
-#        ds.add('sample1', [1, 1])
-#        ds.add('sample2', [2, 2])
-#        ds.add('sample10', [10, 10])
-#        ds.add(None, [3, 3]) # converted to sample4
-#
-#        # Insert order
-#        assert_equal(0, ds.index_of('sample1'))
-#        assert_equal(1, ds.index_of('sample2'))
-#        assert_equal(2, ds.index_of('sample10'))
-#        assert_equal(3, ds.index_of('sample4'))
-#
-#    def test_data_manually(self):
-#
-#        for data in ([[1, 2], [3, 4]],
-#                     [(1, 2), (3, 4)],
-#                     ((1, 2), (3, 4)),
-#                     np.array([[1, 2], [3, 4]])):
-#
-#            ds = Dataset(['value1', 'value2'],
-#                         data=data)
-#            yield self.check_given_data, ds
-#
-#    def check_given_data(self, ds):
-#        assert_equal(2, len(ds))
-#        assert_equal(2, ds.dim)
-#        assert_equal(('value1', 'value2'), ds.names)
-#        assert_equal(('sample1', 'sample2'), ds.labels)
-#
-#    def test_wrong_data(self):
-#        assert_raises(PyCGHException, Dataset,
-#                      ['value1', 'value2'], data=[[1, 2], [3, 4, 5]])
-#        assert_raises(PyCGHException, Dataset,
-#                      ['value1'], data=[[1, 2], [3, 4]])
-#        assert_raises(PyCGHException, Dataset,
-#                      ['value1'], data=[[1, 2], [3, 4, 5]])
-#
-#    def test_array_conversion(self):
-#        ds = Dataset(['value1', 'value2'],
-#                     data=[[1, 2], [3, 4]])
-#
-#        raw_data = ds.toarray()
-#        assert_equal((2,), raw_data.shape)
-#
-#        print ds['value1']
-#
-#
-#
-#
-#
-#
-#
-#class TestLabeledMatrix(object):
-#    #def _test_add_samples(self):
-#
-#
-#    def _test_delete_sample(self):
-#        lm = LabeledMatrix(['value1', 'value2'])
-#        for i in xrange(1, 11):
-#            lm.append('sample%d' % i, [i, i])
-#
-#        for i in (2, 5, 9):
-#            assert_true(all([i, i] == lm['sample%d' % i]))
-#
-#        idx = lm.index_of('sample10')
-#        assert_true(all([10, 10] == lm['sample10']))
-#        assert_true(all([10, 10] == lm[idx]))
-#
-#        del lm['sample2']
-#        assert_raises(ValueError, lm.__getitem__, 'sample2')
-#
-#        idx = lm.index_of('sample10')
-#        assert_true(all([10, 10] == lm['sample10']))
-#        assert_true(all([10, 10] == lm[idx]))
-#
-#    def _test_change_sample(self):
-#        lm = LabeledMatrix(['value1', 'value2'])
-#
-#        lm.append('sample1', [1, 2])
-#        lm['sample1'] = [5, 6]
-#        assert_equal(1, len(lm))
-#
-#        del lm['sample1']
-#        assert_equal(0, len(lm))
-#
-#        assert_raises(ValueError, lm.__delitem__, 'sample1')
-#
-#    def _test_access_by_index(self):
-#        lm = LabeledMatrix(['value1', 'value2'])
-#
-#        lm.append('sample1', [1, 1])
-#        lm.append('sample2', [2, 2])
-#
-#        assert_true(all(lm[0] == lm['sample1']))
-#        assert_true(all(lm[1] == lm['sample2']))
-#
-#        del lm['sample1']
-#        assert_true(all(lm[0] == lm['sample2']))
-#
-#
-#
-#    def _test_load(self):
-#        lm = LabeledMatrix.load(os.path.join(PAR_DIR,
-#                                             'test_labeledmatrix.txt'))
-#
-#        assert_equal(6, len(lm))
-#        assert_equal(['attr1', 'attr2'], sorted(lm.names))
-#        assert_true(all([10, 20] == lm['sample1']))
-#        assert_true(all([100, 200] == lm['sample2']))
-#
-#    def _test_save(self):
-#        import tempfile
-#        out = os.path.join(tempfile.gettempdir(), 'lm.txt')
-#
-#        lm = LabeledMatrix.load(os.path.join(PAR_DIR,
-#                                             'test_labeledmatrix.txt'))
-#        lm.save(out)
-#        lm2 = LabeledMatrix.load(out)
-#
-#        assert_equal(len(lm), len(lm2))
-#        assert_equal(sorted(lm.names), sorted(lm2.names))
-#        assert_equal(sorted(lm.samples), sorted(lm2.samples))
-#
-#        for sample in lm.samples:
-#            assert_true(all(lm[sample] == lm2[sample]))
+        assert_equal(0, dt.rindex('r0'))
+        assert_equal(1, dt.rindex('r1'))
+        assert_raises(PyCGHException, dt.rindex, 'r2')
+
+        assert_equal(0, dt.cindex('c0'))
+        assert_equal(1, dt.cindex('c1'))
+        assert_raises(PyCGHException, dt.cindex, 'c3')
+
+    def test_ndarray_conversion(self):
+        dt = DataTable(self.data)
+        a = np.asarray(dt)
+
+        assert_equal(dt, a)
+        a[0, 0] = 10
+        assert_equal(dt, a)
+
+    def test_load(self):
+        dt_text = DataTable.load(StringIO(DATA_TEXT), delimiter=',')
+        dt_data = DataTable(self.data)
+
+        assert_equal(np.asarray(dt_text), np.asarray(dt_data))
+        assert_equal(dt_text.rnum, dt_data.rnum)
+        assert_equal(dt_text.cnum, dt_data.cnum)
+
+    def test_save(self):
+        dt = DataTable.load(StringIO(DATA_TEXT), delimiter=',')
+
+        # Saving
+        out = StringIO()
+        dt.save(out)
+
+        # Reading saved file
+        dt_rel = DataTable.load(StringIO(out.getvalue()), delimiter=',')
+
+        assert_equal(len(dt), len(dt_rel))
+        assert_equal(dt.clabels, dt_rel.clabels)
+        assert_equal(dt.rlabels, dt_rel.rlabels)
+        assert_equal(np.asarray(dt), np.asarray(dt_rel))

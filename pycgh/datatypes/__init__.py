@@ -6,6 +6,6 @@
 """Insert module description
 """
 
-from .dataset import DataTable, Dataset
+from .dataset import DataTable
 from .arraycgh import ArrayCGH
 from .cytobands import ChromosomeStructure, CytoStructure

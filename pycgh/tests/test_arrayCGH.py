@@ -254,8 +254,7 @@ def test_savetxt():
     aCGH.savetxt(out)
 
     # Reading saved file
-    out.seek(0)
-    aCGH2 = ArrayCGH.loadtxt(out)
+    aCGH2 = ArrayCGH.loadtxt(StringIO(out.getvalue()))
 
     assert_equal(len(aCGH), len(aCGH2))
     assert_equal(aCGH.names, aCGH2.names)
