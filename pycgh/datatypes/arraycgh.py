@@ -88,12 +88,14 @@ class ArrayCGH(object):
         self.M = _ProxyFilter(self.masked)
 
     def __len__(self):
-        """ mumble mumble """
+        """ Raw lenght """
         return len(self._rdata)
 
     @property
     def size(self):
-        return (~self._rdata['mask']).sum()
+        """ Valid lenght (equal to __len__ if compacted) """
+        # More efficient than inverting the mask
+        return len(self._rdata) - (self._rdata['mask']).sum()
 
     @property
     def names(self):
@@ -117,11 +119,14 @@ class ArrayCGH(object):
         """ Returns a copy """
         return self._rdata[~self._rdata['mask']][key]
 
+    def shrink(self):
+        self._rdata = self._rdata[~self._rdata['mask']]
+
     def __setitem__(self, key, value):
         value = np.asanyarray(value)
 
         # Filtered data handling (autofilled with 0)
-        if len(value) == (~self._rdata['mask']).sum():
+        if len(value) == self.size:
             full_value = np.zeros(len(self._rdata), dtype=value.dtype)
             full_value[~self._rdata['mask']] = value
             value = full_value

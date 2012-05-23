@@ -197,6 +197,21 @@ def test_default_order():
     assert_equal(input_pairs,
                  [tuple(x) for x in aCGH[['chromosome', 'start_base']]])
 
+def test_shrinking():
+    mask = np.array([False] * (ROW_NUM * COL_NUM))
+    mask[0:10] = True # 10 values masked
+    aCGH = ArrayCGH(*input, mask=mask)
+
+    assert_equal(100, len(aCGH))
+    assert_equal(90, aCGH.size)
+
+    aCGH.shrink()
+
+    assert_equal(aCGH.size, len(aCGH))
+    assert_equal(90, aCGH.size)
+    assert_equal(aCGH['id'], aCGH.F['id'])
+    assert_equal(aCGH['id'], aCGH.M['id'])
+
 
 ## Testing IO -----------------------------------------------------------------
 
