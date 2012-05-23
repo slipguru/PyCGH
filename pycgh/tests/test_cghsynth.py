@@ -123,34 +123,6 @@ def test_parameter_tissue_proportion():
     assert_raises(ValueError, ArrayCGHSynth,
                   (NROW, NCOL), CHIP_DESIGN, tissue_proportion=-0.5)
 
-def test_parameter_outliers_proportion():
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
-                            outliers_proportion=(0.2, 0.4))
-    assert_equal((0.2, 0.4), cgh_src.outliers_proportion)
-
-    # Default
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN)
-    assert_equal((1e-3, 1e-2), cgh_src.outliers_proportion)
-
-    # Not tuple
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, outliers_proportion=0.2)
-    assert_equal((0.2, 0.2), cgh_src.outliers_proportion)
-
-    # Sorting
-    cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN,
-                            outliers_proportion=(0.5, 0.2))
-    assert_equal((0.2, 0.5), cgh_src.outliers_proportion)
-
-    # Bad tuple
-    assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(-0.5, 0.2))
-    assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(0.5, 1.01))
-    assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=(1.1, 1.))
-    assert_raises(ValueError, ArrayCGHSynth,
-                  (NROW, NCOL), CHIP_DESIGN, outliers_proportion=1.1)
-
 def test_parameters_dyes():
     cgh_src = ArrayCGHSynth((NROW, NCOL), CHIP_DESIGN, dye_intensity=(50, 100))
     assert_equal((50, 100), cgh_src.dye_intensity)

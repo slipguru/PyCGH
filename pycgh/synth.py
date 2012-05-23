@@ -63,8 +63,7 @@ class ArrayCGHSynth(object):
                  spatial_bias_probability=0.5,
                  wave_bias_amplitude=(0.0, 0.025),
                  dye_intensity=(50, 300),
-                 noise=(0.15, 0.35),
-                 outliers_proportion=(1e-3, 1e-2)):
+                 noise=(0.15, 0.35)):
 
         # Check Geometry
         self._nrow, self._ncol = (int(x) for x in geometry)
