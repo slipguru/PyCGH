@@ -1,6 +1,7 @@
 from ..utils import _file_handle
 from ..datatypes.arraycgh import ArrayCGH
 
+# filter valid return only valid probes
 def ucsc_mapping(ucsc_file, filter_valid=False):
     ucsc_mapping = dict()
     for line in _file_handle(ucsc_file):
@@ -30,4 +31,3 @@ def _split_mapping(chr, start, end):
             return (ArrayCGH.MISSING_INT,
                     ArrayCGH.MISSING_INT,
                     ArrayCGH.MISSING_INT, True)
-
