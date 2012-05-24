@@ -163,7 +163,7 @@ def profile(aCGH, signal=None,
 
     # CGH Scatter plot
     plt.scatter(coords, signal, c=signal, cmap=cmap,
-                vmin=cmin, vmax=cmax, s=8, edgecolors='none')
+                vmin=cmin, vmax=cmax, s=1, edgecolors='none')
 
     # Axis limits
     if ymax is None:
@@ -186,7 +186,7 @@ def profile(aCGH, signal=None,
     label_ticks = ['Chr %s' % inverse_chr_map[k] for k in chromosomes]
     plt.xticks(ticks, label_ticks, rotation=90)
     plt.tick_params(axis='x', direction='out', length=3, colors='black',
-                    labelsize='small', labelbottom='on')
+                    labelbottom='on')
 
     return coords
 
