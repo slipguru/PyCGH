@@ -1,4 +1,3 @@
-import random as rnd
 import itertools as it
 from collections import defaultdict
 
@@ -63,7 +62,8 @@ class ArrayCGHSynth(object):
                  spatial_bias_probability=0.5,
                  wave_bias_amplitude=(0.0, 0.025),
                  dye_intensity=(50, 300),
-                 noise=(0.15, 0.35)):
+                 noise=(0.15, 0.35),
+                 random_state=None):
 
         # Check Geometry
         self._nrow, self._ncol = (int(x) for x in geometry)
@@ -99,6 +99,14 @@ class ArrayCGHSynth(object):
         if self._Nmin < 0 or self._Nmax < 0:
             raise ValueError('wrong noise extremes (%s, %s)' % (self._Nmin,
                                                                 self._Nmax))
+
+        # Creating Random State
+        if random_state is None:
+            self._rnd = np.random.mtrand._rand # already global random state
+        elif isinstance(random_state, np.random.RandomState):
+            self._rnd = random_state
+        else:
+            self._rnd = np.random.RandomState(random_state)
 
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
@@ -152,7 +160,8 @@ class ArrayCGHSynth(object):
         self._col = np.asarray(self._col)
 
         # Shuffling order across chip (using sampling without replacement)
-        order = np.asarray(rnd.sample(xrange(len(self._id)), len(self._id)))
+        order = np.arange(len(self._id))
+        self._rnd.shuffle(order)
 
         # For each probe we check if it belongs to a specified alteration
         # This step is perfomed iterating only on valid probes
@@ -239,29 +248,29 @@ class ArrayCGHSynth(object):
 
         # * Adding alterations (resampling)
         for sampler, indexes in self._samplers:
-            t[indexes] = sampler(np.random.random())
+            t[indexes] = sampler(self._rnd.rand())
 
         # Saving true Signals
         true_test_signal = _mask_signal(t, self._mask)
         true_reference_signal = _mask_signal(r, self._mask)
 
         # * Adding tissue proportion bias
-        tissue_prop = np.random.uniform(self._Tmin, self._Tmax)
+        tissue_prop = self._rnd.uniform(self._Tmin, self._Tmax)
         t = ((t * tissue_prop) + (r * (1.0 - tissue_prop)))
 
         # * Spatial bias
         for signal in (r, t):
-            if np.random.uniform(0.0, 1.0) < self._SBP:
+            if self._rnd.uniform(0.0, 1.0) < self._SBP:
                 # Trend position
-                mu = np.array([np.random.randint(0, self._nrow),
-                               np.random.randint(0, self._ncol)])
+                mu = np.array([self._rnd.randint(0, self._nrow),
+                               self._rnd.randint(0, self._ncol)])
 
                 # Shape
-                vars = (np.random.uniform(0, (self._nrow * 2.)),
-                        np.random.uniform(0, (self._ncol * 2.)))
+                vars = (self._rnd.uniform(0, (self._nrow * 2.)),
+                        self._rnd.uniform(0, (self._ncol * 2.)))
 
                 # Rotation
-                theta = np.random.uniform(0.0, 2 * np.pi)
+                theta = self._rnd.uniform(0.0, 2 * np.pi)
                 U = np.array([[np.cos(theta), np.sin(theta)],
                               [-np.sin(theta), np.cos(theta)]])
 
@@ -270,12 +279,13 @@ class ArrayCGHSynth(object):
                 mvn = _mvnpdf(mu, Sigma)
                 bias = mvn(self._row[~self._mask],
                            self._col[~self._mask])
+                scaling_factor = signal / signal.max()
 
-                # Random intensity
-                signal += (np.random.uniform(-1.0, 1.0) * bias)
+                # Random intensity (bias proportional to signal intensity)
+                signal += (self._rnd.uniform(-1.0, 1.0) * bias * scaling_factor)
 
         # * Wave effect
-        a = np.random.uniform(self._Wmin, self._Wmax)
+        a = self._rnd.uniform(self._Wmin, self._Wmax)
         freq = 8./max(self._eb[~self._mask])
         w = a * np.sin(freq * np.pi * self._sb[~self._mask])
 
@@ -283,17 +293,17 @@ class ArrayCGHSynth(object):
         t *= 4**w
 
         # * Signal intensity (Dye Bias + Noise)
-        r_dye = np.random.uniform(self._Dmin, self._Dmax)
-        t_dye = np.abs(r_dye + np.random.uniform(-r_dye/3., r_dye/3.))
-        sigma = np.random.uniform(self._Nmin, self._Nmax)
+        r_dye = self._rnd.uniform(self._Dmin, self._Dmax)
+        t_dye = np.abs(r_dye + self._rnd.uniform(-r_dye/3., r_dye/3.))
+        sigma = self._rnd.uniform(self._Nmin, self._Nmax)
 
         # Hybridization noise
         noise = sigma * np.sqrt(2.) * 0.5   # COMMENT
-        response_bias = np.random.normal(0.0, 1.0, size=C) # Fixed?
+        response_bias = self._rnd.normal(0.0, 1.0, size=C) # Fixed?
 
-        r *= (2.**(np.random.normal(np.log2(r_dye), noise, size=C) +
+        r *= (2.**(self._rnd.normal(np.log2(r_dye), noise, size=C) +
                    response_bias))  # Systematic Hybridization
-        t *= (2.**(np.random.normal(np.log2(t_dye), noise, size=C) +
+        t *= (2.**(self._rnd.normal(np.log2(t_dye), noise, size=C) +
                    response_bias))  # Systematic Hybridization
 
         # * Masking not valid probes (out of signal range)
