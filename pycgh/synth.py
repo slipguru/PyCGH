@@ -112,7 +112,9 @@ class ArrayCGHSynth(object):
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
 
-        print alterations
+        for k in alterations.keys():
+            if k.startswith('X') or k.startswith('Y'):
+                raise ValueError('Alterations on allosomes are not yet allowed. Sorry!')
 
         # Checking and filling alteration probabilities
         if alterations:
@@ -143,8 +145,6 @@ class ArrayCGHSynth(object):
                     else: #filling
                         alterations[a].append((2, 1.0 - p_sum))
 
-        print alterations
-
         # Fullfilled id-list (with standard "unused ids" )
         missing_num = (CHIP_LEN - len(design))
         self._id = np.asarray((design.keys() +      # unsused ids
@@ -173,10 +173,6 @@ class ArrayCGHSynth(object):
         # Shuffling order across chip (using sampling without replacement)
         order = np.arange(len(self._id))
         self._rnd.shuffle(order)
-
-        for k in alterations.keys():
-            if k.startswith('X') or k.startswith('Y'):
-                raise ValueError('Alterations on allosomes are not yet allowed. Sorry!')
 
         # For each probe we check if it belongs to a specified alteration
         # This step is perfomed iterating only on valid probes
