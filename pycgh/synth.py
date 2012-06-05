@@ -57,7 +57,8 @@ def _sorted_pair(value):
 class ArrayCGHSynth(object):
 
     def __init__(self, geometry, design,
-                 alterations=None, cytostructure=None,
+                 alterations=None,
+                 cytostructure=None,
                  tissue_proportion=(0.3, 0.7),
                  spatial_bias_probability=0.5,
                  wave_bias_amplitude=(0.0, 0.025),
@@ -111,6 +112,8 @@ class ArrayCGHSynth(object):
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
 
+        print alterations
+
         # Checking and filling alteration probabilities
         if alterations:
             if not cytostructure:
@@ -120,19 +123,27 @@ class ArrayCGHSynth(object):
                 try:
                     levels, p = zip(*alterations[a])
                 except TypeError:
-                    alterations[a] = [(alterations[a], 1.0)]
-                    levels, p = zip(*alterations[a])
+                    try:
+                        alterations[a] = [(int(alterations[a]), 1.0)]
+                        levels, p = zip(*alterations[a])
+                    except TypeError:
+                        raise ValueError('not valid list of '
+                                         'alterations probability '
+                                         'pairs: %s' % str(alterations[a]))
 
                 p_sum = sum(p)
                 if p_sum > 1.0:
                     raise ValueError("sum of probabilities for "
                                      "'%s' greater than 1.0" % a)
                 elif p_sum < 1.0:
+                    # DIFFERENCE on X and Y by gender
                     if 2 in levels:
                         raise ValueError("sum of probabilities for "
                                          "'%s' less than 1.0" % a)
                     else: #filling
                         alterations[a].append((2, 1.0 - p_sum))
+
+        print alterations
 
         # Fullfilled id-list (with standard "unused ids" )
         missing_num = (CHIP_LEN - len(design))
@@ -162,6 +173,10 @@ class ArrayCGHSynth(object):
         # Shuffling order across chip (using sampling without replacement)
         order = np.arange(len(self._id))
         self._rnd.shuffle(order)
+
+        for k in alterations.keys():
+            if k.startswith('X') or k.startswith('Y'):
+                raise ValueError('Alterations on allosomes are not yet allowed. Sorry!')
 
         # For each probe we check if it belongs to a specified alteration
         # This step is perfomed iterating only on valid probes
