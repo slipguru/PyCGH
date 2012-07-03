@@ -56,9 +56,8 @@ def test_bands_ordering():
     assert_raises(RuntimeError, cs[1].band('p12').__cmp__, cs[1].band('p'))
     assert_raises(RuntimeError, cs[1].band('p').__cmp__, cs[1].band('p1'))
 
-    # Different Chromosomes
-    assert_raises(RuntimeError, cs[1].band('p').__cmp__,
-                                cs['Y'].band('q'))
+    # Different Chromosomes (natural ordering by chromosomes)
+    assert_true(cs[1].band('p') < cs['Y'].band('q'))
 
 def test_types():
     cs = CytoStructure(StringIO(CytoFileContent))

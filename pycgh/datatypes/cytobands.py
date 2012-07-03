@@ -62,7 +62,8 @@ class ChromosomeBand(object):
 
         # Chromosome Order
         if self.chromosome != other.chromosome:
-            raise RuntimeError('bands belong to different chromosomes')
+            return cmp(self.chromosome, other.chromosome)
+            #raise RuntimeError('bands belong to different chromosomes')
 
         # Checking ambiguity
         if self.start_base <= other.start_base:
@@ -77,6 +78,10 @@ class ChromosomeBand(object):
                                                   other.chromosome, other.label))
 
         return cmp(self.start_base, other.start_base)
+
+    def __hash__(self):
+        return hash((self.chromosome, self.label,
+                     self.start_base, self.end_base))
 
     def __contains__(self, item):
         return (item.chromosome == self.chromosome and
