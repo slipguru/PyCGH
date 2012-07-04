@@ -61,7 +61,10 @@ def agilent(path, delimiter='\t', test_channel='r',
                                   ArrayCGH.MISSING_INT, # eb
                                   True)                 # mask
 
-        rel_map = ucsc_reader(ucsc_mapping)
+        if str(ucsc_mapping) == ucsc_mapping:
+            rel_map = ucsc_reader(ucsc_mapping)
+        else:
+            rel_map = ucsc_mapping
         locations = (rel_map.get(id, INVALID_PROBE_ID_VALUE)
                      for id in features['ProbeName'])
     else:
