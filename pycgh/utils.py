@@ -71,3 +71,40 @@ def _file_handle(file_ref, mode='r'):
         raise ValueError('input file must be a path or file handle')
 
     return fh
+
+# Splitting algoritm ----------------------------------------------------------
+from .datatypes.arraycgh import ArrayCGH
+
+def location_normalization(chr, start, end):
+    # in some files the range is swapped :-/
+    if start > end:
+        start, end = end, start
+
+    chr = chr.split('_', 1)[0].replace('chr', '') # from chrXX_bla_bla to XX
+    if chr == 'X':
+        return 23, start, end, False
+    elif chr=='Y':
+        return 24, start, end, False
+    else:
+        try:
+            chr = int(chr)
+            if chr <= 0 or chr > 24:
+                return (ArrayCGH.MISSING_INT,
+                        ArrayCGH.MISSING_INT,
+                        ArrayCGH.MISSING_INT, True)
+            return chr, start, end, False
+        except ValueError: # unplaceable probe eg chrUn
+            return (ArrayCGH.MISSING_INT,
+                    ArrayCGH.MISSING_INT,
+                    ArrayCGH.MISSING_INT, True)
+
+def split_location(location):
+    try:
+        chr, interval = location.split(':')
+        start, end = (int(x) for x in interval.split('-'))
+    except ValueError: # unmapped/control probe
+        return (ArrayCGH.MISSING_INT,
+                ArrayCGH.MISSING_INT,
+                ArrayCGH.MISSING_INT, True)
+
+    return location_normalization(chr, start, end)

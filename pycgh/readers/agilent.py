@@ -4,7 +4,7 @@ import numpy as np
 
 from .ucsc import ucsc_mapping as ucsc_reader
 from ..datatypes.arraycgh import ArrayCGH
-from ..utils import _file_handle
+from ..utils import _file_handle, split_location
 
 
 # Constants -------------------------------------------------------------------
@@ -167,16 +167,3 @@ def _return_headers(acgh, delimiter='\t'):
     types = acgh.readline().strip().split(delimiter)[1:]
     info = acgh.readline().strip().split(delimiter)[1:]
     return types, info
-
-# Splitting algoritm ----------------------------------------------------------
-from .ucsc import _split_mapping
-def split_location(location):
-    try:
-        chr, interval = location.split(':')
-        start, end = (int(x) for x in interval.split('-'))
-    except ValueError: # unmapped/control probe
-        return (ArrayCGH.MISSING_INT,
-                ArrayCGH.MISSING_INT,
-                ArrayCGH.MISSING_INT, True)
-
-    return _split_mapping(chr, start, end)
