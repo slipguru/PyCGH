@@ -39,6 +39,12 @@ def _read_pair(file_path, delimiter):
 
     return meta, data
 
+def _probe_to_pos(id):
+    chr, pos = id.split('FS')
+    chr = lower()
+    pos = int(pos)
+    return split_location('%s:%s-%s' % (chr, str(pos), str(pos)))
+
 # Main Function ---------------------------------------------------------------
 def nimblegen(test_path, reference_path, delimiter='\t', ucsc_mapping=None):
     """ Prova Doc
@@ -46,30 +52,28 @@ def nimblegen(test_path, reference_path, delimiter='\t', ucsc_mapping=None):
 
     test_meta, test_data = _read_pair(test_path, delimiter)
     ref_meta, ref_data = _read_pair(reference_path, delimiter)
-
+    
     if not np.all(test_data['PROBE_ID'] == ref_data['PROBE_ID']):
         raise ValueError('probe id mismatch between pair files')
 
     # Mapping between probe and chromosomal position
-    # TODO
-    #if not ucsc_mapping is None:
-    #    INVALID_PROBE_ID_VALUE = (ArrayCGH.MISSING_INT, # chr
-    #                              ArrayCGH.MISSING_INT, # sb
-    #                              ArrayCGH.MISSING_INT, # eb
-    #                              True)                 # mask
-    #
-    #    if str(ucsc_mapping) == ucsc_mapping:
-    #        rel_map = ucsc_reader(ucsc_mapping)
-    #    else:
-    #        rel_map = ucsc_mapping
-    #    locations = (rel_map.get(id, INVALID_PROBE_ID_VALUE)
-    #                 for id in features['PROBE_ID'])
-    #else:
-    #    # Standard mapping included into agilent file
-    #    #locations = (split_location(x) for x in features['SystematicName'])
+    if not ucsc_mapping is None:
+        INVALID_PROBE_ID_VALUE = (ArrayCGH.MISSING_INT, # chr
+                                  ArrayCGH.MISSING_INT, # sb
+                                  ArrayCGH.MISSING_INT, # eb
+                                  True)                 # mask
     
-    locations = zip(*(split_location(x) for x in test_data['SEQ_ID']))
-    chromosome, startchr, endchr, mask = locations
+        if str(ucsc_mapping) == ucsc_mapping:
+            rel_map = ucsc_reader(ucsc_mapping)
+        else:
+            rel_map = ucsc_mapping
+        locations = (rel_map.get(id, INVALID_PROBE_ID_VALUE)
+                     for id in features['PROBE_ID'])
+    else:
+        # Standard mapping included into nimblegen file
+        locations = (_probe_to_pos(x) for x in features['PROBE_ID'])
+    
+    chromosome, startchr, endchr, mask = zip(*locations)
 
     # Creation and dinamyc attachment of useful informations
     aCGH = ArrayCGH(id=test_data['PROBE_ID'],
@@ -78,14 +82,14 @@ def nimblegen(test_path, reference_path, delimiter='\t', ucsc_mapping=None):
                     reference_signal=ref_data['PM'],
                     test_signal=test_data['PM'],
                     chromosome=chromosome,
-                    start_base=test_data['POSITION'],
-                    end_base=test_data['POSITION'], #TODO,
+                    start_base=startchr,
+                    end_base=endchr,
                     mask=mask)
     aCGH.META_TEST = test_meta
     aCGH.META_REF = ref_meta
-    aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6],
-                              ('PROBE_ID', 'Y', 'X', 'PM', 'PM', 'PROBE_ID'))
-                         )
+    #aCGH.NAMES_MAP = dict(zip(ArrayCGH.COL_NAMES[:6],
+    #                          ('PROBE_ID', 'Y', 'X', 'PM', 'PM', 'PROBE_ID'))
+    #                     )
 
     return aCGH
 
