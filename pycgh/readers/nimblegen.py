@@ -68,10 +68,10 @@ def nimblegen(test_path, reference_path, delimiter='\t', ucsc_mapping=None):
         else:
             rel_map = ucsc_mapping
         locations = (rel_map.get(id, INVALID_PROBE_ID_VALUE)
-                     for id in features['PROBE_ID'])
+                     for id in test_data['PROBE_ID'])
     else:
         # Standard mapping included into nimblegen file
-        locations = (_probe_to_pos(x) for x in features['PROBE_ID'])
+        locations = (_probe_to_pos(x) for x in test_data['PROBE_ID'])
     
     chromosome, startchr, endchr, mask = zip(*locations)
 
