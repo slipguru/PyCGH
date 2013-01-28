@@ -192,6 +192,10 @@ class DataTable(object):
     def dtype(self):
         return self._data.dtype
 
+    @property
+    def shape(self):
+        return self._data.shape
+
     @staticmethod
     def load(dt_file, delimiter='\t', dtype=float):
         fh = _file_handle(dt_file)
