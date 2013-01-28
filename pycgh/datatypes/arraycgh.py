@@ -77,9 +77,6 @@ class ArrayCGH(object):
             buffer = it.chain(buffer, kwvalues)
             names.extend(kwnames)
 
-        if len(set(names)) < len(names):
-            raise ValueError('optional parameters name duplication')
-
         self._rdata =  np.rec.fromarrays(buffer, names=names).view(np.ndarray)
         self._rdata.sort(order=['chromosome', 'start_base'])
 

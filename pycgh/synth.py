@@ -112,12 +112,13 @@ class ArrayCGHSynth(object):
         design = dict(design) # ensure dict structure
         CHIP_LEN = (self._nrow * self._ncol)
 
-        for k in alterations.keys():
-            if k.startswith('X') or k.startswith('Y'):
-                raise ValueError('Alterations on allosomes are not yet allowed. Sorry!')
-
         # Checking and filling alteration probabilities
         if alterations:
+            for k in alterations.keys():
+                if k.startswith('X') or k.startswith('Y'):
+                    raise ValueError('alterations on allosomes are not '
+                                     'yet allowed')
+
             if not cytostructure:
                 raise ValueError('missing cytostructure reference')
 

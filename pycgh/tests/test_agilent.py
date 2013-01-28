@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import *
 
 from ..datatypes.arraycgh import ArrayCGH
-from ..readers import agilent
+from ..readers import agilent, ucsc_mapping
 
 PAR_PATH = os.path.split(os.path.abspath(__file__))[0]
 SAMPLE_PATH = os.path.join(PAR_PATH, 'agilent_sample.tar.gz')
@@ -118,7 +118,8 @@ def test_release_mapping():
     assert_equal(28966483, aCGH['end_base'][index])
 
     # Manual remapping of 3 probes
-    aCGH = agilent(SAMPLE_PATH, ucsc_mapping = StringIO(RELEASE_FILE))
+    aCGH = agilent(SAMPLE_PATH,
+                   ucsc_mapping=ucsc_mapping(StringIO(RELEASE_FILE)))
     assert_equal(3, len(aCGH.F['id']))
 
     index = (aCGH['id'] == 'A_14_P103951')
