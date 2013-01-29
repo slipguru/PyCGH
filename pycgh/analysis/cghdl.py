@@ -46,6 +46,21 @@ from prox import prox_squared_l1 as psl1
 def prox_squared_l1(x, t):
     return psl1(np.asarray(x), float(t))
 
+## Derivate -----
+def discrete_derivate(x):
+    x = np.asarray(x)
+    return x[1:] - x[:-1]
+
+def discrete_derivate_conj(x):
+    x = np.asarray(x)
+    return np.r_[-x[0], x[:-1] - x[1:], x[-1]]
+    
+## Supp functions ------
+#def symplex_suppfunc(u):
+#    u = np.asarray(u, dtype=float)
+#    up = np.maximum(u, 0)
+#    return up.sum()
+
 class CGHDL(object):
     def __init__(self):
         pass

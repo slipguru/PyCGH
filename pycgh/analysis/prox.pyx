@@ -20,7 +20,7 @@ cdef inline double fsign(double f):
         return 1.0
     else:
         return -1.0
-
+    
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
