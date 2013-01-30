@@ -52,7 +52,7 @@ def test_prox_squared_l1():
     assert_equal([0.5, 0.0, 0.0], prox_squared_l1([1.0, 0.0, 0.0], t=0.5))
     assert_equal([0.625, 0.0, 0.0], prox_squared_l1([1.0, 0.0, 0.0], t=0.3))
     assert_equal([0.625, 0.0, 9.625], prox_squared_l1([1.0, 0.0, 10.0], t=0.3))
-    
+
 def test_discrete_derivate():
     assert_equal([1, 1], discrete_derivate([1, 2, 3]))
     assert_equal([], discrete_derivate([1]))
@@ -61,7 +61,40 @@ def test_discrete_derivate_conj():
     assert_equal([-1, -1, -1, 3], discrete_derivate_conj([1, 2, 3]))
     assert_equal([-1, 1], discrete_derivate_conj([1]))
 
-# CGHDL min  algorithm --------------------------------------------------------
+# CGHDL prox functions --------------------------------------------------------
+from ..analysis.cghdl import prox_psi
+
+#B = np.ones((100, 3))
+#Theta = np.ones((3, 10))
+#Y = np.ones((100, 10))
+#
+#zeta = 1e-1
+#muw = np.ones((99, 1))
+#lambda_ = 1e-1
+#eps = 1e-3
+#maxN = 1e3
+
+
+def test_psi():
+    B = np.ones((1000, 3))
+    Theta = np.ones((3, 100))
+    Y = np.ones((1000, 100))
+
+    zeta = 1e-1
+    muw = np.ones((999, 1))
+    lambda_ = 1e-1
+    eps = 1e-3
+    maxN = 1e3
+
+    Zeta, gaps, primals, duals, (V1, V2, V3) = prox_psi(B, zeta, Theta, Y,
+                                                        muw, lambda_, eps,
+                                                        maxN=maxN, init=None)
+    #assert_almost_equal(127.823, Zeta.sum(), 3)
+    #assert_almost_equal(107456.144, sum(gaps), 3)
+    assert_almost_equal(1027.826, Zeta.sum(), 3)
+    assert_almost_equal(4051669.332, sum(gaps), 3)
+
+# CGHDL main  algorithm -------------------------------------------------------
 from ..analysis import CGHDL
 
 def test_default():
