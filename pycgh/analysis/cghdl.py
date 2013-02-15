@@ -176,20 +176,17 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
 
     # Initializations
     ThetaNorm2 = np.sum(Theta*Theta)
-    Gamma = np.empty_like(Theta, order='C')
-    Gamma_aux = np.empty_like(Theta, order='C')
-    PGamma = np.empty_like(Theta, order='C')
+    Gamma = np.empty_like(Theta)
+    Gamma_aux = np.empty_like(Theta)
+    PGamma = np.empty_like(Theta)
 
     if init is None:
-        V1, V2, V3 = (np.zeros((L, S), order='C'),
-                      np.zeros((J, S), order='C'),
-                      np.zeros((J, S), order='C'))
+        V1, V2, V3 = (np.zeros((L, S)), np.zeros((J, S)), np.zeros((J, S)))
     else:
         V1, V2, V3 = init
     U1, U2, U3 = V1.copy(), V2.copy(), V3.copy()
-    V1_prev, V2_prev, V3_prev = (np.empty_like(V1, order='C'),
-                                 np.empty_like(V2, order='C'),
-                                 np.empty_like(V3, order='C'))
+    V1_prev, V2_prev, V3_prev = (np.empty_like(V1), np.empty_like(V2),
+                                 np.empty_like(V3))
 
     gamma = 1.0/(eta*(np.linalg.norm(np.dot(B.T, B)) + 2.0))
     t = 1.
@@ -251,22 +248,27 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     return PGamma, gaps, primals, duals, (V1, V2, V3)
 
 ### TEMPORARY MAIN FUNCTION ###################################################
-def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100,
-          eps=1e-5, init='pca'):
+def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, init='pca',
+          eps=1e-3):
+
     L, S = Y.shape
 
     #### B Initialization
-    assert init in ['pca', 'rand']
-    if init in 'pca':
-        TMP = 1./np.sqrt(S-1) * Y.T
-        TMP -= np.mean(TMP, axis=0)
-        U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
-        V = np.array(Vt.T)
-        B0 = V[:, :J]
-    elif init in 'rand':
-        sampling = np.arange(S)
-        np.random.shuffle(sampling)
-        B0 = Y[:,sampling[:J]]
+    try:
+        assert init.shape == (L, J)
+        B0 = init.copy()
+    except AttributeError:
+        assert init in ['pca', 'rand']
+        if init in 'pca':
+            TMP = 1./np.sqrt(S-1) * Y.T
+            TMP -= np.mean(TMP, axis=0)
+            U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
+            V = np.array(Vt.T)
+            B0 = V[:, :J]
+        elif init in 'rand':
+            sampling = np.arange(S)
+            np.random.shuffle(sampling)
+            B0 = Y[:,sampling[:J]]
 
     #### Theta Initialization
     UBOUND = 1;
@@ -282,9 +284,13 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100,
     zeta = 1./(L*J)
 
     # Parameters normalization
-    tau *= (L/float(J))
-    lambda_ *= (S/float(J))
-    mu *= (S/float(J))
+    tau *= (L/float(J))      # s, j -- /J
+    lambda_ *= (S/float(J))  # l, j -- /S
+    mu *= (S/float(J))       # l, j -- /S
+
+    #tau /= float(J)      # s, j -- /J
+    #lambda_ /= float(S)  # l, j -- /S
+    #mu /= float(S)       # l, j -- /S
 
     #### Starting Duality Gap for PHI (with Vi=0, B fixed and Gamma=Theta0)
     PTheta0 = np.empty_like(Theta0)
@@ -298,7 +304,7 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100,
     C_phi = np.sqrt(gap0_phi * 2.*eta)
 
     #### Starting Duality Gap for PSI (with Vi=0, Theta fixed and Zeta=B0)
-    DB0 = np.empty_like(B0)
+    DB0 = np.empty((L-1, J))
     discrete_derivate(B0, DB0)
     gap0_psi = (
         (0.5 * np.sum((Y - np.dot(B0, Theta0))**2)) +
@@ -321,14 +327,14 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100,
         B_prev = B.copy()
         Theta_prev = Theta.copy()
 
-        eps = 1. / ((k+1)**p)
+        epsk = 1. / ((k+1)**p)
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
 
         (Theta, gaps,
          primals, duals,
          dual_var_phi) = prox_phi(Theta, eta, B, Y, tau, UBOUND,
-                                  eps=C_phi*eps,
+                                  eps=C_phi*epsk,
                                   maxN=maxN,
                                   init=dual_var_phi)
 
@@ -337,16 +343,16 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100,
         (B, gaps,
          primals, duals,
          dual_var_psi) = prox_psi(B, zeta, Theta, Y, mu*w, lambda_,
-                                  eps=C_psi*eps,
+                                  eps=C_psi*epsk,
                                   maxN=maxN,
                                   init=dual_var_psi)
 
         lastgappsi = gaps[len(gaps)-1]
 
-        B_diffs.append(np.sum((B - B_prev)**2))
-        Theta_diffs.append(np.sum((Theta - Theta_prev)**2))
+        B_diffs.append(np.sum((B - B_prev)**2)/np.sum(B_prev**2))
+        Theta_diffs.append(np.sum((Theta - Theta_prev)**2)/np.sum(Theta_prev**2))
 
-        convergence = (B_diffs[-1]<= eps and Theta_diffs[-1]<= eps)
+        convergence = (B_diffs[-1] < eps and Theta_diffs[-1] < eps)
         if convergence:
             break
 

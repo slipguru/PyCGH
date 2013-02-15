@@ -6,4 +6,4 @@
 """Insert module description
 """
 
-from .cghdl import CGHDL
+from .cghdl import cghDL, CGHDL
