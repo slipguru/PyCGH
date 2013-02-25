@@ -10,7 +10,7 @@ from matplotlib import pylab as plt
 
 def spatial(aCGH, signal=None, title=None, median_center=False,
             cmap=None, cbticks=None):
-    plt.title('CGH Spatial plot' if title is None else title)
+    plt.title('CGH Spatial plot' if title is None else title, size=8)
 
     rows = aCGH.F['row']
     cols = aCGH.F['col']
@@ -59,7 +59,7 @@ def spatial(aCGH, signal=None, title=None, median_center=False,
 
 
 def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_color='r'):
-    plt.title('CGH M-A plot' if title is None else title)
+    plt.title('CGH M-A plot' if title is None else title, size=8)
 
     test = aCGH['test_signal']
     reference = aCGH['reference_signal']
@@ -184,9 +184,9 @@ def profile(aCGH, signal=None,
         plt.axvline(sep-1, lw=1, color='gray', ls='-')
 
     label_ticks = ['Chr %s' % inverse_chr_map[k] for k in chromosomes]
-    plt.xticks(ticks, label_ticks, rotation=90)
-    plt.tick_params(axis='x', direction='out', length=3, colors='black',
-                    labelbottom='on')
+    plt.xticks(ticks, label_ticks, rotation=90, size=8)
+    #plt.tick_params(axis='x', direction='out', length=3, colors='black',
+    #                labelbottom='on')
 
     return coords
 
