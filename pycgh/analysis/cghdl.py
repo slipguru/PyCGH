@@ -169,6 +169,8 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     """ Fixed B, Theta posbox"""
 
+    print Theta.sum(), eta, B.sum(), Y.sum(), tau, bound, eps, maxN, init
+
     J, S = Theta.shape
     L = B.shape[0]
 
@@ -183,7 +185,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     if init is None:
         V1, V2, V3 = (np.zeros((L, S)), np.zeros((J, S)), np.zeros((J, S)))
     else:
-        V1, V2, V3 = init
+        V1, V2, V3 = (V.copy() for V in init)
     U1, U2, U3 = V1.copy(), V2.copy(), V3.copy()
     V1_prev, V2_prev, V3_prev = (np.empty_like(V1), np.empty_like(V2),
                                  np.empty_like(V3))
@@ -204,15 +206,16 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         # Data fit
         V1 = (1./(1. + gamma)) * (U1 + gamma*(np.dot(B, Gamma_aux) - Y))
 
-        # Hard constraint (positivity and ...)
+        # Hard constraint (positivity and bound)
         grad = U2 + gamma*Gamma_aux
         positive_box_projection(grad, gamma*UBOUND, V2)
         V2 = grad - V2
 
         # L1^2 norm
-        grad = U3 + gamma*Gamma_aux
+        grad = np.asfortranarray(U3 + gamma*Gamma_aux)
         prox_squared_l1_bycol(grad/gamma, V3, tau/gamma)
         V3 *= -gamma; V3 += grad
+        #V3 = grad - gamma*V3
 
         # Solution Update
         Gamma = Theta - eta*(np.dot(B.T, V1) + V2 + V3)

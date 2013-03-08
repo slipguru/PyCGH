@@ -67,6 +67,7 @@ def test_discrete_derivate_conj():
 
 # CGHDL prox functions --------------------------------------------------------
 from ..analysis.cghdl import prox_psi, prox_phi
+#from ..analysis.orig_cghdl import prox_psi, prox_phi
 
 def test_psi():
     B = np.ones((100, 3))
@@ -94,13 +95,13 @@ def test_phi():
     tau = 1e-1
     bound = 1.0
     eps = 1e-3
-    maxN = 1e3
+    maxN = 10#1e3
 
     Gamma, gaps, primals, duals, (V1, V2, V3) = prox_phi(Theta, eta, B, Y,
                                                         tau, bound, eps,
                                                         maxN=maxN, init=None)
-    assert_almost_equal(10.606, Gamma.sum(), 3)
-    assert_almost_equal(87.461, sum(gaps), 3)
+    assert_almost_equal(10.629, Gamma.sum(), 3)
+    assert_almost_equal(0.844, sum(gaps), 3)
 
 # CGHDL main  algorithm -------------------------------------------------------
 from ..analysis import CGHDL

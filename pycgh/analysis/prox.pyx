@@ -29,7 +29,7 @@ def prox_squared_l1(np.ndarray[DOUBLE, ndim=1] x, DOUBLE t):
     cdef unsigned int l = 0
 
     cdef double cum = 0.0
-    cdef double k = (1./(2. * t)) - n+2
+    cdef double k = (1./(2. * t)) + n
     cdef double rho = 0.0
 
     cdef np.ndarray[DOUBLE, ndim=1] x_s = np.abs(x)
@@ -37,10 +37,10 @@ def prox_squared_l1(np.ndarray[DOUBLE, ndim=1] x, DOUBLE t):
 
     for l in range(n-1, 0, -1): # reversed order
         cum += x_s[l]
-        if ((k+l) * x_s[l-1] <= cum) and ((k+l) * x_s[l] > cum):
+        if ((k-l) * x_s[l-1] <= cum) and ((k-l) * x_s[l] > cum):
             break
 
-    rho = cum / ((k+l) * x_s[l]) # last computed conditions
+    rho = 2.*t*cum / (1 + 2*t*(n-l))
     for l in range(n):
         x_s[l] = fsign(x[l]) * fmax(fabs(x[l]) - rho, 0.0)
     return x_s
@@ -52,25 +52,27 @@ def prox_squared_l1_bycol(np.ndarray[DOUBLE, ndim=2] X,
                           np.ndarray[DOUBLE, ndim=2] Y,
                           DOUBLE t):
     cdef unsigned int c = 0
-    cdef unsigned int l = 0
+    #cdef unsigned int l = 0
     cdef unsigned int num_col = X.shape[1]
-    cdef unsigned int num_row = X.shape[0]
+    #cdef unsigned int num_row = X.shape[0]
 
-    cdef double cum
-    cdef double k = (1./(2. * t)) - num_row+2
-    cdef double rho = 0.0
+    #cdef double cum
+    #cdef double k = (1./(2. * t)) - num_row+2
+    #cdef double rho = 0.0
 
     for c in range(num_col):
-        for l in range(num_row):
-            Y[l,c] = fabs(X[l,c])
-        Y[:,c].sort()
+        Y[:,c] = prox_squared_l1(X[:,c], t)
 
-        cum = 0.0
-        for l in range(num_row-1, 0, -1): # reversed order
-            cum += Y[l,c]
-            if ((k+l) * Y[l-1,c] <= cum) and ((k+l) * Y[l,c] > cum):
-                break
-
-        rho = cum / ((k+l) * Y[l,c]) # last computed conditions
-        for l in range(num_row):
-            Y[l,c] = fsign(X[l,c]) * fmax(fabs(X[l,c]) - rho, 0.0)
+        #for l in range(num_row):
+        #    Y[l,c] = fabs(X[l,c])
+        #Y[:,c].sort()
+        #
+        #cum = 0.0
+        #for l in range(num_row-1, 0, -1): # reversed order
+        #    cum += Y[l,c]
+        #    if ((k+l) * Y[l-1,c] <= cum) and ((k+l) * Y[l,c] > cum):
+        #        break
+        #
+        #rho = cum / ((k+l) * Y[l,c]) # last computed conditions
+        #for l in range(num_row):
+        #    Y[l,c] = fsign(X[l,c]) * fmax(fabs(X[l,c]) - rho, 0.0)
