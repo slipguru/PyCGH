@@ -2,56 +2,22 @@ import numpy as np
 from numpy.testing import *
 
 # CGHDL utils -----------------------------------------------------------------
-from ..analysis.cghdl import pos_proj, ball_proj, pos_ball_proj, simplex_proj
-from ..analysis.cghdl import prox_l1, prox_squared_l1
-from ..analysis.cghdl import discrete_derivate, discrete_derivate_conj
-
-def test_pos_proj():
-    assert_equal([1.0, 1.1, 0.0], pos_proj([1.0, 1.1, -0.1]))
-    assert_equal([0.0, 0.0, 0.0], pos_proj([-1.0, -1.1, -0.1]))
-    assert_equal([1.0, 1.1, 0.1], pos_proj([1.0, 1.1, 0.1]))
-
-    assert_equal([1.0, 1.0, 0.0], pos_proj([1.0, 1.1, -0.1], r=1))
-    assert_equal([0.0, 0.0, 0.0], pos_proj([-1.0, -1.1, -0.1], r=1))
-    assert_equal([1.0, 1.0, 0.1], pos_proj([1.0, 1.1, 0.1], r=1))
-
-    assert_equal([1.0, 1.1, 0.1], pos_proj([1.0, 1.1, 0.1], r=2))
-
-def test_ball_proj():
-    assert_equal([1.0, 0.0, 0.0], ball_proj([1.0, 0.0, 0.0]))
-    assert_equal([1.0/np.sqrt(2.), 1.0/np.sqrt(2.), 0.0],
-                  ball_proj([1.0, 1.0, 0.0]))
-    assert_equal([1.0/np.sqrt(3.), 1.0/np.sqrt(3.), -1.0/np.sqrt(3)],
-                  ball_proj([1.0, 1.0, -1.0]))
-
-    assert_equal([1.0/(2*np.sqrt(1)), 0.0, 0.0],
-                 ball_proj([1.0, 0.0, 0.0], r=1/2.))
-
-def test_pos_ball_proj():
-    assert_equal([1.0, 0.0, 0.0], pos_ball_proj([1.0, 0.0, 0.0]))
-    assert_equal([1.0, 0.0, 0.0], pos_ball_proj([1.0, -1.0, 0.0]))
-
-    assert_equal([1.0/np.sqrt(2.), 1.0/np.sqrt(2.), 0.0],
-                  pos_ball_proj([1.0, 1.0, 0.0]))
-    assert_equal([1.0/np.sqrt(2.), 1.0/np.sqrt(2.), 0.0],
-                  pos_ball_proj([1.0, 1.0, -1.0]))
-
-def test_simplex_proj():
-    assert_almost_equal(1, simplex_proj([0.3, 0.3, 0.3]).sum())
-    assert_almost_equal(1, simplex_proj([20, 40, 10.]).sum())
-    assert_almost_equal(1, simplex_proj([0.3, 0.3, 0.5]).sum())
-
-    assert_almost_equal(2., simplex_proj([0.3, 0.3, -0.5], r=2.).sum())
-
-def test_prox_l1():
-    assert_equal([0.5, 0.0, 0.0], prox_l1([1.0, 0.0, 0.0], t=0.5))
-    assert_equal([0.7, 0.0, 0.0], prox_l1([1.0, 0.0, 0.0], t=0.3))
-    assert_equal([0.7, 0.0, 9.7], prox_l1([1.0, 0.0, 10.0], t=0.3))
+from ..analysis.cghdl import (prox_squared_l1_bycol,
+                              discrete_derivate, discrete_derivate_conj)
 
 def test_prox_squared_l1():
-    assert_equal([0.5, 0.0, 0.0], prox_squared_l1([1.0, 0.0, 0.0], t=0.5))
-    assert_equal([0.625, 0.0, 0.0], prox_squared_l1([1.0, 0.0, 0.0], t=0.3))
-    assert_equal([0.625, 0.0, 9.625], prox_squared_l1([1.0, 0.0, 10.0], t=0.3))
+    X = np.array([[1.0], [0.0], [0.0]])
+    Y = np.empty_like(X)
+
+    prox_squared_l1_bycol(X, Y, t=0.5)
+    assert_equal([[0.5], [0.0], [0.0]], Y)
+
+    prox_squared_l1_bycol(X, Y, t=0.3)
+    assert_equal([[0.625], [0.0], [0.0]], Y)
+
+    X[2,0] =  10.0
+    prox_squared_l1_bycol(X, Y, t=0.3)
+    assert_equal([[0.0], [0.0], [6.25]], Y)
 
 def test_discrete_derivate():
     X = np.array([[1, 2, 3]]).T
@@ -67,44 +33,55 @@ def test_discrete_derivate_conj():
 
 # CGHDL prox functions --------------------------------------------------------
 from ..analysis.cghdl import prox_psi, prox_phi
-#from ..analysis.orig_cghdl import prox_psi, prox_phi
+
+def setup():
+    return {'B': np.ones((100, 3)),
+            'Theta': np.ones((3, 10)),
+            'Y': np.ones((100, 10)),
+
+            'eta': 1e-1,
+            'zeta': 1e-1,
+            'muw': np.ones((99, 1)),
+            'mu': 1.0,
+            'tvw': np.ones((99, 1)),
+            'lambda_': 1e-1,
+            'tau': 1e-1,
+            'J': 1,
+            'bound': 1.0,
+            'eps': 1e-3,
+            'maxN': 1e3,
+            'maxK': 11,
+            'init': None,
+            'initB': 'pca'}
 
 def test_psi():
-    B = np.ones((100, 3))
-    Theta = np.ones((3, 10))
-    Y = np.ones((100, 10))
+    params = prox_psi.func_code.co_varnames[:prox_psi.func_code.co_argcount]
+    Zeta, gaps, primals, duals, dvars = prox_psi(*(setup()[p] for p in params))
 
-    zeta = 1e-1
-    muw = np.ones((99, 1))
-    lambda_ = 1e-1
-    eps = 1e-3
-    maxN = 1e3
-
-    Zeta, gaps, primals, duals, (V1, V2, V3) = prox_psi(B, zeta, Theta, Y,
-                                                        muw, lambda_, eps,
-                                                        maxN=maxN, init=None)
-    assert_almost_equal(127.823, Zeta.sum(), 3)
-    assert_almost_equal(107456.144, sum(gaps), 3)
+    assert_almost_equal(100.334, Zeta.sum(), 3)
+    assert_almost_equal(1071.030, sum(gaps), 3)
 
 def test_phi():
-    B = np.ones((100, 3))
-    Theta = np.ones((3, 10))
-    Y = np.ones((100, 10))
+    params = prox_phi.func_code.co_varnames[:prox_phi.func_code.co_argcount]
+    Gamma, gaps, primals, duals, dvars = prox_phi(*(setup()[p] for p in params))
 
-    eta = 1e-1
-    tau = 1e-1
-    bound = 1.0
-    eps = 1e-3
-    maxN = 10#1e3
-
-    Gamma, gaps, primals, duals, (V1, V2, V3) = prox_phi(Theta, eta, B, Y,
-                                                        tau, bound, eps,
-                                                        maxN=maxN, init=None)
-    assert_almost_equal(10.629, Gamma.sum(), 3)
-    assert_almost_equal(0.844, sum(gaps), 3)
+    assert_almost_equal(10.631, Gamma.sum(), 3)
+    assert_almost_equal(13.303, sum(gaps), 3)
 
 # CGHDL main  algorithm -------------------------------------------------------
-from ..analysis import CGHDL
+from ..analysis import cghDL, CGHDL
+from ..analysis.orig_cghdl import cghDL
+
+def test_cghdl():
+    params = cghDL.func_code.co_varnames[:cghDL.func_code.co_argcount]
+
+    #print params
+
+    out = cghDL(*(setup()[p] for p in params))
+
+    assert_almost_equal(0.073, out['Theta'].sum(), 3)
+    assert_almost_equal(0.128, out['B'].sum(), 3)
+    assert_almost_equal(10, out['conv'], 3)
 
 def test_default():
     cghDL = CGHDL()

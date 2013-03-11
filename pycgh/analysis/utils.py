@@ -164,6 +164,7 @@ def prox_l1_squared_norm(x, lambda_):
     right_cond = 2.*lambda_ * x_s.cumsum()
     left_cond = 1. + 2.*lambda_*np.arange(1, len(x)+1)
 
+    l = 0
     for l in xrange(len(x)-1):
         if ( (left_cond[l] * x_s[l+1] <= right_cond[l]) and
              (left_cond[l] * x_s[l] > right_cond[l]) ):

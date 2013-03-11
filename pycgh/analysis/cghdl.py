@@ -3,49 +3,8 @@
 
 import numpy as np
 
-## Projections ----------------------------------------------------------------
-def pos_proj(x, r=np.inf):
-    return np.clip(x, a_min=0.0, a_max=r)
-
-def ball_proj(x, r=1.0):
-    y = np.array(x, dtype=float) # copy
-
-    y_norm = np.linalg.norm(y)
-    if y_norm > r:
-        y *= (r / y_norm)
-
-    return y
-
-def pos_ball_proj(x, r=1.0):
-    x = np.asarray(x)
-    if np.alltrue(x >= 0):
-        return ball_proj(x, r)
-    elif np.alltrue(x < 0):
-        return np.zeros_like(x)
-
-    return ball_proj(x.clip(min=0.0), r) # copy
-
-def simplex_proj(x, r=1.0):
-    x = np.asarray(x)
-    if x.sum() == r and np.alltrue(x >= 0):
-        return np.array(x, dtype=float) # copy
-
-    x_s = np.sort(x)[::-1]
-    xtmp = (x_s.cumsum() - r) / np.arange(1, len(x) + 1)
-    k = np.where(xtmp < x_s)[0][-1]
-
-    return (x - np.max(xtmp[k], 0)).clip(min=0)
-
 ## Prox operators -------------------------------------------------------------
-def prox_l1(x, t):
-    x = np.asarray(x, dtype=float)
-    return np.sign(x) * np.clip(np.abs(x) - t, a_min=0.0, a_max=np.inf)
-
-from prox import prox_squared_l1 as psl1
-def prox_squared_l1(x, t):
-    return psl1(np.asarray(x), float(t))
-
-from prox import prox_squared_l1_bycol
+from prox import prox_squared_l1_bycol # C-implementation
 
 ## TV tools -------------------------------------------------------------------
 def discrete_derivate(X, Y):
@@ -63,13 +22,7 @@ def discrete_derivate_conj(X, Y):
     Y[1:-1,:] = X[:-1] - X[1:]
     return Y
 
-################## LIMBO ######################################################
-def apply_by_row(func, x, *args):
-    return np.apply_along_axis(func, 1, x, *args)
-
-def apply_by_col(func, x, *args):
-    return np.apply_along_axis(func, 0, x, *args)
-
+## Simple projections ---------------------------------------------------------
 def interval_projection(X, w, Y):
     """
     Project x_i into the interval [-w_i, w_i] for each i.
@@ -81,7 +34,7 @@ def positive_box_projection(X, bound, Y):
     X = np.asarray(X)
     np.clip(X, 0.0, bound, out=Y)
 
-# CGH DL steps ----------------------------------------------------------------
+## CGH DL steps ---------------------------------------------------------------
 def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
     """ Fixed Theta """
 
@@ -101,7 +54,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
     if init is None:
         V1, V2, V3 = (np.zeros((L, S)), np.zeros((L, J)), np.zeros((L-1, J)))
     else:
-        V1, V2, V3 = init
+        V1, V2, V3 = (V.copy() for V in init)
     U1, U2, U3 = V1.copy(), V2.copy(), V3.copy()
     V1_prev, V2_prev, V3_prev = (np.empty_like(V1), np.empty_like(V2),
                                  np.empty_like(V3))
@@ -126,7 +79,8 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
         # L1^2 norm
         grad = U2 + gamma*Zeta_aux
         prox_squared_l1_bycol(grad/gamma, V2, lambda_/gamma)
-        V2 *= -gamma; V2 += grad
+        #V2 *= -gamma; V2 += grad
+        V2 = grad - gamma*V2
 
         # Weighted Total variation
         discrete_derivate(Zeta_aux, DZeta)
@@ -168,8 +122,6 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
 def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     """ Fixed B, Theta posbox"""
-
-    print Theta.sum(), eta, B.sum(), Y.sum(), tau, bound, eps, maxN, init
 
     J, S = Theta.shape
     L = B.shape[0]
@@ -214,12 +166,15 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         # L1^2 norm
         grad = np.asfortranarray(U3 + gamma*Gamma_aux)
         prox_squared_l1_bycol(grad/gamma, V3, tau/gamma)
-        V3 *= -gamma; V3 += grad
-        #V3 = grad - gamma*V3
+        #V3 *= -gamma; V3 += grad
+        V3 = grad - gamma*V3
 
         # Solution Update
         Gamma = Theta - eta*(np.dot(B.T, V1) + V2 + V3)
         positive_box_projection(Gamma, UBOUND, PGamma)      # Pos+Box
+
+        #print Gamma, PGamma
+        #print '**'
 
         if not (n % 10):
             primal = (
@@ -235,6 +190,8 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
               UBOUND * np.sum(np.clip(V2, 0., np.inf))                # ProjPos+Box*
             )
 
+            print primal, dual
+
             gap = primal+dual
             gaps.append(gap)
             primals.append(primal)
@@ -248,33 +205,39 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         if gap <= (eps*eps)/(2.*eta):
             break
 
+    #print Theta
+    #print Gamma
+    #print PGamma
+
     return PGamma, gaps, primals, duals, (V1, V2, V3)
 
 ### TEMPORARY MAIN FUNCTION ###################################################
-def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, init='pca',
+def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
           eps=1e-3):
+
+    #print Y.sum(), J, lambda_, mu, tau, tvw.sum(), maxK, maxN, initB, eps
 
     L, S = Y.shape
 
     #### B Initialization
     try:
-        assert init.shape == (L, J)
+        assert initB.shape == (L, J)
         B0 = init.copy()
     except AttributeError:
-        assert init in ['pca', 'rand']
-        if init in 'pca':
+        assert initB in ['pca', 'rand']
+        if initB in 'pca':
             TMP = 1./np.sqrt(S-1) * Y.T
             TMP -= np.mean(TMP, axis=0)
             U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
             V = np.array(Vt.T)
             B0 = V[:, :J]
-        elif init in 'rand':
+        elif initB in 'rand':
             sampling = np.arange(S)
             np.random.shuffle(sampling)
             B0 = Y[:,sampling[:J]]
 
     #### Theta Initialization
-    UBOUND = 1;
+    UBOUND = 1.0
     Theta0 = np.ones((J, S)) * UBOUND
 
     if tvw is None:
@@ -290,10 +253,6 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, init='pca',
     tau *= (L/float(J))      # s, j -- /J
     lambda_ *= (S/float(J))  # l, j -- /S
     mu *= (S/float(J))       # l, j -- /S
-
-    #tau /= float(J)      # s, j -- /J
-    #lambda_ /= float(S)  # l, j -- /S
-    #mu /= float(S)       # l, j -- /S
 
     #### Starting Duality Gap for PHI (with Vi=0, B fixed and Gamma=Theta0)
     PTheta0 = np.empty_like(Theta0)
@@ -330,16 +289,20 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, init='pca',
         B_prev = B.copy()
         Theta_prev = Theta.copy()
 
+        #print B_prev.sum(), Theta_prev.sum()
+
         epsk = 1. / ((k+1)**p)
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
 
         (Theta, gaps,
          primals, duals,
-         dual_var_phi) = prox_phi(Theta, eta, B, Y, tau, UBOUND,
+         dual_var_phi) = prox_phi(Theta, eta, B, Y, tau,
+                                  bound=UBOUND,
                                   eps=C_phi*epsk,
                                   maxN=maxN,
                                   init=dual_var_phi)
+        print len(gaps), np.mean(gaps)
 
         lastgapphi = gaps[len(gaps)-1]
 
@@ -355,10 +318,11 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, init='pca',
         B_diffs.append(np.sum((B - B_prev)**2)/np.sum(B_prev**2))
         Theta_diffs.append(np.sum((Theta - Theta_prev)**2)/np.sum(Theta_prev**2))
 
-        convergence = (B_diffs[-1] < eps and Theta_diffs[-1] < eps)
-        if convergence:
-            break
+        convergence = (B_diffs[-1] <= eps and Theta_diffs[-1] <= eps)
+        #if convergence:
+            #break
 
+    print k
     return {'B': B, 'Theta': Theta, 'conv': k,
             'gap_phi': lastgapphi, 'gap_psi': lastgappsi}
 

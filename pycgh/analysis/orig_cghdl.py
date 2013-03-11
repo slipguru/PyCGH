@@ -93,8 +93,6 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
              #bound=1.0):
     """ Fixed B """
 
-    print Theta.sum(), eta, B.sum(), Y.sum(), tau, bound, eps, maxN, init
-
     J, S = Theta.shape
     L = B.shape[0]
 
@@ -136,9 +134,6 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
     duals = list()
 
     for n in xrange(int(maxN)):
-
-        print V1.sum(), V2.sum(), V3.sum()
-
         t_prev = t
         V1_prev[:], V2_prev[:], V3_prev[:] = V1, V2, V3
         Gamma_aux[:] = Theta - eta*(np.dot(B.T, U1) + U2 + U3)
@@ -202,6 +197,8 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
               dual += UBOUND * np.sum(np.clip(V2, 0., np.inf))        # ProjPos+Box*
           #else constraint not included
 
+          print primal, dual
+
           gap = primal+dual
           gaps.append(gap)
           primals.append(primal)
@@ -226,6 +223,10 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
     #if n == (maxN-1):
     #    print '##-Exit with gap %.5e (reached maximum #it %d)-##' % (gap, maxN)
 
+    #print Theta
+    #print Gamma
+    #print PGamma
+#
     return PGamma, gaps, primals, duals, (V1, V2, V3)
 
 def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
@@ -326,88 +327,53 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
     return Zeta, gaps, primals, duals, (V1, V2, V3)
 
-def cghDL(Y, J, lambda_, mu, tau, tvw=None):
+def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
+          eps=1e-3):
+
+    #print Y.sum(), J, lambda_, mu, tau, tvw.sum(), maxK, maxN, initB, eps
+
     L, S = Y.shape
-    maxiters = 200
-    precision = 1e-5
+    init = initB
+
+    maxiters = maxK
+    precision = eps#1e-5
 
     #### B Initialization
-    sampling = np.arange(S)
-    np.random.shuffle(sampling)
-    B0 = Y[:,sampling[:J]]
+    try:
+        assert init.shape == (L, J)
+        B0 = init.copy()
+    except AttributeError:
+        assert init in ['pca', 'rand']
+        if init in 'pca':
+            TMP = 1./np.sqrt(S-1) * Y.T
+            TMP -= np.mean(TMP, axis=0)
+            U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
+            V = np.array(Vt.T)
+            B0 = V[:, :J]
+        elif init in 'rand':
+            sampling = np.arange(S)
+            np.random.shuffle(sampling)
+            B0 = Y[:,sampling[:J]]
 
-    # PCA
-    #TMP = 1./np.sqrt(S-1) * Y.T
-    #TMP -= np.mean(TMP, axis=0)
-    #U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
-    #V = np.array(Vt.T)
-    #B0 = V[:, :J]
-
-    #X = Y #- Y.mean(axis=1).reshape(-1, 1) #(Y - Y.mean(axis=0))
-    #U, Sig, VT = np.linalg.svd(X, full_matrices=False)
-    #B0 = U[:, :J]# + Y.mean(axis=1).reshape(-1, 1)
-    #B0 = BTrue + np.random.random(BTrue.shape)
-
-    #assert(B0.shape == BTrue.shape) # Dimensions check
-    #BFixed = BTrue
-
-    #### Theta Initialization
-    #Theta0 = np.dot(np.linalg.pinv(B0), Y)
-    #Theta0 = np.zeros_like(ThetaTrue)
-    #UP = np.abs(signal.medfilt2d(Y, (3, 1))).max()
-    UP = 1;
+    UP = 1.
     Theta0 = np.ones((J, S)) * UP
-    #assert(Theta0.shape == ThetaTrue.shape) # Dimensions check
-    #ThetaFixed = ThetaTrue
 
-    #######################
-    #fit = (0.5 * np.sum((Y - np.dot(BTrue, ThetaTrue))**2))
-    #l12B = np.sum(np.sum(np.abs(BTrue), axis=0)**2)
-    #l12T = np.sum(np.sum(np.abs(ThetaTrue), axis=0)**2)
-    #DBTrue = np.apply_along_axis(discr_derivate, axis=0, arr=BTrue)
-    #tvB = np.sum(np.abs(DBTrue))
-    #
-    #print
-    #print 'fit\t\t', fit
-    #print 'l12 B\t\t', l12B
-    #print 'TV B\t\t', tvB
-    #print 'l12 Theta\t', l12T
-    #print
-    #################
-
-    #PROJ = 'pos'
-    #PROJ = 'posl2'
     PROJ = 'posbox'
-    #PROJ = 'l2'
-    #PROJ = 'none'
-
     if tvw is None:
         w = np.ones((L-1, 1))        #### Total variation weigths
     else:
         w = tvw.reshape(L-1, 1)
-        #breakpt = [250, 500, 750]
-        #w[np.asarray(breakpt)-1] = 0.1
+
     p = 2.                 #### Precision
     eta = 1./(S*J)
     zeta = 1./(L*J)
-
-    #assert np.all(w >= 0)
 
     tau *= (L/float(J))
     lambda_ *= (S/float(J))
     mu *= (S/float(J))
 
     #### Starting Duality Gap for PHI (with Vi=0, B fixed and Gamma=Theta0)
-    if PROJ == 'pos':
-        PTheta0 = apply_by_row(pos_proj, Theta0)
-    elif PROJ == 'l2':
-        PTheta0 = apply_by_row(ball_proj, Theta0)
-    elif PROJ == 'posl2':
-        PTheta0 = apply_by_row(pos_l2_proj, Theta0)
-    elif PROJ == 'posbox':
-        PTheta0 = apply_by_row(box_proj, Theta0)
-    else:
-        PTheta0 = Theta0
+    PTheta0 = apply_by_row(box_proj, Theta0, UP)
     gap0_phi = (
         (0.5 * np.sum((Y - np.dot(B0, PTheta0))**2)) +
         (tau * (np.sum(np.sum(np.abs(PTheta0), axis=0)**2))) +
@@ -421,7 +387,6 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None):
     gap0_psi = (
         (0.5 * np.sum((Y - np.dot(B0, Theta0))**2)) +
         (lambda_ * (np.sum(np.sum(np.abs(B0), axis=0)**2))) +
-        #(np.sum(np.dot(np.diag(mu*w), np.abs(DB0)))) +
         (np.sum( (mu*w) * np.abs(DB0))) +
         (np.sum(B0*B0) / zeta)
     )
@@ -431,135 +396,52 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None):
     dual_var_psi = None
     B, Theta = B0, Theta0
 
-    # Images -----------------------------------------------
-    #pl.figure()
-    #pl.imshow(ThetaTrue, aspect='auto', interpolation='none')
-    #pl.title('Theta')
-    #pl.colorbar()
-    #pl.savefig('Results/Theta.png')
-    #
-    #pl.figure()
-    #pl.imshow(BTrue, aspect='auto', interpolation='none')
-    #pl.title('B')
-    #pl.colorbar()
-    #pl.savefig('Results/B.png')
-    #
-    #pl.figure()
-    #pl.imshow(Y, aspect='auto', interpolation='none')
-    #pl.title('Y')
-    #pl.colorbar()
-    #pl.savefig('Results/Y.png')
-    #
-    #pl.figure()
-    #pl.imshow(Theta, aspect='auto', interpolation='none')
-    #pl.title('Theta0')
-    #pl.colorbar()
-    #pl.savefig('Results/Theta0.png')
-    #
-    #pl.figure()
-    #pl.imshow(B, aspect='auto', interpolation='none')
-    #pl.title('B0')
-    #pl.colorbar()
-    #pl.savefig('Results/B0.png')
-    # Images -----------------------------------------------
-
     B_diffs = list()
     Theta_diffs = list()
     B_prev = np.empty_like(B)
     Theta_prev = np.empty_like(Theta)
 
-    #func_values = list()
-
     for k in xrange(int(maxiters)):
         B_prev[:] = B.copy()
         Theta_prev[:] = Theta.copy()
+
+        #print B_prev.sum(), Theta_prev.sum()
 
         eps = 1. / ((k+1)**p)
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
 
-        #print '-'*50
-        #text = 'Starting external iteration #%d' % (k+1)
-        #print '----- %s -----' % text.center(38)
-
         (Theta, gaps,
          primals, duals,
          dual_var_phi) = prox_phi(Theta, eta, B, Y,
-                                  tau, C_phi*eps,
+                                  tau, bound=UP,
+                                  eps=C_phi*eps,
+                                  maxN=maxN,
                                   init=dual_var_phi,
-                                  constr=PROJ, bound=UP,
-                                  maxN=100)#(k+1)**p)
+                                  constr=PROJ)#(k+1)**p)
 
+        print len(gaps), np.mean(gaps)
         lastgapphi = gaps[len(gaps)-1]
 
         (B, gaps,
          primals, duals,
          dual_var_psi) = prox_psi(B, zeta, Theta, Y,
-                                  mu*w, lambda_, C_psi*eps,
-                                  init=dual_var_psi,
-                                  maxN=100)#(k+1)**p)
+                                  mu*w, lambda_,
+                                  eps=C_psi*eps,
+                                  maxN=maxN,
+                                  init=dual_var_psi)#(k+1)**p)
 
         lastgappsi = gaps[len(gaps)-1]
 
-        #######################
-        #fit = (0.5 * np.sum((Y - np.dot(B, Theta))**2))
-        #l12B = np.sum(np.sum(np.abs(B), axis=0)**2)
-        #l12T = np.sum(np.sum(np.abs(Theta), axis=0)**2)
-        #DB = np.apply_along_axis(discr_derivate, axis=0, arr=B)
-        #tvB = np.sum(np.abs(DB))
-        #
-        #func_values.append(fit + lambda_*l12B + mu*tvB + tau*l12T)
+        B_diffs.append(np.sum((B - B_prev)**2)/np.sum(B_prev**2))
+        Theta_diffs.append(np.sum((Theta - Theta_prev)**2)/np.sum(Theta_prev**2))
 
-        #print
-        #print 'fit\t\t', fit
-        #print 'l12 B\t\t', l12B
-        #print 'TV B\t\t', tvB
-        #print 'l12 Theta\t', l12T
-        #print
-        #################
-
-        B_diffs.append(np.sum((B - B_prev)**2))
-        Theta_diffs.append(np.sum((Theta - Theta_prev)**2))
-
-        convergence = (B_diffs[-1]<= precision and Theta_diffs[-1]<= precision)
+        convergence = (B_diffs[-1] <= precision and Theta_diffs[-1]<= precision)
         if convergence:
-            #print ',conv at', k
-            #print ',last gaps = (%g, %g)' %(lastgapphi, lastgappsi)
             break
 
-        #if (k == 0) or ((k+1) % 10 == 0) or convergence:
-        #    pl.figure()
-        #    pl.imshow(B, aspect='auto', interpolation='none')
-        #    pl.title('B%d' % (k+1))
-        #    pl.colorbar()
-        #    pl.savefig('Results/B%d.png' % (k+1))
-        #
-        #    pl.figure()
-        #    pl.imshow(Theta, aspect='auto', interpolation='none')
-        #    pl.title('Theta%d' % (k+1))
-        #    pl.colorbar()
-        #    pl.savefig('Results/Theta%d.png' % (k+1))
-        #
-        #    pl.figure()
-        #    pl.imshow(np.dot(B, Theta), aspect='auto', interpolation='none')
-        #    pl.title('Y%d' % (k+1))
-        #    pl.colorbar()
-        #    pl.savefig('Results/Y%d.png' % (k+1))
-        #
-        #    if convergence:
-        #        break
-
-    #pl.figure()
-    #pl.semilogy(B_diffs, 'r.-', label='B')
-    #pl.semilogy(Theta_diffs, 'b.-', label='Theta')
-    #pl.legend(loc='best')
-    #pl.savefig('Results/diffs.png')
-    #
-    #pl.figure()
-    #pl.semilogy(func_values, 'b.-')
-    #pl.savefig('Results/func_values.png')
-
-    return {'B': B, 'Theta': Theta, 'conv': k, 'gap_phi': lastgapphi, 'gap_psi': lastgappsi}
+    return {'B': B, 'Theta': Theta, 'conv': k,
+            'gap_phi': lastgapphi, 'gap_psi': lastgappsi}
 
 if __name__ == '__main__':
     np.random.seed(0)
