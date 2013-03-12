@@ -62,10 +62,8 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
     gamma = 1.0/(zeta * (np.linalg.norm(np.dot(Theta, Theta.T)) + 5.0))
     t = 1.
 
-    # GAPS values
-    gaps = list()
-    primals = list()
-    duals = list()
+    # Duality gap value
+    gap = None
 
     for n in xrange(int(maxN)):
         t_prev = t
@@ -105,9 +103,6 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
             )
 
             gap = primal+dual
-            gaps.append(gap)
-            primals.append(primal)
-            duals.append(dual)
 
         t = (1. + np.sqrt(1. + 4.*t_prev*t_prev)) * 0.5
         U1 = V1 + ((t_prev - 1.) / t) * (V1 - V1_prev)
@@ -117,7 +112,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
         if gap <= (eps*eps)/(2.*zeta):
             break
 
-    return Zeta, gaps, primals, duals, (V1, V2, V3)
+    return Zeta, gap, (V1, V2, V3)
 
 def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     """ Fixed B, Theta posbox"""
@@ -144,10 +139,8 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     gamma = 1.0/(eta*(np.linalg.norm(np.dot(B.T, B)) + 2.0))
     t = 1.
     
-    # GAPS values
-    gaps = list()
-    primals = list()
-    duals = list()
+    # Duality gap value
+    gap = None
 
     for n in xrange(int(maxN)):
         t_prev = t
@@ -186,9 +179,6 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
             )
 
             gap = primal+dual
-            gaps.append(gap)
-            primals.append(primal)
-            duals.append(dual)
 
         t = (1. + np.sqrt(1. + 4.*t_prev*t_prev)) * 0.5
         U1 = V1 + ((t_prev - 1.) / t) * (V1 - V1_prev)
@@ -198,7 +188,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         if gap <= (eps*eps)/(2.*eta):
             break
 
-    return PGamma, gaps, primals, duals, (V1, V2, V3)
+    return PGamma, gap, (V1, V2, V3)
 
 ### TEMPORARY MAIN FUNCTION ###################################################
 def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
@@ -267,8 +257,8 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
     dual_var_psi = None
     B, Theta = B0, Theta0
 
-    B_diffs = list()
-    Theta_diffs = list()
+    B_diff = None
+    Theta_diff = None
     B_prev = np.empty_like(B)
     Theta_prev = np.empty_like(Theta)
 
@@ -280,33 +270,28 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
         
-        (Theta, gaps,
-         primals, duals,
-         dual_var_phi) = prox_phi(Theta, eta, B, Y, tau,
-                                  bound=UBOUND,
-                                  eps=C_phi*epsk,
-                                  maxN=maxN,
-                                  init=dual_var_phi)
-        lastgapphi = gaps[len(gaps)-1]
+        # Theta update
+        Theta, gap_phi, dual_var_phi = prox_phi(Theta, eta, B, Y, tau,
+                                                bound=UBOUND,
+                                                eps=C_phi*epsk,
+                                                maxN=maxN,
+                                                init=dual_var_phi)
         
-        (B, gaps,
-         primals, duals,
-         dual_var_psi) = prox_psi(B, zeta, Theta, Y, mu*w, lambda_,
-                                  eps=C_psi*epsk,
-                                  maxN=maxN,
-                                  init=dual_var_psi)
-        
-        lastgappsi = gaps[len(gaps)-1]
+        # B update
+        B, gap_psi, dual_var_psi = prox_psi(B, zeta, Theta, Y, mu*w, lambda_,
+                                            eps=C_psi*epsk,
+                                            maxN=maxN,
+                                            init=dual_var_psi)
 
-        B_diffs.append(np.sum((B - B_prev)**2)/np.sum(B_prev**2))
-        Theta_diffs.append(np.sum((Theta - Theta_prev)**2)/np.sum(Theta_prev**2))
+        B_diff = np.sum((B - B_prev)**2)/np.sum(B_prev**2)
+        Theta_diff = np.sum((Theta - Theta_prev)**2)/np.sum(Theta_prev**2)
 
-        convergence = (B_diffs[-1] <= eps and Theta_diffs[-1] <= eps)
-        if convergence:
+        # convergence
+        if (B_diff <= eps and Theta_diff <= eps):
             break
 
     return {'B': B, 'Theta': Theta, 'conv': k,
-            'gap_phi': lastgapphi, 'gap_psi': lastgappsi}
+            'gap_phi': gap_phi, 'gap_psi': gap_psi}
 
 
 class CGHDL(object):

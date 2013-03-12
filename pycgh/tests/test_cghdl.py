@@ -51,17 +51,17 @@ def setup():
 
 def test_psi():
     params = prox_psi.func_code.co_varnames[:prox_psi.func_code.co_argcount]
-    Zeta, gaps, primals, duals, dvars = prox_psi(*(setup()[p] for p in params))
+    Zeta, gap, dvars = prox_psi(*(setup()[p] for p in params))
 
     assert_almost_equal(100.334, Zeta.sum(), 3)
-    assert_almost_equal(1071.030, sum(gaps), 3)
+    assert_almost_equal(0.034, gap, 3)
 
 def test_phi():
     params = prox_phi.func_code.co_varnames[:prox_phi.func_code.co_argcount]
-    Gamma, gaps, primals, duals, dvars = prox_phi(*(setup()[p] for p in params))
+    Gamma, gap, dvars = prox_phi(*(setup()[p] for p in params))
 
     assert_almost_equal(10.631, Gamma.sum(), 3)
-    assert_almost_equal(13.303, sum(gaps), 3)
+    assert_almost_equal(0.126, gap, 3)
 
 # CGHDL main  algorithm -------------------------------------------------------
 from ..analysis import cghDL, CGHDL
