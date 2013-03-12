@@ -64,7 +64,7 @@ def test_phi():
     assert_almost_equal(0.126, gap, 3)
 
 # CGHDL main  algorithm -------------------------------------------------------
-from ..analysis import cghDL, CGHDL
+from ..analysis import cghDL
 
 def setup_cghdl():
     return {'Y': np.ones((100, 10)),
@@ -77,7 +77,8 @@ def setup_cghdl():
             'eps': 1e-3,
             'maxN': 100,
             'maxK': 200,
-            'initB': 'pca'}
+            'initB': 'pca',
+            'initTheta': 1.0}
        
 def test_cghdl():
     params = cghDL.func_code.co_varnames[:cghDL.func_code.co_argcount]
@@ -91,5 +92,3 @@ def test_cghdl():
     assert_almost_equal(0.124, out['gap_psi'], 3)
     assert_almost_equal(0.074, out['gap_phi'], 3)
 
-def test_default():
-    cghDL = CGHDL()

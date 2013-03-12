@@ -190,16 +190,16 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
 
     return PGamma, gap, (V1, V2, V3)
 
-### TEMPORARY MAIN FUNCTION ###################################################
-def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
-          eps=1e-3):
+### CGHDL MAIN FUNCTION #######################################################
+def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
+          maxK=200, maxN=100, eps=1e-3):
 
     L, S = Y.shape
 
     #### B Initialization
     try:
         assert initB.shape == (L, J)
-        B0 = init.copy()
+        B0 = initB.copy()
     except AttributeError:
         assert initB in ['pca', 'rand']
         if initB in 'pca':
@@ -214,15 +214,22 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
             B0 = Y[:,sampling[:J]]
 
     #### Theta Initialization
-    UBOUND = 1.0
-    Theta0 = np.ones((J, S)) * UBOUND
+    try:
+        assert initTheta.shape == (J, S)
+        Theta0 = initTheta.copy()
+    except AttributeError:
+        assert float(initTheta) == initTheta
+        ThetaMAX = float(initTheta)
+        Theta0 = np.ones((J, S)) * ThetaMAX
 
+    #### Total variation weigths
     if tvw is None:
-        w = np.ones((L-1, 1))        #### Total variation weigths
+        w = np.ones((L-1, 1))        
     else:
         w = tvw.reshape(L-1, 1)
 
-    p = 2.                 #### Precision
+    #### Precision
+    p = 2.                 
     eta = 1./(S*J)
     zeta = 1./(L*J)
 
@@ -233,7 +240,7 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
 
     #### Starting Duality Gap for PHI (with Vi=0, B fixed and Gamma=Theta0)
     PTheta0 = np.empty_like(Theta0)
-    positive_box_projection(Theta0, UBOUND, PTheta0)
+    positive_box_projection(Theta0, ThetaMAX, PTheta0)
     gap0_phi = (
         (0.5 * np.sum((Y - np.dot(B0, PTheta0))**2)) +
         (tau * (np.sum(np.sum(np.abs(PTheta0), axis=0)**2))) +
@@ -272,7 +279,7 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
         
         # Theta update
         Theta, gap_phi, dual_var_phi = prox_phi(Theta, eta, B, Y, tau,
-                                                bound=UBOUND,
+                                                bound=ThetaMAX,
                                                 eps=C_phi*epsk,
                                                 maxN=maxN,
                                                 init=dual_var_phi)
@@ -293,7 +300,3 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
     return {'B': B, 'Theta': Theta, 'conv': k,
             'gap_phi': gap_phi, 'gap_psi': gap_psi}
 
-
-class CGHDL(object):
-    def __init__(self):
-        pass
