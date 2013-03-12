@@ -108,7 +108,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
     ThetaNorm2 = np.sum(Theta*Theta)
     Gamma = np.empty_like(Theta, order='C')
     Gamma_aux = np.empty_like(Theta, order='C')
-    PGamma = np.empty_like(Theta, order='C')
+    PGamma = np.empty_like(Theta, order='C')   
 
     if init is None:
         V1, V2, V3 = (np.zeros((L, S), order='C'),
@@ -156,12 +156,11 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
 
         # L1^2 norm
         grad = np.asfortranarray(U3 + gamma*Gamma_aux)
-        V3[:] = grad - gamma * apply_by_col(prox_l1_squared_norm,
-                                            grad/gamma,
-                                            tau/gamma)
-
+        V3 = apply_by_col(prox_l1_squared_norm, grad/gamma, tau/gamma)       
+        V3[:] = grad - gamma * V3
+        
         Gamma[:] = Theta - eta*(np.dot(B.T, V1) + V2 + V3)
-
+        
         if constr == 'pos':
             PGamma[:] = apply_by_row(pos_proj, Gamma)           # Pos
         elif constr == 'l2':
@@ -197,7 +196,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None,
               dual += UBOUND * np.sum(np.clip(V2, 0., np.inf))        # ProjPos+Box*
           #else constraint not included
 
-          print primal, dual
+          #print primal, dual
 
           gap = primal+dual
           gaps.append(gap)
@@ -234,7 +233,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
     L, J = B.shape
     S = Theta.shape[1]
-
+    
     # Initializations
     BNorm2 = np.sum(B*B)
     Zeta = np.empty_like(B, order='F')
@@ -243,7 +242,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
     Dconj_V3 = np.empty_like(B, order='F')
     DZeta = np.empty((L-1, J), order='F')
     mw = muw.ravel() # not diag...
-
+    
     if init is None:
         V1, V2, V3 = (np.zeros((L, S), order='F'),
                       np.zeros((L, J), order='F'),
@@ -257,7 +256,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
     gamma = 1.0/(zeta * (np.linalg.norm(np.dot(Theta, Theta.T)) + 5.0))
     t = 1.
-
+    
     # GAPS values
     gaps = list()
     primals = list()
@@ -274,10 +273,9 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
         # L1^2 norm
         grad = U2 + gamma*Zeta_aux
-        V2[:] = grad - gamma * apply_by_col(prox_l1_squared_norm,
-                                            grad/gamma,
-                                            lambda_/gamma)
-
+        V2 = apply_by_col(prox_l1_squared_norm, grad/gamma, lambda_/gamma)
+        V2[:] = grad - gamma*V2
+        
         # Weighted Total variation
         DZeta[:] = apply_by_col(discr_derivate, Zeta_aux)
         V3[:] = apply_by_col(interval_projection, U3 + gamma*DZeta, mw)
@@ -329,8 +327,6 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
 def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
           eps=1e-3):
-
-    #print Y.sum(), J, lambda_, mu, tau, tvw.sum(), maxK, maxN, initB, eps
 
     L, S = Y.shape
     init = initB
@@ -405,12 +401,10 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
         B_prev[:] = B.copy()
         Theta_prev[:] = Theta.copy()
 
-        #print B_prev.sum(), Theta_prev.sum()
-
         eps = 1. / ((k+1)**p)
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
-
+        
         (Theta, gaps,
          primals, duals,
          dual_var_phi) = prox_phi(Theta, eta, B, Y,
@@ -419,8 +413,6 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
                                   maxN=maxN,
                                   init=dual_var_phi,
                                   constr=PROJ)#(k+1)**p)
-
-        print len(gaps), np.mean(gaps)
         lastgapphi = gaps[len(gaps)-1]
 
         (B, gaps,
@@ -430,7 +422,7 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, maxK=200, maxN=100, initB='pca',
                                   eps=C_psi*eps,
                                   maxN=maxN,
                                   init=dual_var_psi)#(k+1)**p)
-
+        
         lastgappsi = gaps[len(gaps)-1]
 
         B_diffs.append(np.sum((B - B_prev)**2)/np.sum(B_prev**2))

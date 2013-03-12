@@ -42,17 +42,12 @@ def setup():
             'eta': 1e-1,
             'zeta': 1e-1,
             'muw': np.ones((99, 1)),
-            'mu': 1.0,
-            'tvw': np.ones((99, 1)),
             'lambda_': 1e-1,
             'tau': 1e-1,
-            'J': 1,
             'bound': 1.0,
             'eps': 1e-3,
             'maxN': 1e3,
-            'maxK': 11,
-            'init': None,
-            'initB': 'pca'}
+            'init': None}
 
 def test_psi():
     params = prox_psi.func_code.co_varnames[:prox_psi.func_code.co_argcount]
@@ -70,18 +65,31 @@ def test_phi():
 
 # CGHDL main  algorithm -------------------------------------------------------
 from ..analysis import cghDL, CGHDL
-from ..analysis.orig_cghdl import cghDL
 
+def setup_cghdl():
+    return {'Y': np.ones((100, 10)),
+
+            'mu': 1.0,
+            'tvw': np.ones((99, 1)),
+            'lambda_': 1e-1,
+            'tau': 1e-1,
+            'J': 3,
+            'eps': 1e-3,
+            'maxN': 100,
+            'maxK': 200,
+            'initB': 'pca'}
+       
 def test_cghdl():
     params = cghDL.func_code.co_varnames[:cghDL.func_code.co_argcount]
+    
+    out = cghDL(*(setup_cghdl()[p] for p in params))
 
-    #print params
-
-    out = cghDL(*(setup()[p] for p in params))
-
-    assert_almost_equal(0.073, out['Theta'].sum(), 3)
-    assert_almost_equal(0.128, out['B'].sum(), 3)
-    assert_almost_equal(10, out['conv'], 3)
+    assert_almost_equal(10.0, out['Theta'].sum(), 3)
+    assert_almost_equal(13.212, out['B'].sum(), 3)
+    assert_almost_equal(4, out['conv'], 3)
+    
+    assert_almost_equal(0.124, out['gap_psi'], 3)
+    assert_almost_equal(0.074, out['gap_phi'], 3)
 
 def test_default():
     cghDL = CGHDL()

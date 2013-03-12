@@ -171,6 +171,7 @@ def prox_l1_squared_norm(x, lambda_):
             break
 
     rho = right_cond[l] / left_cond[l] # last computed conditions
+    #print rho
     return soft_thresholding(x, rho)
 
 #def prox_l1_squared_norm_bycol(X, lambda_):
