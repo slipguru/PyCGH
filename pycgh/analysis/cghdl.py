@@ -1,6 +1,8 @@
 # Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
 # License: New BSD
 
+import itertools as it
+
 import numpy as np
 
 ## Prox operators -------------------------------------------------------------
@@ -50,7 +52,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
     DZeta = np.empty((L-1, J))
 
     mw = muw.ravel().reshape(-1, 1)
-    
+
     if init is None:
         V1, V2, V3 = (np.zeros((L, S)), np.zeros((L, J)), np.zeros((L-1, J)))
     else:
@@ -78,7 +80,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
         grad = np.asfortranarray(U2 + gamma*Zeta_aux)
         prox_squared_l1_bycol(grad/gamma, V2, lambda_/gamma)
         V2 = grad - gamma*V2
-        
+
         # Weighted Total variation
         discrete_derivate(Zeta_aux, DZeta)
         interval_projection(U3 + gamma*DZeta, mw, V3)
@@ -119,7 +121,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
 
     J, S = Theta.shape
     L = B.shape[0]
-    
+
     UBOUND = bound
 
     # Initializations
@@ -127,7 +129,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     Gamma = np.empty_like(Theta)
     Gamma_aux = np.empty_like(Theta)
     PGamma = np.empty_like(Theta)
-    
+
     if init is None:
         V1, V2, V3 = (np.zeros((L, S)), np.zeros((J, S)), np.zeros((J, S)))
     else:
@@ -138,7 +140,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
 
     gamma = 1.0/(eta*(np.linalg.norm(np.dot(B.T, B)) + 2.0))
     t = 1.
-    
+
     # Duality gap value
     gap = None
 
@@ -146,7 +148,7 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         t_prev = t
         V1_prev, V2_prev, V3_prev = V1.copy(), V2.copy(), V3.copy()
         Gamma_aux = Theta - eta*(np.dot(B.T, U1) + U2 + U3)
-        
+
         # Data fit
         V1 = (1./(1. + gamma)) * (U1 + gamma*(np.dot(B, Gamma_aux) - Y))
 
@@ -159,9 +161,9 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
         grad = np.asfortranarray(U3 + gamma*Gamma_aux)
         prox_squared_l1_bycol(grad/gamma, V3, tau/gamma)
         V3 = grad - gamma*V3
-        
+
         # Solution Update
-        Gamma = Theta - eta*(np.dot(B.T, V1) + V2 + V3)       
+        Gamma = Theta - eta*(np.dot(B.T, V1) + V2 + V3)
         positive_box_projection(Gamma, UBOUND, PGamma)      # Pos+Box
 
         if not (n % 10):
@@ -191,8 +193,8 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     return PGamma, gap, (V1, V2, V3)
 
 ### CGHDL MAIN FUNCTION #######################################################
-def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
-          maxK=200, maxN=100, eps=1e-3):
+def cghDL(Y, J, lambda_, mu, tau, theta_bound=1.0, tvw=None,
+          initB='pca', initTheta=None, maxK=200, maxN=100, eps=1e-3):
 
     L, S = Y.shape
 
@@ -214,22 +216,21 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
             B0 = Y[:,sampling[:J]]
 
     #### Theta Initialization
+    theta_bound = float(theta_bound)
     try:
         assert initTheta.shape == (J, S)
         Theta0 = initTheta.copy()
     except AttributeError:
-        assert float(initTheta) == initTheta
-        ThetaMAX = float(initTheta)
-        Theta0 = np.ones((J, S)) * ThetaMAX
+        Theta0 = np.ones((J, S)) * theta_bound
 
     #### Total variation weigths
     if tvw is None:
-        w = np.ones((L-1, 1))        
+        w = np.ones((L-1, 1))
     else:
         w = tvw.reshape(L-1, 1)
 
     #### Precision
-    p = 2.                 
+    p = 2.
     eta = 1./(S*J)
     zeta = 1./(L*J)
 
@@ -240,7 +241,7 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
 
     #### Starting Duality Gap for PHI (with Vi=0, B fixed and Gamma=Theta0)
     PTheta0 = np.empty_like(Theta0)
-    positive_box_projection(Theta0, ThetaMAX, PTheta0)
+    positive_box_projection(Theta0, theta_bound, PTheta0)
     gap0_phi = (
         (0.5 * np.sum((Y - np.dot(B0, PTheta0))**2)) +
         (tau * (np.sum(np.sum(np.abs(PTheta0), axis=0)**2))) +
@@ -276,14 +277,14 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
         epsk = 1. / ((k+1)**p)
         eta = 1. / ((k+1)**p)
         zeta = 1. / ((k+1)**p)
-        
+
         # Theta update
         Theta, gap_phi, dual_var_phi = prox_phi(Theta, eta, B, Y, tau,
-                                                bound=ThetaMAX,
+                                                bound=theta_bound,
                                                 eps=C_phi*epsk,
                                                 maxN=maxN,
                                                 init=dual_var_phi)
-        
+
         # B update
         B, gap_psi, dual_var_psi = prox_psi(B, zeta, Theta, Y, mu*w, lambda_,
                                             eps=C_psi*epsk,
@@ -300,3 +301,90 @@ def cghDL(Y, J, lambda_, mu, tau, tvw=None, initB='pca', initTheta=1.0,
     return {'B': B, 'Theta': Theta, 'conv': k,
             'gap_phi': gap_phi, 'gap_psi': gap_psi}
 
+### CGHDL BIC-BASED PARAMETER SEARCHING #######################################
+def atoms_jumps(B, eps=1e-3):
+    """ Counts the number of non-zero levels (up to eps tolerance). """
+    ajumps = 0.0
+    bs = np.empty_like(B[:,0])
+
+    for j in xrange(B.shape[1]):
+        bs = B[:,j].copy()
+        bs.sort()
+
+        ajumps += (np.diff(bs) > eps).sum() + 1.0
+
+    return ajumps
+
+def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
+              theta_bound=1.0, tvw=None, initB='pca',
+              maxK=200, maxN=100, eps=1e-3, eps_jumps=1e-3,
+              callback=None):
+
+    L, S = Y.shape
+    J_range = sorted(J_range)
+    mu_range = sorted(mu_range)
+    lambda_range = sorted(lambda_range)
+    tau_range = sorted(tau_range)
+
+    m, l, t = len(mu_range), len(lambda_range), len(tau_range)
+
+    # CGHDL params
+    params = {'theta_bound':theta_bound, 'tvw':tvw,
+              'maxK':maxK, 'maxN':maxN, 'eps':eps}
+
+    # Warm restarts
+    WR = np.empty((m, l, t), dtype=tuple)
+
+    # BICS values
+    BICS = np.empty((m, l, t))
+
+    # For now, assuming one J
+    J = J_range[0]
+
+    # Starting point
+    out = cghDL(Y, J, 1e-6, 1e-6, 1e-6, initB=initB, **params)
+    WR[0,0,0] = (out['B'], out['Theta'])
+
+    # Initialization
+    BIC_min = np.inf
+    B_res = np.empty_like(out['B'])
+    Theta_res = np.empty_like(out['Theta'])
+    mu_res, lambda_res, tau_res = None, None, None
+
+    # Evaluation
+    for i, j, k in it.product(range(m), range(l), range(t)):
+
+        B0, Theta0 = WR[i,j,k]
+        result = cghDL(Y, J, mu_range[i], lambda_range[j], tau_range[k],
+                       initB=B0, initTheta=Theta0, **params)
+        B = result['B']
+        Theta = result['Theta']
+
+        # BIC calculation
+        fit = np.sum((Y - np.dot(B, Theta))**2.) / (S*L)
+        jumpsB = atoms_jumps(B, eps_jumps)
+
+                            # fit                 # complexity
+        BICS[i,j,k] = (S*L * np.log(fit)) + (jumpsB * np.log(S*L))
+
+        if BICS[i,j,k] < BIC_min:
+            BIC_min = BICS[i,j,k]
+            B_res, Theta_res = B, Theta
+            mu_res, lambda_res, tau_res = (mu_range[i],
+                                           lambda_range[j],
+                                           tau_range[k])
+        # Callback execution
+        if not callback is None:
+            callback(result, BICS[i,j,k])
+
+        # Initializing warm restarts for next iterations
+        if k < t-1:
+            WR[i,j,k+1] = (B, Theta)
+        if k == 0 and j < l-1:
+            WR[i,j+1,k] = (B, Theta)
+        if k == 0 and j == 0 and i < m-1:
+            WR[i+1,j,k] = (B, Theta)
+
+    # Return the best result
+    return {'B':B_res, 'Theta':Theta_res,
+            'lambda':lambda_res, 'mu':mu_res, 'tau':tau_res, 'BIC':BIC_min}

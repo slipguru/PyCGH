@@ -74,21 +74,63 @@ def setup_cghdl():
             'lambda_': 1e-1,
             'tau': 1e-1,
             'J': 3,
+            'theta_bound': 1.0,
             'eps': 1e-3,
             'maxN': 100,
             'maxK': 200,
             'initB': 'pca',
-            'initTheta': 1.0}
-       
+            'initTheta': None}
+
 def test_cghdl():
     params = cghDL.func_code.co_varnames[:cghDL.func_code.co_argcount]
-    
+
     out = cghDL(*(setup_cghdl()[p] for p in params))
 
     assert_almost_equal(10.0, out['Theta'].sum(), 3)
     assert_almost_equal(13.212, out['B'].sum(), 3)
     assert_almost_equal(4, out['conv'], 3)
-    
+
     assert_almost_equal(0.124, out['gap_psi'], 3)
     assert_almost_equal(0.074, out['gap_phi'], 3)
 
+# CGHDL parameter selection ---------------------------------------------------
+from ..analysis import cghDL_BIC
+
+from ..analysis.cghdl import atoms_jumps
+def test_atoms_jumps():
+                #  1       2      2
+    B = np.array([[1,      2,     3],
+                  [1,      2.11,  1],
+                  [1.01,   2,     3]])
+
+    assert_equal(5, atoms_jumps(B, eps=1e-1))
+
+def setup_cghdl_bic():
+    expected_bics = [-4.955, -2.906, -3.877, -2.914, 2.331, 2.334, 2.334, 2.334]
+    def cb(result, BIC):
+        assert_almost_equal(expected_bics[0], BIC, 3)
+        del expected_bics[0]
+
+    return {'Y': np.ones((100, 10)),
+
+            'mu_range': [1.0, 2.0],
+            'lambda_range': [1e-1, 1e-2],
+            'tau_range': [1e-1, 1e-2],
+            'J_range': [3, 1],
+            'tvw': np.ones((99, 1)),
+            'theta_bound': 1.0,
+            'eps': 1e-3,
+            'maxN': 100,
+            'maxK': 200,
+            'eps_jumps':1e-3,
+            'initB': 'pca',
+            'callback': cb}
+
+def test_cghdl_bic():
+    params = cghDL_BIC.func_code.co_varnames[:cghDL_BIC.func_code.co_argcount]
+    out = cghDL_BIC(*(setup_cghdl_bic()[p] for p in params))
+
+    assert_almost_equal(-4.955, out['BIC'], 3)
+    assert_almost_equal(1e-2, out['lambda'], 3)
+    assert_almost_equal(1.0, out['mu'], 3)
+    assert_almost_equal(1e-2, out['tau'], 3)

@@ -27,6 +27,8 @@ def atoms_jumps(B):
     L, J = B.shape
     jumps = 0
     for j in xrange(J):
+
+        # How much different levels
         jumps += len(np.nonzero(np.unique(B[:,j]))[0])
     return jumps
 
