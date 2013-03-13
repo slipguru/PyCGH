@@ -109,7 +109,7 @@ def setup_cghdl_bic():
     expected_bics = [-4.955, -2.906, -3.877, -2.914, 2.331, 2.334, 2.334, 2.334,
                      -23.926, 20.722, -65.892, 20.722, -9.917, 20.723,
                      12.271, 20.723]
-    def cb(result, BIC):
+    def cb(result, J, mu, lambda_, tau, BIC):
         assert_almost_equal(expected_bics[0], BIC, 3)
         del expected_bics[0]
 

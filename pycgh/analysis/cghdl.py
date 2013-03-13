@@ -371,7 +371,8 @@ def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
                                                          tau_range[k])
             # Callback execution
             if not callback is None:
-                callback(result, BIC)
+                callback(result, J,
+                         mu_range[i], lambda_range[j], tau_range[k], BIC)
 
             # Initializing warm restarts for next iterations
             if k < t-1:
