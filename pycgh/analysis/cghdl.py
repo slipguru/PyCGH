@@ -326,65 +326,61 @@ def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
     lambda_range = sorted(lambda_range)
     tau_range = sorted(tau_range)
 
+    # Parameters dimensions
     m, l, t = len(mu_range), len(lambda_range), len(tau_range)
 
     # CGHDL params
     params = {'theta_bound':theta_bound, 'tvw':tvw,
               'maxK':maxK, 'maxN':maxN, 'eps':eps}
 
-    # Warm restarts
-    WR = np.empty((m, l, t), dtype=tuple)
-
-    # BICS values
-    BICS = np.empty((m, l, t))
-
-    # For now, assuming one J
-    J = J_range[0]
-
-    # Starting point
-    out = cghDL(Y, J, 1e-6, 1e-6, 1e-6, initB=initB, **params)
-    WR[0,0,0] = (out['B'], out['Theta'])
-
     # Initialization
     BIC_min = np.inf
-    B_res = np.empty_like(out['B'])
-    Theta_res = np.empty_like(out['Theta'])
-    mu_res, lambda_res, tau_res = None, None, None
+    B_res, Theta_res = None, None
+    J_res, mu_res, lambda_res, tau_res = None, None, None, None
 
-    # Evaluation
-    for i, j, k in it.product(range(m), range(l), range(t)):
+    for J in J_range:
+        # Warm restarts (for each new J value we start from scratch)
+        WR = np.empty((m, l, t), dtype=tuple)
 
-        B0, Theta0 = WR[i,j,k]
-        result = cghDL(Y, J, mu_range[i], lambda_range[j], tau_range[k],
-                       initB=B0, initTheta=Theta0, **params)
-        B = result['B']
-        Theta = result['Theta']
+        # Starting point
+        out = cghDL(Y, J, 1e-6, 1e-6, 1e-6, initB=initB, **params)
+        WR[0,0,0] = (out['B'], out['Theta'])
 
-        # BIC calculation
-        fit = np.sum((Y - np.dot(B, Theta))**2.) / (S*L)
-        jumpsB = atoms_jumps(B, eps_jumps)
+        # Evaluation
+        for i, j, k in it.product(range(m), range(l), range(t)):
 
-                            # fit                 # complexity
-        BICS[i,j,k] = (S*L * np.log(fit)) + (jumpsB * np.log(S*L))
+            B0, Theta0 = WR[i,j,k]
+            #B0 = initB; Theta0=None # no warm restart
+            result = cghDL(Y, J, mu_range[i], lambda_range[j], tau_range[k],
+                           initB=B0, initTheta=Theta0, **params)
+            B = result['B']
+            Theta = result['Theta']
 
-        if BICS[i,j,k] < BIC_min:
-            BIC_min = BICS[i,j,k]
-            B_res, Theta_res = B, Theta
-            mu_res, lambda_res, tau_res = (mu_range[i],
-                                           lambda_range[j],
-                                           tau_range[k])
-        # Callback execution
-        if not callback is None:
-            callback(result, BICS[i,j,k])
+            # BIC calculation
+            fit = np.sum((Y - np.dot(B, Theta))**2.) / (S*L)
+            jumpsB = atoms_jumps(B, eps_jumps)
 
-        # Initializing warm restarts for next iterations
-        if k < t-1:
-            WR[i,j,k+1] = (B, Theta)
-        if k == 0 and j < l-1:
-            WR[i,j+1,k] = (B, Theta)
-        if k == 0 and j == 0 and i < m-1:
-            WR[i+1,j,k] = (B, Theta)
+                        # fit                 # complexity
+            BIC = (S*L * np.log(fit)) + (jumpsB * np.log(S*L))
+
+            if BIC < BIC_min:
+                BIC_min = BIC
+                B_res, Theta_res = B, Theta
+                J_res, mu_res, lambda_res, tau_res = (J, mu_range[i],
+                                                         lambda_range[j],
+                                                         tau_range[k])
+            # Callback execution
+            if not callback is None:
+                callback(result, BIC)
+
+            # Initializing warm restarts for next iterations
+            if k < t-1:
+                WR[i,j,k+1] = (B, Theta)
+            if k == 0 and j < l-1:
+                WR[i,j+1,k] = (B, Theta)
+            if k == 0 and j == 0 and i < m-1:
+                WR[i+1,j,k] = (B, Theta)
 
     # Return the best result
-    return {'B':B_res, 'Theta':Theta_res,
+    return {'B':B_res, 'Theta':Theta_res, 'J':J_res,
             'lambda':lambda_res, 'mu':mu_res, 'tau':tau_res, 'BIC':BIC_min}
