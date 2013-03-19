@@ -106,12 +106,13 @@ def test_atoms_jumps():
     assert_equal(5, atoms_jumps(B, eps=1e-1))
 
 def setup_cghdl_bic():
-    expected_bics = [-4.955, -2.906, -3.877, -2.914, 2.331, 2.334, 2.334, 2.334,
-                     -23.926, 20.722, -65.892, 20.722, -9.917, 20.723,
-                     12.271, 20.723]
-    def cb(result, J, mu, lambda_, tau, BIC):
-        assert_almost_equal(expected_bics[0], BIC, 3)
-        del expected_bics[0]
+    # Order J, lambda_, mu, tau (sorted)
+    import itertools as it
+    expected_params = it.product([1, 3], [1e-2, 1e-1], [1.0, 2.0], [1e-2, 1e-1])
+
+    def cb(result, J, lambda_, mu, tau, BIC):
+        # Check correct traversing rder
+        assert_almost_equal(expected_params.next(), (J, lambda_, mu, tau))
 
     return {'Y': np.ones((100, 10)),
 
@@ -132,7 +133,7 @@ def test_cghdl_bic():
     params = cghDL_BIC.func_code.co_varnames[:cghDL_BIC.func_code.co_argcount]
     out = cghDL_BIC(*(setup_cghdl_bic()[p] for p in params))
 
-    assert_almost_equal(-65.892, out['BIC'], 3)
-    assert_almost_equal(1e-1, out['lambda'], 3)
-    assert_almost_equal(1.0, out['mu'], 3)
+    assert_almost_equal(-1817.533, out['BIC'], 3)
+    assert_almost_equal(1e-2, out['lambda'], 3)
+    assert_almost_equal(2.0, out['mu'], 3)
     assert_almost_equal(1e-2, out['tau'], 3)

@@ -193,6 +193,23 @@ def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     return PGamma, gap, (V1, V2, V3)
 
 ### CGHDL MAIN FUNCTION #######################################################
+def _initB(Y, J, init_method='pca'):
+    L, S = Y.shape
+
+    if init_method in 'pca':
+        TMP = 1./np.sqrt(S-1) * Y.T
+        TMP -= np.mean(TMP, axis=0)
+        U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
+        V = np.array(Vt.T)
+        B0 = V[:, :J]
+    elif init_method in 'rand':
+        sampling = np.arange(S)
+        np.random.shuffle(sampling)
+        B0 = Y[:,sampling[:J]]
+
+    return B0
+
+
 def cghDL(Y, J, lambda_, mu, tau, theta_bound=1.0, tvw=None,
           initB='pca', initTheta=None, maxK=200, maxN=100, eps=1e-3):
 
@@ -204,16 +221,7 @@ def cghDL(Y, J, lambda_, mu, tau, theta_bound=1.0, tvw=None,
         B0 = initB.copy()
     except AttributeError:
         assert initB in ['pca', 'rand']
-        if initB in 'pca':
-            TMP = 1./np.sqrt(S-1) * Y.T
-            TMP -= np.mean(TMP, axis=0)
-            U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
-            V = np.array(Vt.T)
-            B0 = V[:, :J]
-        elif initB in 'rand':
-            sampling = np.arange(S)
-            np.random.shuffle(sampling)
-            B0 = Y[:,sampling[:J]]
+        B0 = _initB(Y, J, initB)
 
     #### Theta Initialization
     theta_bound = float(theta_bound)
@@ -301,6 +309,7 @@ def cghDL(Y, J, lambda_, mu, tau, theta_bound=1.0, tvw=None,
     return {'B': B, 'Theta': Theta, 'conv': k,
             'gap_phi': gap_phi, 'gap_psi': gap_psi}
 
+
 ### CGHDL BIC-BASED PARAMETER SEARCHING #######################################
 def atoms_jumps(B, eps=1e-3):
     """ Counts the number of non-zero levels (up to eps tolerance). """
@@ -314,6 +323,7 @@ def atoms_jumps(B, eps=1e-3):
         ajumps += (np.diff(bs) > eps).sum() + 1.0
 
     return ajumps
+
 
 def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
               theta_bound=1.0, tvw=None, initB='pca',
@@ -339,19 +349,18 @@ def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
     J_res, mu_res, lambda_res, tau_res = None, None, None, None
 
     for J in J_range:
-        # Warm restarts (for each new J value we start from scratch)
-        WR = np.empty((m, l, t), dtype=tuple)
+        # For each new J value we start from following B0 and Theta0
+        B0 = _initB(Y, J)
+        Theta0 = np.ones((J, S)) * theta_bound
 
-        # Starting point
-        out = cghDL(Y, J, 1e-6, 1e-6, 1e-6, initB=initB, **params)
-        WR[0,0,0] = (out['B'], out['Theta'])
 
         # Evaluation
-        for i, j, k in it.product(range(m), range(l), range(t)):
+        for j, i, k in it.product(range(l), range(m), range(t)):
 
-            B0, Theta0 = WR[i,j,k]
-            #B0 = initB; Theta0=None # no warm restart
-            result = cghDL(Y, J, mu_range[i], lambda_range[j], tau_range[k],
+            result = cghDL(Y, J,
+                           lambda_=lambda_range[j],
+                           mu=mu_range[i],
+                           tau=tau_range[k],
                            initB=B0, initTheta=Theta0, **params)
             B = result['B']
             Theta = result['Theta']
@@ -366,21 +375,13 @@ def cghDL_BIC(Y, J_range, lambda_range, mu_range, tau_range,
             if BIC < BIC_min:
                 BIC_min = BIC
                 B_res, Theta_res = B, Theta
-                J_res, mu_res, lambda_res, tau_res = (J, mu_range[i],
-                                                         lambda_range[j],
+                J_res, lambda_res, mu_res, tau_res = (J, lambda_range[j],
+                                                         mu_range[i],
                                                          tau_range[k])
             # Callback execution
             if not callback is None:
                 callback(result, J,
-                         mu_range[i], lambda_range[j], tau_range[k], BIC)
-
-            # Initializing warm restarts for next iterations
-            if k < t-1:
-                WR[i,j,k+1] = (B, Theta)
-            if k == 0 and j < l-1:
-                WR[i,j+1,k] = (B, Theta)
-            if k == 0 and j == 0 and i < m-1:
-                WR[i+1,j,k] = (B, Theta)
+                         lambda_range[j], mu_range[i], tau_range[k], BIC)
 
     # Return the best result
     return {'B':B_res, 'Theta':Theta_res, 'J':J_res,
