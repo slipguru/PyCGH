@@ -116,6 +116,7 @@ def prox_psi(B, zeta, Theta, Y, muw, lambda_, eps, maxN=1e5, init=None):
 
     return Zeta, gap, (V1, V2, V3)
 
+
 def prox_phi(Theta, eta, B, Y, tau, bound, eps, maxN=1e5, init=None):
     """ Fixed B, Theta posbox"""
 
@@ -201,14 +202,13 @@ def _initB(Y, J, init_method='pca'):
         TMP -= np.mean(TMP, axis=0)
         U, d, Vt = np.linalg.svd(TMP, full_matrices=False)
         V = np.array(Vt.T)
-        B0 = V[:, :J]
+        B0 = np.array(V[:, :J])
     elif init_method in 'rand':
         sampling = np.arange(S)
         np.random.shuffle(sampling)
-        B0 = Y[:,sampling[:J]]
+        B0 = np.array(Y[:,sampling[:J]])
 
     return B0
-
 
 def cghDL(Y, J, lambda_, mu, tau, theta_bound=1.0, tvw=None,
           initB='pca', initTheta=None, maxK=200, maxN=100, eps=1e-3):

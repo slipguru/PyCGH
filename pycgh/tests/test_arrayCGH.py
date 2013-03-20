@@ -212,7 +212,6 @@ def test_shrinking():
     assert_equal(aCGH['id'], aCGH.F['id'])
     assert_equal(aCGH['id'], aCGH.M['id'])
 
-
 ## Testing IO -----------------------------------------------------------------
 
 aCGHContent = """\

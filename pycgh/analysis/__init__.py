@@ -7,3 +7,4 @@
 """
 
 from .cghdl import cghDL, cghDL_BIC
+from .cghnormaliter import cghnormaliter

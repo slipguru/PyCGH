@@ -115,7 +115,7 @@ def agilent(path, delimiter='\t', test_channel='r',
         data = full_data
         mask = np.r_[mask, np.array([True]*missing_len)]
 
-    # Creation and dinamyc attachment of useful informations
+    # Creation and dinamyc linking of useful informations
     aCGH = ArrayCGH(*data, mask=mask)
     aCGH.TEST_CHANNEL = test_channel
     aCGH.PARAMS = params
