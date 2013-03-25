@@ -15,8 +15,8 @@ row, col =  zip(*it.product(range(1, ROW_NUM+1),
 input = (['Probe%d' % x for x in range(1, len(row)+1)],         #ID
          list(row),                                             #Row
          list(col),                                             #Col
-         [10] * (ROW_NUM * COL_NUM),                            #Ref
-         [20] * (ROW_NUM * COL_NUM),                            #Test
+         10.*np.random.random((ROW_NUM * COL_NUM)),             #Ref
+         20.*np.random.random((ROW_NUM * COL_NUM)),             #Test
          (range(1, 25) * 5)[:(ROW_NUM * COL_NUM)],              #Chr
          range(1, (ROW_NUM * COL_NUM) +1 ),                     #Start
          [x + 10 for x in range(1, (ROW_NUM * COL_NUM) + 1)])   #End

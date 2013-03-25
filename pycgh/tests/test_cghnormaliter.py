@@ -1,34 +1,91 @@
 import numpy as np
 from numpy.testing import *
 
-from ..readers import agilent
-from ..analysis import cghnormaliter
 from ..datatypes import ArrayCGH
+from ..analysis import cghnormaliter
+from ..analysis.cghnormaliter import average_duplication
 
-# importing the path for the small testing agilent sample
-from test_agilent import SAMPLE_PATH
+from test_arrayCGH import input
 
-def _test_instantiation():
-    acgh = agilent(SAMPLE_PATH)
-    acgh['norm'] = cghnormaliter(acgh)
+def test_input_data():
+    aCGH = ArrayCGH(*input)
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
+    assert_equal(9, len(aCGH.names))
 
-def test_duplication():
-    acgh = agilent(SAMPLE_PATH)
-    acgh['id'][300:350] = acgh['id'][350:400]
+def test_average_no_duplication():
+    aCGH = ArrayCGH(*input)
+    aCGH = average_duplication(aCGH)
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
 
-    idxs, norm = cghnormaliter(acgh)
+def test_average_no_duplication_mask():
+    mask = np.zeros(len(input[0]), dtype=bool)
+    mask[:10] = True
 
-    print len(acgh), acgh.size, len(norm)
+    aCGH = ArrayCGH(*input, mask=mask)
+    assert_equal(100, len(aCGH))
+    assert_equal(90, aCGH.size)
 
-    mask = np.ones(acgh.size, dtype=bool)
-    mask[idxs] = False
-    acgh['mask'][~acgh['mask']] = mask
+    aCGH = average_duplication(aCGH)
+    assert_equal(90, len(aCGH))
+    assert_equal(90, aCGH.size)
 
-    print len(acgh), acgh.size, len(norm)
+def test_average_duplication():
+    # Injecting duplication
+    ids = input[0][:] ## Copy
+    ids[:10] = ids[10:20]
 
-    acgh['norm'] = norm
+    aCGH = ArrayCGH(ids, *input[1:])
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
 
-    raise Exception('TO BE CHECK!!')
+    aCGH = average_duplication(aCGH)
+    assert_equal(90, len(aCGH))
+    assert_equal(90, aCGH.size)
 
+def test_average_duplication_mask():
+    mask = np.zeros(len(input[0]), dtype=bool)
+    mask[5:10] = True
 
+    # Injecting duplication
+    ids = input[0][:] ## Copy
+    ids[:10] = ids[10:20]
 
+    aCGH = ArrayCGH(ids, *input[1:], mask=mask)
+    assert_equal(100, len(aCGH))
+    assert_equal(95, aCGH.size)  # 5 are overlapping with masked
+
+    aCGH = average_duplication(aCGH)
+    assert_equal(90, len(aCGH))
+    assert_equal(90, aCGH.size)
+
+@dec.slow
+def test_complete_run():
+    aCGH = ArrayCGH(*input)         # No dup, no mask
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
+
+    aCGH = cghnormaliter(aCGH)
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
+
+    assert_equal(100, len(aCGH['cghnormaliter_ratio']))
+    assert_equal(100, len(aCGH['cghnormaliter_call']))
+
+@dec.slow
+def test_complete_run_dup():
+    # Injecting duplication
+    ids = input[0][:] ## Copy
+    ids[:10] = ids[10:20]
+
+    aCGH = ArrayCGH(ids, *input[1:])  # Dup
+    assert_equal(100, len(aCGH))
+    assert_equal(100, aCGH.size)
+
+    aCGH = cghnormaliter(aCGH)
+    assert_equal(90, len(aCGH))
+    assert_equal(90, aCGH.size)
+
+    assert_equal(90, len(aCGH['cghnormaliter_ratio']))
+    assert_equal(90, len(aCGH['cghnormaliter_call']))

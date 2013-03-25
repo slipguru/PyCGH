@@ -9,60 +9,62 @@ from rpy2 import rinterface as ri
 
 import rpy2.rlike.container as rlc
 
+from ..datatypes.arraycgh import ArrayCGH
+
 ### CGHnormaliter objects -----------------------------------------------------
 importr('CGHnormaliter')
 CGHnormaliter = robjects.r['CGHnormaliter']
 copynumber = robjects.r['copynumber']
 calls = robjects.r['calls']
-featureNames = robjects.r['featureNames']
 
-def cghnormaliter(acgh, nchrom=None, cellularity=1.0, return_calls=False):
 
-    # Filtered data extraction
-    filtered = acgh.F[['id', 'chromosome', 'start_base', 'end_base',
-                       'test_signal', 'reference_signal']]
+def average_duplication(acgh, avg_funct=np.mean):
+    # Filtered data copy
+    data = acgh.F[list(ArrayCGH.COL_NAMES)]
 
-    # Averaging locations
-    if len(filtered['id']) > len(np.unique(filtered['id'])):
+    # Averaging locations (id duplications)
+    if len(data['id']) > len(np.unique(data['id'])):
+
+        # Grouping duplications
         id_indexes = defaultdict(list)
-
-        for i, id in enumerate(filtered['id']):
+        for i, id in enumerate(data['id']):
             id_indexes[id].append(i)
 
-        # First in order are kept
+        # First position (in order) are kept
         selection = sorted([id_indexes[x][0] for x in id_indexes])
         for i in selection:
-            probe_id = filtered['id'][i]
+            probe_id = data['id'][i]
             idxs = id_indexes[probe_id]
-            filtered[i]['test_signal'] = np.mean(filtered['test_signal'][idxs])
-            filtered[i]['reference_signal'] = np.mean(filtered['reference_signal'][idxs])
+            data[i]['test_signal'] = avg_funct(data['test_signal'][idxs])
+            data[i]['reference_signal'] = avg_funct(data['reference_signal'][idxs])
 
-        filtered = filtered[selection]
-    else:
-        selection = None
+        data = data[selection]
+
+    return ArrayCGH(*(data[x] for x in ArrayCGH.COL_NAMES))
+
+
+def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
+    # Averaging locations (id duplications) -> shrinked new data
+    acgh = average_duplication(acgh)
 
     if nchrom is None:
-        nchrom = len(np.unique(filtered['chromosome']))
+        nchrom = len(np.unique(acgh['chromosome']))
 
     # Building an R DataFrame
-    od = rlc.OrdDict([('CloneID', robjects.StrVector(filtered['id'])),
-                      ('Chromosome', robjects.IntVector(filtered['chromosome'])),
-                      ('Start', robjects.IntVector(filtered['start_base'])),
-                      ('End', robjects.IntVector(filtered['end_base'])),
-                      ('Test', robjects.FloatVector(filtered['test_signal'])),
-                      ('Ref', robjects.FloatVector(filtered['reference_signal'])),
-                      ('FakeTest', robjects.FloatVector(filtered['test_signal'])),
-                      ('FakeRef', robjects.FloatVector(filtered['reference_signal'])),
+    od = rlc.OrdDict([('CloneID', robjects.StrVector(acgh['id'])),
+                      ('Chromosome', robjects.IntVector(acgh['chromosome'])),
+                      ('Start', robjects.IntVector(acgh['start_base'])),
+                      ('End', robjects.IntVector(acgh['end_base'])),
+                      ('Test', robjects.FloatVector(acgh['test_signal'])),
+                      ('Ref', robjects.FloatVector(acgh['reference_signal'])),
+                      ('FakeTest', robjects.FloatVector(acgh['test_signal'])),
+                      ('FakeRef', robjects.FloatVector(acgh['reference_signal'])),
                       ])
     df = robjects.DataFrame(od)
     result = CGHnormaliter(df, nchrom=nchrom, cellularity=cellularity,
                            plot_MA=False)
 
-    if return_calls:
-        if selection:
-            return selection, np.array(copynumber(result)), np.array(calls(result))
-        return np.array(copynumber(result)), np.array(calls(result))
-    else:
-        if selection:
-            return selection, np.array(copynumber(result))
-        return np.array(copynumber(result))
+    # Attaching results
+    acgh['cghnormaliter_ratio'] = np.asanyarray(copynumber(result))
+    acgh['cghnormaliter_call'] = np.asanyarray(calls(result))
+    return acgh
