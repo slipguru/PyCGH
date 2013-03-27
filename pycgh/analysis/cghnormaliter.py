@@ -16,6 +16,7 @@ importr('CGHnormaliter')
 CGHnormaliter = robjects.r['CGHnormaliter']
 copynumber = robjects.r['copynumber']
 calls = robjects.r['calls']
+segmented = robjects.r['segmented']
 
 
 def average_duplication(acgh, avg_funct=np.mean):
@@ -40,7 +41,7 @@ def average_duplication(acgh, avg_funct=np.mean):
 
         data = data[selection]
 
-    return ArrayCGH(*(data[x] for x in ArrayCGH.COL_NAMES))
+    return ArrayCGH(*(data[x] for x in ArrayCGH.COL_NAMES)) #sorted
 
 
 def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
@@ -65,6 +66,7 @@ def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
                            plot_MA=False)
 
     # Attaching results
-    acgh['cghnormaliter_ratio'] = np.asanyarray(copynumber(result))
-    acgh['cghnormaliter_call'] = np.asanyarray(calls(result))
+    acgh['cghnormaliter_ratio'] = np.asanyarray(copynumber(result))[:,0]
+    acgh['cghnormaliter_call'] = np.asanyarray(calls(result), dtype=int)[:,0]
+    acgh['cghnormaliter_segment'] = np.asanyarray(segmented(result))[:,0]
     return acgh

@@ -58,38 +58,36 @@ def spatial(aCGH, signal=None, title=None, median_center=False,
                       labelsize='small')
 
 
-def MA(aCGH, M=None, title=None, points_color='k', median_color='b', lowess_color='r'):
+def MA(aCGH, M=None, title=None,
+       points_color='k', median_color='b', lowess_color='r'):
     plt.title('CGH M-A plot' if title is None else title, size=8)
 
-    test = aCGH['test_signal']
-    reference = aCGH['reference_signal']
-    nan_values = np.logical_or(np.isnan(test), np.isnan(reference))
-    test = test[~nan_values]
-    reference = reference[~nan_values]
-    A = 0.5 * (np.log2(test) + np.log2(reference))
+    test = aCGH.M['test_signal']
+    reference = aCGH.M['reference_signal']
+    A = (0.5 * (np.log2(test) + np.log2(reference))).compressed()
 
     if M is None:
-        M = np.log2(test) - np.log2(reference)
+        M = (np.log2(test) - np.log2(reference)).compressed()
 
-    plt.scatter(A, M, label='Data', s=2, edgecolors='none', c=points_color)
+    plt.scatter(A, M, label='Data', s=1, edgecolors='none', c=points_color)
     plt.xlabel('A')
     plt.ylabel('M')
-    plt.axhline(0, lw=1, c=points_color, ls='--')
-    plt.axhline(np.median(M), lw=2, c=median_color, label='Data Median')
+    plt.axhline(0, lw=1, c='k', ls='--')
+    plt.axhline(np.median(M), lw=1, c=median_color, label='Data Median')
 
     lowess_curve = lowess(A, M)
     x = np.asarray(lowess_curve[0])
     y = np.asarray(lowess_curve[1])
 
     plt.plot(x, y, '%s-' % lowess_color,
-             lw=2, label='Data Lowess Curve') # Lowess Line
+             lw=1, label='Data Lowess Curve') # Lowess Line
 
-    plt.legend()
+    plt.legend(loc='best', prop={'size': 8}, fancybox=True, shadow=False)
 
 
 def profile(aCGH, signal=None,
             #chromosomes=None,
-            ymin=None, ymax=None, cmin=-1, cmax=1, cmap=plt.cm.jet):
+            ymin=None, ymax=None, cmin=-1, cmax=1, cmap=plt.cm.RdYlBu_r):
     """
         - signal: 'custom' cgh values
                   len(signal) == len(aCGH)
