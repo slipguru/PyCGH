@@ -167,8 +167,7 @@ class ArrayCGH(object):
 
     @staticmethod
     def load(acgh_file, fields=None):
-        fh = _file_handle(acgh_file)
-        data = np.load(fh)
+        data = np.load(acgh_file)
 
         # Try compressed file (default)
         try:
