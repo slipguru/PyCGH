@@ -168,7 +168,15 @@ class ArrayCGH(object):
     @staticmethod
     def load(acgh_file, fields=None):
         fh = _file_handle(acgh_file)
-        mandatory, optionals = _load(np.load(fh), fields)
+        data = np.load(fh)
+
+        # Try compressed file (default)
+        try:
+            data = data['acgh']
+        except ValueError:
+            pass
+
+        mandatory, optionals = _load(data, fields)
         return ArrayCGH(*mandatory, **optionals)
 
     def savetxt(self, path, fmt="%s", delimiter=', '):
@@ -176,9 +184,12 @@ class ArrayCGH(object):
         fh.write('%s\n' % delimiter.join(self.names))
         np.savetxt(fh, self._rdata, fmt=fmt, delimiter=delimiter)
 
-    def save(self, path):
+    def save(self, path, compressed=True):
         fh = _file_handle(path, mode='w')
-        np.save(fh, self._rdata)
+        if compressed:
+            np.savez_compressed(fh, acgh=self._rdata)
+        else:
+            np.save(fh, self._rdata)
 
 
 def _load(data, fields):

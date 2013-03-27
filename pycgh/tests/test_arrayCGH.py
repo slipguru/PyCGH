@@ -286,6 +286,28 @@ def test_save():
     # Saving
     from tempfile import TemporaryFile
     out = TemporaryFile()
+    aCGH.save(out, compressed=False)
+
+    # Reading saved file
+    out.seek(0)
+    aCGH2 = ArrayCGH.load(out)
+
+    assert_equal(len(aCGH), len(aCGH2))
+    assert_equal(aCGH.names, aCGH2.names)
+    assert_('orig_mask' in aCGH2.names)
+    assert_(not 'myflag' in aCGH2.names)
+
+    for n in aCGH.names:
+        assert_equal(aCGH[n], aCGH2[n])
+
+def test_save_compressed():
+    aCGH = ArrayCGH.loadtxt(StringIO(aCGHContent),
+                         fields={'orig_mask':'mask', #renaming
+                                 'mask':'myflag'})
+
+    # Saving
+    from tempfile import TemporaryFile
+    out = TemporaryFile()
     aCGH.save(out)
 
     # Reading saved file
