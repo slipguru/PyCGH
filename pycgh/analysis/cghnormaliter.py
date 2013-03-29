@@ -69,4 +69,6 @@ def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
     acgh['cghnormaliter_ratio'] = np.asanyarray(copynumber(result))[:,0]
     acgh['cghnormaliter_call'] = np.asanyarray(calls(result), dtype=int)[:,0]
     acgh['cghnormaliter_segment'] = np.asanyarray(segmented(result))[:,0]
+    del result
+    
     return acgh
