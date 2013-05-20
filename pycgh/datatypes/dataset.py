@@ -197,7 +197,7 @@ class DataTable(object):
         return self._data.shape
 
     @staticmethod
-    def load(dt_file, delimiter='\t', dtype=float):
+    def load(dt_file, delimiter=',', dtype=float):
         fh = _file_handle(dt_file)
 
         try:
