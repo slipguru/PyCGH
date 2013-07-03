@@ -6,6 +6,38 @@ from rpy2 import robjects as ro
 from rpy2.robjects.numpy2ri import numpy2ri
 ro.conversion.py2ri = numpy2ri
 
+def average_duplication(acgh, avg_funct=np.mean):
+    """
+    pycgh.utils.average_duplication(acgh, avg_funct=np.mean)
+    Returns a data array where every probe appears only once:
+    for probes which are duplicated in the original array
+    the value of the resulting probe is obtained averaging
+    the original values.
+    """
+    
+    # Filtered data copy
+    data = acgh.F[list(ArrayCGH.COL_NAMES)]
+
+    # Averaging locations (id duplications)
+    if len(data['id']) > len(np.unique(data['id'])):
+
+        # Grouping duplications
+        id_indexes = defaultdict(list)
+        for i, id in enumerate(data['id']):
+            id_indexes[id].append(i)
+
+        # First position (in order) are kept
+        selection = sorted([id_indexes[x][0] for x in id_indexes])
+        for i in selection:
+            probe_id = data['id'][i]
+            idxs = id_indexes[probe_id]
+            data[i]['test_signal'] = avg_funct(data['test_signal'][idxs])
+            data[i]['reference_signal'] = avg_funct(data['reference_signal'][idxs])
+
+        data = data[selection]
+
+    return ArrayCGH(*(data[x] for x in ArrayCGH.COL_NAMES)) #sorted
+
 def lowess(x, y, **kwargs):
     """ Lowess from R """
     rlowess = ro.r['lowess']
