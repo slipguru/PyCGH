@@ -6,6 +6,8 @@ from rpy2 import robjects as ro
 from rpy2.robjects.numpy2ri import numpy2ri
 ro.conversion.py2ri = numpy2ri
 
+from collections import defaultdict
+
 def average_duplication(acgh, avg_funct=np.mean):
     """
     pycgh.utils.average_duplication(acgh, avg_funct=np.mean)
@@ -13,6 +15,11 @@ def average_duplication(acgh, avg_funct=np.mean):
     for probes which are duplicated in the original array
     the value of the resulting probe is obtained averaging
     the original values.
+    
+    Parameters
+    ----------
+    
+        acgh : the array CGH object to be modified TODO 
     """
     
     # Filtered data copy
@@ -76,7 +83,10 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
 
 # IO utils --------------------------------------------------------------------
 def _file_handle(file_ref, mode='r'):
-
+    """
+    Simply returns the file handler to `file_ref`, which can be either
+    a string or a file handler.
+    """
     if not mode in 'rw':
         raise ValueError("mode must be 'r' or 'w'")
 

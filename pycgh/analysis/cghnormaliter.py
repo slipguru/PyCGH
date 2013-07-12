@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import numpy as np
 
 from rpy2 import robjects
@@ -20,6 +18,21 @@ calls = robjects.r['calls']
 segmented = robjects.r['segmented']
 
 def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
+    """
+    Performs a normalization of the **acgh** signal using the CGHnormaliter algorithm
+    (available at http://www.bioconductor.org/packages/2.12/bioc/html/CGHnormaliter.html)
+    implemented in R.
+    
+    Parameters
+    ----------
+    acgh : :py:class:`~pycgh.datatypes.ArrayCGH`
+        The aCGH to be normalized.
+    nchrom : int or None (TODO)
+        TODO
+    cellularity : float
+        TODO
+    """
+    
     # Averaging locations (id duplications) -> shrinked new data
     acgh = average_duplication(acgh)
 
