@@ -1,3 +1,6 @@
+""" test description for synth module
+"""
+
 import itertools as it
 from collections import defaultdict
 
@@ -55,7 +58,7 @@ def _sorted_pair(value):
     return sorted(value)
 
 class ArrayCGHSynth(object):
-
+    
     def __init__(self, geometry, design,
                  alterations=None,
                  cytostructure=None,
@@ -65,6 +68,43 @@ class ArrayCGHSynth(object):
                  dye_intensity=(50, 300),
                  noise=(0.15, 0.35),
                  random_state=None):
+
+        """
+        A generator of synthetic aCGH signals.
+        
+        Parameters
+        ----------
+        
+        geometry : tuple
+            Two integers indicating the number of rows and columns of the chip respectively.
+        
+        design : dict
+            The dictionary returned by :func:`readers.ucsc_mapping` which describes the chip being simulated (which probes are present on it).
+        
+        alterations : dict, optional (default: None)
+            A list of alterations which will be simulated. Each key of the dictionary represents the chromosome and arm to be altererd, whilst the relative value indicate the actual list of alerations on that particular arm.
+        
+        cytostructure : :class:`pycgh.datatypes.CytoStructure`
+            The object describing the structure of chromosomes (the division of a chromosome in regions).
+        
+        tissue_proportion : tuple, (default: (0.3, 0.7))
+            The interval from which will be uniformally drawn the value representing the ratio between the amount of test and reference tissue, to simulate tissue proportion bias.
+        
+        spatial_bias_probability : float, optional (default: 0.5)
+            The probability that the simulated sample is affected by spatial bias, i.e. that a subset of probes close to each other in the simulated chip shows a significantly different distributions of intensities (i.e. intensities of probes in that region are higher than the rest).
+        
+        wave_bias_amplitude : tuple, optional (default: (0.0, 0.025))
+            Controls the amplitude of the *wave effect* (it has a negligible effect on the signal).
+        
+        dye_intensity : tuple, optional (default: (50, 300))
+            The interval from which will be uniformally drawn the value of the  dye.
+        
+        noise : tuple, optional (default: (0.15, 0.35))
+            The interval from which will be uniformally drawn the value of the variance of the gaussian noise which will be added to the signal.
+        
+        random_state : RandomState or int, optional (default: None)
+            If different from None, this value is used for the inizialization of the pseudorandom number generator.
+        """
 
         # Check Geometry
         self._nrow, self._ncol = (int(x) for x in geometry)
@@ -114,6 +154,8 @@ class ArrayCGHSynth(object):
 
         # Checking and filling alteration probabilities
         if alterations:
+            
+            ### Check that all alterations do not involve neither X or Y chromosome
             for k in alterations.keys():
                 if k.startswith('X') or k.startswith('Y'):
                     raise ValueError('alterations on allosomes are not '
@@ -152,6 +194,7 @@ class ArrayCGHSynth(object):
                                [ArrayCGH.MISSING_STRING] * missing_num))
 
         # Associated mask
+        # Mask only spots which do not correspond to probes
         self._mask = np.ones(len(self._id), dtype=bool)
         self._mask[:len(design)] = False
 
@@ -243,6 +286,23 @@ class ArrayCGHSynth(object):
         return self._Wmin, self._Wmax
 
     def draw(self, gender='male'):
+        """
+        Generate a signal using the configuration set in the constructor.
+        
+        Simulates a number of conditions which can be found in real data, such as:
+        
+        * Alterations: groups of clones which show a duplication/deletion caused by actual alterations in the DNA sample.
+        * Spatial bias: a zone of the chip shows duplications/deletions due not to real alterations in the DNA sample but rather to artifacts, which must be corrected using a normalization algorithm.
+        
+        Parameters
+        ----------
+        
+        
+        gender : string, optional (default='male')
+            Determines the gender of the individual, if set to 'female' then clones relative to the Y chromosome
+            are masked.
+        """
+        
         # valid number of clones
         C = sum(~self._mask)
 
