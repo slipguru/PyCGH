@@ -1,3 +1,5 @@
+.. |project_name| replace:: **PyCGH**
+
 ===================================================
 PyCGH - a Comparative Genomic Hybridization toolkit
 ===================================================
@@ -6,6 +8,19 @@ PyCGH - a Comparative Genomic Hybridization toolkit
 :Homepage: http://slipguru.disi.unige.it/Software/PyCGH
 :Repository: https://bitbucket.org/slipguru/pycgh
 
+|project_name| is a Python library for the analysis of aCGH data.
+It consists mainly of three parts:
+
+ * A python wrapper for the *CGHNormaliter* algorithm **Insert CGHNormaliter reference**, a preprocessing step required to normalizeCGH signals.
+ * A script which creates synthetic aCGH data, for testing purposes.
+ * eFLLat, an algorithm which uses a dictionary learning approach to discover common patterns in aCGH data.
+
+|project_name| requires the following python libraries:
+
+  * `numpy <http://www.numpy.org/>`_: the fundamental package for scientific computing.
+  * `matplotlib <http://matplotlib.org/>`_ : a plotting library.
+
+Since the function implementing the *CGHNormaliter* algorithm is actually a wrapper for the implementation in the R language, an appropriate interpreter for that language is required, as well as the library containing the implementation of the algorithm itself, **Add library link for CGHNormaliter**.
 
 User Documentation
 ==================
@@ -13,6 +28,9 @@ User Documentation
 .. toctree::
    :maxdepth: 2
 
+   synthesis
+   cghnormaliter
+   efllat
 
 PyCGH API
 ==========
@@ -26,18 +44,3 @@ PyCGH API
 Quick Reference
 ---------------
 .. currentmodule:: pycgh
-
-.. autosummary::
-
-   pycgh.readers
-   pycgh.datatypes
-
-
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
