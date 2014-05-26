@@ -1,7 +1,21 @@
 import numpy as np
 
-
 def replicates(aCGH):
+    """
+    Locate probe duplicates (probes which appear more than once on the chip) and compute the standard deviation of values for those spots.
+    
+    Parameters
+    ----------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the aCGH.
+    
+    Returns
+    -------
+    
+    values : list
+        The list of standard deviations for duplicated probes.
+    """
     probes = aCGH['id']
     ratio = np.log2(aCGH['test_signal']) - np.log2(aCGH['reference_signal'])
 
