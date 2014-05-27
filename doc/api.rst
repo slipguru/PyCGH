@@ -41,5 +41,8 @@ Utilities
 .. automodule:: pycgh.metrics
     :members: replicates
     
+Plotting
+--------
+    
 .. automodule:: pycgh.plots
     :members: MA, profile, spatial

@@ -41,6 +41,6 @@ PyCGH API
    api.rst
 
 
-Quick Reference
----------------
+.. Quick Reference
+.. ---------------
 .. currentmodule:: pycgh

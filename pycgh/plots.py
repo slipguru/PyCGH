@@ -1,3 +1,7 @@
+"""
+This module contains all function used to produce different types of plots.
+"""
+
 from itertools import chain
 
 import numpy as np
@@ -10,7 +14,35 @@ from matplotlib import pylab as plt
 
 def spatial(aCGH, signal=None, title=None, median_center=False,
             cmap=None, cbticks=None):
+    """
+    Produces the *spatial* plot, which is a representation of the chip as it was scanned.
+    
+    Parameters
+    ----------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the Array CGH.
+    
+    signal : array_like, optional (default: None)
+        The signal representing the log 2 ratio of the intensities of the test and the reference signal. If not provided, it is reconstructed using the test and reference signal contained in the aCGH object.
+    
+    title : str, optional (default: None)
+        The title assigned to the plot. If None, it is automatically set to 'CGH Spatial plot'.
+        
+    median_center : bool, optional (default: False)
+        If set to True, the median of the signal is subtracted by the image.
+    
+    cmap : :class:`matplotlib.colors.Colormap`, optional (default: None)
+        The color map to be passed to the actual plotting function.
+    
+    cbticks : array_like, optional (default: None)
+        The *ticks* in the color bar. If None, the color bar is divided in 9 equal parts, including all values (colors) present in the plot.
+    
+    """
     plt.title('CGH Spatial plot' if title is None else title, size=8)
+
+    print cbticks
+    #raise Exception()
 
     rows = aCGH.F['row']
     cols = aCGH.F['col']
@@ -60,6 +92,33 @@ def spatial(aCGH, signal=None, title=None, median_center=False,
 
 def MA(aCGH, M=None, title=None,
        points_color='k', median_color='b', lowess_color='r'):
+    """
+    The MA plot, showing the distribution of the red/green (reference/test) intensity ratio ('M') plotted by the average intensity ('A').
+    
+    Parameters
+    ----------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the Array CGH.
+        
+    M : array_like, optional (default: None)
+        The precomputed values for M (i.e. for each probe the log ratio between test and reference signal). If None, it is calculated using test and reference signals found in the aCGH object.
+    
+    title : str, optional (default: None)
+        The title assigned to the plot. If None, it is automatically set to 'CGH M-A plot'.
+        
+    points_color : str, optional (default: 'k')
+        A string in the matplotlib color notation format which determines the color of the points in the plot.
+        
+    median_color : str, optional (default: 'b')
+        A string in the matplotlib color notation format which determines the color of the straight line representing the median value of the values of M.
+        
+    lowess_color : str, optional (default: 'r')
+        A string in the matplotlib color notation format which determines the color of the lowess curve.
+    
+    
+    """
+    
     plt.title('CGH M-A plot' if title is None else title, size=8)
 
     test = aCGH.M['test_signal']
@@ -89,15 +148,43 @@ def profile(aCGH, signal=None,
             #chromosomes=None,
             ymin=None, ymax=None, cmin=-1, cmax=1, cmap=plt.cm.RdYlBu_r):
     """
-        - signal: 'custom' cgh values
-                  len(signal) == len(aCGH)
-        - chromosomes: a list of chromosomes to plot from 1 to 24 (23=X, 24=Y)
-        - segmentation: signal to plot against the cgh signal,
-                        len(segmentation) == len(signal)
-        - ymin, ymax: y axis limits
-        - cmin, cmax: scatter plot color limits
+    Plots the aCGH signal (the log ratio of intensities) in a way that values are ordered according to the distribution of the probes throughout the genome.
+    
+    Parameters
+    ----------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the Array CGH.
+    
+    signal : array_like, optional (default: None)
+        The signal representing the log 2 ratio of the intensities of the test and the reference signal. If not provided, it is reconstructed using the test and reference signal contained in the aCGH object.
+    
+    ymin : float, optional (default: None)
+        The lower limit of the y axis. If None, it is set as -ymax.
+    
+    ymax : float, optional (default: None)
+        The upper limit of the y axis. If None, it is chosen the value of the signal array having maximum absolute value.
+    
+    cmin : float, optional (default: -1)
+        The lower color limit of the scatter plot.
+    
+    cmax : float, optional (default: +1)
+        The upper color limit of the scatter plot.
+    
+    cmap : :class:`matplotlib.colors.Colormap`, optional (default: matplotlib.pylab.cm.RdYlBu_r)
+        The color map to be passed to the actual plotting function.
+    
+    cbticks : array_like, optional (default: None)
+        The *ticks* in the color bar. If None, the color bar is divided in 9 equal parts, including all values (colors) present in the plot.
+        
+    Returns
+    -------
+    
+    coords : array_like
+        The *position* of the probes shifted by an amount which depends on the location of the DNA fragment in the genome.
+    
     """
-
+    
     chr_map = dict((str(c), c) for c in xrange(1, 25))
     chr_map['X'] = 23
     chr_map['Y'] = 24
