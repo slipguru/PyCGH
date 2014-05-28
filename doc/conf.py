@@ -33,10 +33,11 @@ VERSION = pycgh.__version__
 extensions = ['sphinx.ext.autosummary',
               'sphinx.ext.autodoc',
               #'sphinx.ext.doctest',
+              'sphinx.ext.mathbase',
               'sphinx.ext.intersphinx',
               'numpydoc',
               #'sphinx.ext.coverage',
-              #'sphinx.ext.pngmath'
+              'sphinx.ext.pngmath'
               ]
 
 # Extension configurations
@@ -195,15 +196,24 @@ htmlhelp_basename = 'PyCGHdoc'
 
 # -- Options for LaTeX output --------------------------------------------------
 
+_PREAMBLE = r"""
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{bm}
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+"""
+
 latex_elements = {
   # The paper size ('letterpaper' or 'a4paper').
   'papersize': 'a4paper',
+
 
 # The font size ('10pt', '11pt' or '12pt').
 #'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+  'preamble': _PREAMBLE,
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
