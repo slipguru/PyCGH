@@ -10,7 +10,6 @@ from collections import defaultdict
 
 def average_duplication(acgh, avg_funct=np.mean):
     """
-    pycgh.utils.average_duplication(acgh, avg_funct=np.mean)
     Returns a data array where every probe appears only once:
     for probes which are duplicated in the original array
     the value of the resulting probe is obtained averaging
@@ -19,7 +18,11 @@ def average_duplication(acgh, avg_funct=np.mean):
     Parameters
     ----------
     
-        acgh : the array CGH object to be modified TODO 
+        acgh : :class:`pycgh.datatypes.ArrayCGH`
+            The array CGH object to be modified.
+            
+        avg_funct : func, optional (default: numpy.mean)
+            The function used to average values.
     """
     
     # Filtered data copy
@@ -46,12 +49,16 @@ def average_duplication(acgh, avg_funct=np.mean):
     return ArrayCGH(*(data[x] for x in ArrayCGH.COL_NAMES)) #sorted
 
 def lowess(x, y, **kwargs):
-    """ Lowess from R """
+    """
+    Wrapper for the R implementation of the lowess algorithm
+    """
     rlowess = ro.r['lowess']
     return rlowess(x, y, **kwargs)
 
 def loess(values, x, y=None, **kwargs):
-    """ Loess from R """
+    """
+    Wrapper for the R implementation of the loess algorithm
+    """
     loess = ro.r['loess']
     predict = ro.r['predict']
 
@@ -84,8 +91,22 @@ def probes_average(probes_id, probes_values, avg_function=np.mean):
 # IO utils --------------------------------------------------------------------
 def _file_handle(file_ref, mode='r'):
     """
-    Simply returns the file handler to `file_ref`, which can be either
-    a string or a file handler.
+    Simply returns the file handler to `file_ref`, which can be either a string or a file handler. If the file to be opened is in a .gz format, it will be uncompressed.
+    
+    Parameters
+    ----------
+    
+    file_ref : file or str
+        Either a file handler or the path to the file which must be opened.
+    
+    mode : str, optional (default: 'r')
+        The mode the file should be opened (read, write or append). If file_ref is already a file handler, thie parameter is ignored.
+    
+    Returns
+    -------
+    
+    fh : file
+        The file handler.
     """
     if not mode in 'rw':
         raise ValueError("mode must be 'r' or 'w'")
