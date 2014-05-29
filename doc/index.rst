@@ -51,4 +51,4 @@ PyCGH API
 
 
 
-.. [CGHNormaliter] _ B. van Houte, T. Binsl, H. Hettling, W. Pirovano and J. Heringa. CGHnormaliter: an iterative strategy to enhance normalization of array CGH data with imbalanced aberrations. *BMC Genomics*, 2009.
+.. [CGHNormaliter] B\. van Houte, T. Binsl, H. Hettling, W. Pirovano and J. Heringa. CGHnormaliter: an iterative strategy to enhance normalization of array CGH data with imbalanced aberrations. *BMC Genomics*, 2009.

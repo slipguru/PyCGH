@@ -13,4 +13,4 @@ The algorithm uses a Dictionary Learning (DL) approach to identify common struct
 
 For more details on the algorithm see [masecchia13]_.
 
-.. [masecchia13] _ S. Masecchia, S. Salzo, A. Barla and A. Verri. A dictionary learning based method for aCGH segmentation. *Proceedings of the European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning*, 2013.
+.. [masecchia13] S\. Masecchia, S. Salzo, A. Barla and A. Verri. A dictionary learning based method for aCGH segmentation. *Proceedings of the European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning*, 2013.
