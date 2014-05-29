@@ -13,6 +13,10 @@ QC_FLAGS = ('gIsFeatNonUnifOL', 'rIsFeatNonUnifOL',
             'gIsBGNonUnifOL', 'rIsBGNonUnifOL',
             'gIsBGPopnOL', 'rIsBGPopnOL',
             'gIsSaturated', 'rIsSaturated')
+"""
+The list of fields...
+"""
+
 NQC_FLAGS = ('gIsWellAboveBG', 'rIsWellAboveBG')
 
             # Agilent -> (conversion, dtype)

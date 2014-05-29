@@ -2,13 +2,13 @@ Readers
 =======
 
 .. automodule:: pycgh.readers
-.. autofunction:: agilent
-.. autofunction:: ucsc_mapping
+    :members: agilent, nimblegen, ucsc_mapping
 
 Datatypes
 =========
 
 .. automodule:: pycgh.datatypes
+
 
 .. .. autoclass:: DataTable
 

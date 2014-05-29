@@ -47,7 +47,29 @@ def _probe_to_pos(id):
 
 # Main Function ---------------------------------------------------------------
 def nimblegen(test_path, reference_path, delimiter='\t', ucsc_mapping=None):
-    """ Prova Doc
+    """
+    Parse a text file produced by a Nimblegen platform.
+    
+    Parameters
+    ----------
+    
+    test_path : file or str
+        Either the path to the file containing the intensity values for the test signal or the file handler itself.
+    
+    reference_path : file or str
+        Either the path to the file containing the intensity values for the reference signal or the file handler itself.
+        
+    delimiter : str, optional (default: ``'\t'``)
+        The string used to separate columns in the data file.
+    
+    ucsc_mapping : str or dict, optional (default: ``None``)
+        Either the dictionary returned by :func:`pycgh.readers.ucsc_mapping`, which describes the chip being simulated (which probes are present on it), or the path to the file containing the mapping.
+    
+    Returns
+    -------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the Array CGH loaded from the input file.
     """
 
     test_meta, test_data = _read_pair(test_path, delimiter)
