@@ -14,6 +14,7 @@ Datatypes
 
 
 .. autoclass:: ArrayCGH
+    :members: load, loadtxt, save, savetxt
 
 .. autoclass:: ChromosomeStructure
 .. autoclass:: CytoStructure
@@ -36,7 +37,7 @@ Utilities
 =========
 
 .. automodule:: pycgh.utils
-    :members: average_duplication, loess, lowess
+    :members: average_duplication, loess, lowess, _file_handle
     
 .. automodule:: pycgh.metrics
     :members: replicates

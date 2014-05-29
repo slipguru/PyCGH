@@ -10,15 +10,7 @@ from ..utils import _file_handle
 from cytobands import _chr2int
 
 class ArrayCGH(object):
-    """ Main data structure repersenting a generic Array CGH.
-
-    Features
-    --------
-    1. The instantiation of the class needs a reduced number of parameter
-    2. The class methods `load` and `save` offer a way to easily import and
-       export a processed Array CGH.
-
-    """
+    
 
     # Mandatory column names
     COL_NAMES = ('id', 'row', 'col',
@@ -33,7 +25,48 @@ class ArrayCGH(object):
 
     def __init__(self, id, row, col, reference_signal, test_signal,
                  chromosome, start_base, end_base, mask=None, **kwargs):
-
+        """
+        Main data structure representing a generic Array CGH.
+        
+        
+        Parameters
+        ----------
+        
+        id : array_like
+            An array containing the name of all probes.
+            
+        row : array_like
+            An array containing, for each probe, the index of the row where the probe lies on the chip.
+        
+        col : array_like
+            An array containing, for each probe, the index of the column where the probe lies on the chip.
+        
+        reference_signal : array_like
+            The intensity values referring to the reference tissue.
+        
+        test_signal : array_like
+            The intensity values referring to the test tissue.
+        
+        chromosome : array_like
+            For each probe, the chromosome where that particular DNA fragment can be found.
+        
+        start_base : array_like
+            The index of the first base of the DNA fragment of each probe.
+        
+        end_base : array_like
+            The index of the last base of the DNA fragment of each probe.
+        
+        mask : array_like
+            An array which indicates for each probe if for some reason did not pass a quality test or is not a real probe (e.g. is a control probe).
+           
+        """
+        
+        """
+        #. The instantiation of the class needs a reduced number of parameter
+        #. The class methods `load` and `save` offer a way to easily import and
+           export a processed Array CGH.
+        """
+        
         # Force type for some arguments
         row = np.asanyarray(row, dtype=np.int)
         col = np.asanyarray(col, dtype=np.int)
@@ -144,6 +177,31 @@ class ArrayCGH(object):
 
     @staticmethod
     def loadtxt(acgh_file, fields=None, delimiter=',', missing_values='--'):
+        """
+        Loads an aCGH stored in a file and returns a :class:`~pycgh.datatypes.ArrayCGH` object.
+        
+        Parameters
+        ----------
+        
+        acgh_file : file or str
+            Either a file handle or the path to the file containing the aCGH data in text format.
+            
+        fields : dict, optional (default: ``None``)
+            A dictionary which maps names of properties of a :class:`~pycgh.datatypes.ArrayCGH` object (keys) to names of fields found in the input file (values).
+        
+        delimiter : str, optional (default: ``', '``)
+            The string used to separate columns in the CSV file.
+        
+        missing_values : str, optional (default: ``'--'``)
+            The set of strings corresponding to missing data.
+        
+        Returns
+        -------
+        
+        aCGH : :class:`pycgh.datatypes.ArrayCGH`
+            The object representing the Array CGH loaded from the input file.
+        """
+        
         fh = _file_handle(acgh_file)
         data = np.genfromtxt(fh, delimiter=delimiter, comments='#',
                              names=True, dtype=None, case_sensitive='lower',
@@ -167,6 +225,24 @@ class ArrayCGH(object):
 
     @staticmethod
     def load(acgh_file, fields=None):
+        """
+        Load an aCGH from a file previously saved using :meth:`pycgh.datatypes.ArrayCGH.save`
+        
+        Parameters
+        ----------
+        
+        acgh_file : file or str
+        
+        fields : dict, optional (default: ``None``)
+            A dictionary which maps names of properties of a :class:`~pycgh.datatypes.ArrayCGH` object (keys) to names of fields found in the input file (values).
+            
+        Returns
+        -------
+        
+        aCGH : :class:`pycgh.datatypes.ArrayCGH`
+            The object representing the Array CGH.
+        """
+        
         data = np.load(acgh_file)
 
         # Try compressed file (default)
@@ -179,14 +255,44 @@ class ArrayCGH(object):
         return ArrayCGH(*mandatory, **optionals)
 
     def savetxt(self, path, fmt="%s", delimiter=', '):
+        """
+        Saves the :class:`~pycgh.datatypes.ArrayCGH` object as a CSV file using :func:`numpy.savetxt`.
+        
+        Parameters
+        ----------
+        
+        path : str
+            The path of the file which will be saved.
+        
+        fmt : str, optional (default: ``"%s"``)
+            A single format (e.g. ``'%10.5f'``), a sequence of formats, or a multi-format string, e.g. ``'Iteration %d - %10.5f'``, in which case *delimiter* is ignored.
+        
+        delimiter : str, optional (default: ``', '``)
+            The string used to separate columns in the CSV file.
+        """
+        
         fh = _file_handle(path, mode='w')
         fh.write('%s\n' % delimiter.join(self.names))
         np.savetxt(fh, self._rdata, fmt=fmt, delimiter=delimiter)
 
     def save(self, path, compressed=True):
+        """
+        Saves the :class:`~pycgh.datatypes.ArrayCGH` object in the (optionally compressed) numpy binary format (``.npy``/``.npz``).
+        
+        Parameters
+        ----------
+        
+        path : str
+            The path of the file which will be saved.
+        
+        compressed : bool, optional (default: ``True``)
+            Whether to save the file in a compressed (`.npz`) format or in the binary :mod:`numpy` format (``.npy``)
+        """
+        
         fh = _file_handle(path, mode='w')
         if compressed:
-            np.savez_compressed(fh, acgh=self._rdata)
+            #np.savez_compressed(fh, acgh=self._rdata)
+            np.savez(fh, acgh=self._rdata)
         else:
             np.save(fh, self._rdata)
 
