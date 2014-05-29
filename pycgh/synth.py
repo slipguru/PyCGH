@@ -1,4 +1,5 @@
-""" test description for synth module
+"""
+Module containing the class and functions for the generation of synthetic data.
 """
 
 import itertools as it
@@ -79,7 +80,7 @@ class ArrayCGHSynth(object):
             Two integers indicating the number of rows and columns of the chip respectively.
         
         design : dict
-            The dictionary returned by :func:`readers.ucsc_mapping` which describes the chip being simulated (which probes are present on it).
+            The dictionary returned by :func:`pycgh.readers.ucsc_mapping` which describes the chip being simulated (which probes are present on it).
         
         alterations : dict, optional (default: None)
             A list of alterations which will be simulated. Each key of the dictionary represents the chromosome and arm to be altererd, whilst the relative value indicate the actual list of alerations on that particular arm.
