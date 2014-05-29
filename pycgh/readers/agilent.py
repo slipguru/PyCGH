@@ -24,7 +24,34 @@ TYPE_MAP = {'text': (unicode, unicode),
 # Main Function ---------------------------------------------------------------
 def agilent(path, delimiter='\t', test_channel='r',
             fill_missings=False, qc_masking=False, ucsc_mapping=None):
-    """ Prova Doc
+    """
+    Parse a text file produced by an Agilent Technologies platform.
+    
+    Parameters
+    ----------
+    
+    path : str
+        The path to the file which stores Array CGH data.
+    
+    delimiter : str, optional (default: ``'\t'``)
+        The string used to separate columns in the data file.
+    
+    test_channel : str, optional (default: ``'r'``)
+        Which channel is associated to the test values, can be either ``'r'`` (default value, stands for *red*) or ``'g'`` (for *green*), depending on which fluorescent dye is used to highlight the two channels.
+    
+    fill_missings : bool, optional (default: ``False``)
+    
+    qc_masking : bool, optional (default: ``False``)
+        If set to true, mask all values which for some reason do not pass a quality check, meaning that for that value at least one of the flags listed in constant ``QC_FLAGS`` is ``True`` OR at least one of the flags listed in constant ``NQC_FLAGS`` is ``False``.
+    
+    ucsc_mapping : str or dict, optional (default: ``None``)
+        Either the dictionary returned by :func:`pycgh.readers.ucsc_mapping`, which describes the chip being simulated (which probes are present on it), or the path to the file containing the mapping.
+    
+    Returns
+    -------
+    
+    aCGH : :class:`pycgh.datatypes.ArrayCGH`
+        The object representing the Array CGH loaded from the input file.
     """
 
     if not test_channel in ('r', 'g'):
