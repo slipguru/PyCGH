@@ -224,9 +224,15 @@ class CytoStructure(object):
 
     It is a map-like collection of ChromosomeStruture objects, each one
     containing information about a specified chromosome cytogenetic structure.
-    This class act as a parser of file containing needed informations.
+    This class acts as a parser of file containing needed informations.
 
-    File format description... TODO
+    Each row of the input file must contain 5 tab-separated values, which represent:
+    
+    #. The chromosome
+    #. Start position in chromosome sequence
+    #. End position in chromosome sequence
+    #. Name of cytogenetic band
+    #. Giemsa stain results
 
     Parameters
     ----------
@@ -252,17 +258,21 @@ class CytoStructure(object):
         # parsing bands coordinates
         bands = dict()
         for line in fh:
-            chr, sb, eb, label, gs = line.strip().split()
-            chr = _chr2int(chr[3:])
-
-            if not chr in bands:
-                bands[chr] = {'start': [], 'end': [],
-                              'label': [], 'gstrand': []}
-
-            bands[chr]['start'].append(int(sb) + start_offset)
-            bands[chr]['end'].append(int(eb))
-            bands[chr]['label'].append(label)
-            bands[chr]['gstrand'].append(gs)
+            #print line
+            line_arr = line.strip().split()
+            #chr, sb, eb, label, gs = line.strip().split()
+            if len(line_arr) == 5:
+                chr, sb, eb, label, gs = line_arr
+                chr = _chr2int(chr[3:])
+    
+                if not chr in bands:
+                    bands[chr] = {'start': [], 'end': [],
+                                  'label': [], 'gstrand': []}
+    
+                bands[chr]['start'].append(int(sb) + start_offset)
+                bands[chr]['end'].append(int(eb))
+                bands[chr]['label'].append(label)
+                bands[chr]['gstrand'].append(gs)
 
         # Creation of a dictionary of ChromosomeStructure objects
         self._bands = dict()
