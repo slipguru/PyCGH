@@ -11,6 +11,29 @@ from ..utils import _file_handle
 class ChromosomeBand(object):
     def __init__(self, chromosome, label, start_base, end_base,
                  gstrand=None, sub_bands=None):
+        """
+        This class represents a generic *band*, i.e. a region of adjacent base pairs in a chromosome. It can represent bands at different *resolutions*, i.e. it may represent a band or sub-band.
+        
+        Parameters
+        ----------
+        
+        chromosome : int
+            The chromosome where the band lies. In humans, chromosomes 23 and 24 are the X and the Y chromosomes respectively.
+        
+        label : str
+            A label identifying the band, e.g. ``p12.5``.
+            
+        start_base : int
+            The index of the first base belonging to the region.
+        
+        end_nase : int
+            The index of the last base belonging to the region.
+        
+        gstrand : , optional (default: ``None``)
+        
+        sub_bands : list, optional (default: ``None``)
+            A list of :class:`~pycgh.datatypes.cytobands.ChromosomeBand` objects representing all sub-band contained in the region represented by the object. ###Salvatore check this!!
+        """
 
         if start_base >= end_base:
             raise ValueError('wrong band coordinates '
@@ -99,6 +122,28 @@ class ChromosomeBand(object):
 class ChromosomeStructure(object):
 
     def __init__(self, chromosome, starts, ends, labels, gstrands):
+        """
+        Represents the whole chromosome
+        
+        Parameters
+        ----------
+        
+        chromosome : int
+            The chromosome where the band lies. In humans, chromosomes 23 and 24 are the X and the Y chromosomes respectively.
+        
+        starts : list
+            The list of indexes of the first base of each band.
+        
+        ends : list
+            The list of indexes of the last base of each band.
+            
+        labels : list
+            The list of labels of bands.
+        
+        gstrands :
+            The list of...
+        """
+        
         if 1 <= chromosome <= 24:
             self._chromosome = chromosome
         else:
@@ -239,6 +284,7 @@ class CytoStructure(object):
     cytofile : str or file
         File or filename containing chromosomes structure to read.
         If the filename extension is ``.gz`` the file is decompressed.
+        
     format : 'ucsc' or None
         Cytogenetic file format. If 'ucsc' starting base of each cytogenetic
         band is incremented of one.
@@ -300,7 +346,7 @@ class CytoStructure(object):
 
 # Private utils ---------------------------------------------------------------
 def _chr2int(value):
-    converted = str(value).strip()
+    converted = str(value).strip() 
     if converted == 'X':
         return 23
     elif converted == 'Y':

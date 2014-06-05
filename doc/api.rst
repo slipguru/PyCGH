@@ -9,15 +9,12 @@ Datatypes
 
 .. automodule:: pycgh.datatypes
 
-
-.. .. autoclass:: DataTable
-
-
 .. autoclass:: ArrayCGH
     :members: load, loadtxt, save, savetxt
 
-.. autoclass:: ChromosomeStructure
-.. autoclass:: CytoStructure
+.. autoclass:: pycgh.datatypes.cytobands.ChromosomeBand
+.. .. autoclass:: ChromosomeStructure
+.. .. autoclass:: CytoStructure
 
 Data synthesis
 ==============
