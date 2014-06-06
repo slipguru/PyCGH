@@ -1,0 +1,173 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage{bm}
+\usepackage[round]{natbib}
+%\VignetteIndexEntry{FLLat Tutorial}
+
+\title{A Tutorial on Using the R Package \texttt{FLLat}}
+\author{Gen Nowak, Trevor Hastie, Jonathan R. Pollack, Robert Tibshirani and Nicholas Johnson}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This document provides a brief tutorial on using the package
+\texttt{FLLat}, which implements the Fused Lasso Latent Feature
+(FLLat) model \citep{nowak2011}.  FLLat is designed to
+identify regions of copy number variation (CNV) in multi-sample aCGH
+data.  In particular, it takes advantage of any similarities shared
+among samples while maintaining the ability to identify any potential
+heterogeneity.  FLLat is described in more detail below.
+
+\section{Fused Lasso Latent Feature model}
+
+Suppose we have a group of $S$ samples of aCGH data, with each sample
+consisting of the observed log intensity ratios at $L$ probe
+locations.  The Fused Lasso Latent Feature model assumes that there
+exists a fixed number of features that can describe these samples and
+models each sample as a weighted combination of these features.
+Formally, the model is given by:
+\begin{equation}
+\label{eq:mod}
+y_{ls}=\sum_{j=1}^J\beta_{lj}\theta_{js}+\epsilon_{ls},
+\end{equation}
+where $y_{ls}$ denotes the observed log intensity ratio at probe
+location $l$ for sample $s$, $\beta_{lj}$ denotes the value of the
+$j^{th}$ feature at probe location $l$, $\theta_{js}$ denotes the
+weight applied to the $j^{th}$ feature for sample $s$ and $J$ is the
+number of features.  It is a little easier to visualize when
+\eqref{eq:mod} is written using matrix notation:
+\begin{equation}
+\label{eq:matmod}
+\bm{Y}=\bm{B}\bm{\Theta}+\bm{E}.
+\end{equation}
+In \eqref{eq:matmod}, each column of $\bm{Y}$ is a sample, each column
+of $\bm{B}$ is a feature and each column of $\bm{\Theta}$ are the weights
+applied to the features to generate a sample.
+
+We fit the model by minimizing the following criterion:
+\begin{equation}
+\label{eq:matcrit}
+F\left(\bm{B},\bm{\Theta}\right)=\left\|\bm{Y}-\bm{B\Theta}\right\|_F^2+\sum_{j=1}^JP_{\lambda_1,\lambda_2}\left(\bm{\beta}_{\cdot
+    j}\right),
+\end{equation}
+where
+$P_{\lambda_1,\lambda_2}\left(\bm{\beta}_{\cdot{j}}\right)=\lambda_1\sum_{l=1}^L\left|\beta_{lj}\right|+\lambda_2\sum_{l=2}^{L}\left|\beta_{lj}-\beta_{l-1,j}\right|$.
+We have applied a fused lasso penalty to each feature, encouraging the
+features to be both sparse and smooth.  This helps us to identify the
+regions of CNV.
+
+\section{Using \texttt{FLLat}}
+
+There are three main functions in the \texttt{FLLat} package,
+\texttt{FLLat}, \texttt{FLLat.BIC} and \texttt{FLLat.PVE}.  The
+\texttt{FLLat} function fits the Fused Lasso Latent Feature model for
+given values of $J$ (the number of features), and $\lambda_1$ and
+$\lambda_2$ (the fused lasso tuning parameters).  The
+\texttt{FLLat.BIC} function determines the optimal values of
+$\lambda_1$ and $\lambda_2$ for a given value of $J$. The
+\texttt{FLLat.PVE} function aids in choosing an appropriate value of
+$J$.   Unless the user has some pre-specified values of $J$,
+$\lambda_1$ and $\lambda_2$ which they would like to use, the usual
+steps would be to first run \texttt{FLLat.PVE} to choose $J$, then run
+\texttt{FLLat.BIC} to choose $\lambda_1$ and $\lambda_2$.  We will demonstrate these
+steps on a simulated data set, \texttt{simaCGH}, that is included in
+the package.  This data set consists of $20$ samples and $1000$ probes
+and was generated using model \eqref{eq:mod} with $5$ features.
+Further simulation details can be found in \citet{nowak2011}.
+
+The first step is to use the \texttt{FLLat.PVE} function.  Given a
+sequence of values of $J$, this function calculates the percentage of
+variation explained (PVE) for each $J$, where the PVE is defined as:
+\begin{equation}
+\label{eq:pve}
+\mbox{PVE}_J = 1 - \frac{\sum_{s=1}^S\sum_{l=1}^L\left(y_{ls} -
+    \sum_{j=1}^J\hat{\beta}_{lj}\hat{\theta}_{js}\right)^2}{\sum_{s=1}^S\sum_{l=1}^L\left(y_{ls}
+    - \bar{y}_s\right)^2},
+\end{equation}
+where $\hat{\beta}_{lj}$ and $\hat{\theta}_{js}$ are the estimates
+produced by FLLat and $\bar{y}_s=\left.\sum_{l=1}^Ly_{ls}\right/L$.
+The idea is that after a certain point, additional features will not
+significantly improve the estimated fit and the PVE will begin to
+flatten out.  We can then choose the point at which the PVE begins to
+flatten out as the appropriate value of $J$.  The code below runs
+\texttt{FLLat.PVE} on the data set \texttt{simaCGH} for
+$J=1,\ldots,20$ and also plots the resulting PVEs:
+
+\begin{center}
+\setkeys{Gin}{width=0.5\textwidth}
+<<fig=T>>=
+library(FLLat)
+data(simaCGH)
+result.pve <- FLLat.PVE(simaCGH,J.seq=1:ncol(simaCGH))
+plot(result.pve)
+@
+\end{center}
+
+We see from the PVE plot that the PVEs begin to flatten out after
+$J=5$.  Having chosen an appropriate value of $J$, we can run the
+\texttt{FLLat.BIC} function with this value of $J$ to choose the
+tuning parameters.  The \texttt{FLLat.BIC} function first re-parameterizes $\lambda_1$
+and $\lambda_2$ in terms of $0<\alpha<1$ and $\lambda_0$ such that
+$\lambda_1=\alpha\lambda_0$ and $\lambda_2=(1-\alpha)\lambda_0$.  It
+then searches over a two dimensional grid of $\alpha$ and $\lambda_0$
+values to choose the optimal values by minimizing the following criterion:
+\begin{equation}
+\label{eq:bic}
+(SL)\cdot\log\left(\frac{\left\|\bm{Y}-\hat{\bm{B}}\hat{\bm{\Theta}}\right\|_F^2}{SL}\right)+k_{\alpha,\lambda_0}\log(SL),
+\end{equation}
+where $k_{\alpha,\lambda_0}=\sum_{j=1}^Jk_{\alpha,\lambda_0}(j)$ and
+$k_{\alpha,\lambda_0}(j)$ is the number of unique non-zero elements in
+the $j^{th}$ feature.  This criterion attempts to strike a balance
+between over- and under-fit models.  The following code runs the
+\texttt{FLLat.BIC} function for $J=5$:
+
+<<>>=
+result.bic <- FLLat.BIC(simaCGH,J=5)
+result.bic$lam1
+result.bic$lam2
+@ 
+
+The \texttt{FLLat.BIC} function also returns the fitted FLLat model
+(\texttt{opt.FLLat}) for the optimal values of the tuning parameters.
+We can plot the estimated features, which are plotted in order of
+decreasing magnitude, where the magnitude of a feature is given
+by $\sum_{l=1}^L\hat{\beta}_{jl}^2$.
+
+\begin{center}
+\setkeys{Gin}{width=0.6\textwidth}
+<<fig=T>>=
+plot(result.bic$opt.FLLat)
+@
+\end{center}
+
+These features indicate the main regions of CNV that are displayed by
+this group of $20$ samples.  We can also plot a heatmap of the
+estimated weights:
+
+\begin{center}
+\setkeys{Gin}{width=0.6\textwidth}
+<<fig=T>>=
+plot(result.bic$opt.FLLat,what="weights")
+@
+\end{center}
+  
+The yellow and blue denote positive and negative weights and
+indicate how prominently each feature appears in each sample.  Also,
+the clustering of the samples (based on their weights) seems to show
+the existence of two main groups of samples.
+
+\bibliographystyle{abbrvnat}
+\begin{thebibliography}{1}
+\bibitem[Nowak and others(2011)]{nowak2011}
+G. Nowak, T. Hastie, J.~R. Pollack and R. Tibshirani.
+\newblock A Fused Lasso Latent Feature Model for Analyzing
+Multi-Sample {aCGH} Data.
+\newblock \emph{Biostatistics}, 2011, doi: 10.1093/biostatistics/kxr012
+\end{thebibliography}
+
+\end{document}
