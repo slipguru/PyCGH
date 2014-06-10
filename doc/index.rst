@@ -11,8 +11,8 @@ PyCGH - a Comparative Genomic Hybridization toolkit
 |project_name| is a Python library for the analysis of aCGH data.
 It consists mainly of three components:
 
- * A python wrapper for the *CGHNormaliter* algorithm [CGHNormaliter]_, a preprocessing step required to normalizeCGH signals.
  * A script which creates synthetic aCGH data, for testing purposes.
+ * A python wrapper for the *CGHNormaliter* algorithm [CGHNormaliter]_, a preprocessing step required to normalizeCGH signals.
  * eFLLat, an algorithm which uses a dictionary learning approach to discover common patterns in aCGH data.
 
 |project_name| requires the following python libraries:

@@ -13,4 +13,16 @@ The algorithm uses a Dictionary Learning (DL) approach to identify common struct
 
 For more details on the algorithm see [masecchia13]_.
 
+To perform this analysis, first a **configuration file** must be created; an example is contained in folder ``pycgh/analysis/eFLLAT``: the actual parameters are defined by the ``params`` variable, whose values determine the parameter space (i.e. the different choices for :math:`\tau, \lambda, \mu`), stopping criteria and more.
+
+Once the configuration file has been created, it is sufficient to launch a script which takes care of running the optimization algorithm and creating plots for each possible choice of parameters: an example of such a script is file ``pycgh/analysis/eFLLAT/main_eFLLAT.py``. This script takes two arguments as input: the first one must be a file containing all aCGH samples arranged in a matrix (a ``numpy`` array), the second one a string identifying the chosen algorithm (besides **eFLLAT**, this package contains the implementation of other algorithms for the segmentation of aCGH data); the list of available algorithms can be found in the configuration file included in the package (``pycgh/analysis/eFLLAT/config.py``).
+
+Once the script has finished, a folder will be created at the path defined by the ``OUTPUT`` variable in configuration file; this folder will contain:
+
+ * A subfolder containing partial results.
+ * A file ``Result.npz`` containig the dump of the output of the algorithm (atoms, weights, parameters leading to the best reconstruction).
+ * Three plots for each possible choice of parameters: atoms, representation coefficients (for each sample, the list of weights used for each atom to reconstruct that sample) and a comparison between the original samples and the reconstructed ones.
+ 
+The three plots relative to the best reconstruction (according to the BIC value) are also shown in files ``Result_atoms.png``, ``Result_reconstruction.png`` and ``Result_representation.png``.
+
 .. [masecchia13] S\. Masecchia, S. Salzo, A. Barla and A. Verri. A dictionary learning based method for aCGH segmentation. *Proceedings of the European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning*, 2013.
