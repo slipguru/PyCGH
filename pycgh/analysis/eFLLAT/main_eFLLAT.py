@@ -15,8 +15,8 @@ import datetime as dt
 import numpy as np
 import pylab as pl
 
-from bic import BIC_search
-from plotting import plot_bics, pdf_plots, png_plots
+from pycgh.analysis.eFLLAT.bic import BIC_search
+from pycgh.analysis.eFLLAT.plotting import plot_bics, pdf_plots, png_plots
    
 ### Imports current parameters ------------------------------------------------
 from config import *
