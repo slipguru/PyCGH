@@ -7,7 +7,7 @@ import itertools as it
 import numpy as np
 
 import utils
-import algorithm as alg 
+#import algorithm as alg 
 
 def atoms_jumps(B, eps=1e-3):
     """ Counts the number of non-zero levels (up to eps tolerance). """
@@ -32,6 +32,8 @@ def BIC_search(Y, J_range, lambda_range, mu_range, tau_range,
                theta_bound=1.0, tvw=None, initB='pca',
                maxK=200, maxN=100, eps=1e-3, eps_gap='auto', step=1.0,
                eps_jumps=1e-3, callback=None):
+    
+    import algorithm as alg 
 
     L, S = Y.shape
     J_range = sorted(J_range)

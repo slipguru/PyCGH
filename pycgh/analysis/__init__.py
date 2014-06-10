@@ -3,8 +3,12 @@
 # Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
 # License: New BSD
 
-"""Insert module description
+"""
+Insert module description
 """
 
-from .cghdl import cghDL, cghDL_BIC
+#from .cghdl import cghDL, cghDL_BIC
+from .eFLLAT import bic, cghdl
+
+
 from .cghnormaliter import cghnormaliter

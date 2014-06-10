@@ -3,9 +3,16 @@
 """ Config-based main algorithm """
 
 # Dynamic import --------------------------------------------------------------
-import imp
+
 from config import ALGORITHM
-proxf = imp.load_module(ALGORITHM, *imp.find_module(ALGORITHM))
+
+#import imp
+#proxf = imp.load_module(ALGORITHM, *imp.find_module(ALGORITHM))
+
+import importlib
+proxf_module_name = 'pycgh.analysis.eFLLAT.%s' % ALGORITHM
+proxf = importlib.import_module(proxf_module_name)
+
 # -----------------------------------------------------------------------------
 
 import numpy as np
