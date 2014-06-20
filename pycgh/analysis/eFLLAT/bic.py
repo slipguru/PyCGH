@@ -28,10 +28,64 @@ def atoms_jumps(B, eps=1e-3):
 
     return ajumps    
     
+#def BIC_search(Y, J_range, lambda_range, mu_range, tau_range,
+               #theta_bound=1.0, tvw=None, initB='pca',
+               #maxK=200, maxN=100, eps=1e-3, eps_gap='auto', step=1.0,
+               #eps_jumps=1e-3, callback=None):
+               
 def BIC_search(Y, J_range, lambda_range, mu_range, tau_range,
-               theta_bound=1.0, tvw=None, initB='pca',
+               theta_bound=1.0, tvw=None,
                maxK=200, maxN=100, eps=1e-3, eps_gap='auto', step=1.0,
                eps_jumps=1e-3, callback=None):
+
+    """
+    This function runs the **eFLLAT** algorithm for all possible combination of parameters and selects the best model (i.e. tuple of parameters) using the Bayesian information criterion (BIC).
+    
+    Parameters
+    ----------
+    
+    Y : numpy.ndarray
+        The matrix representing all aCGH signals. Each column of the matrix represent a singla aCGH.
+    
+    J_range : array_like
+        The list of all possible values for the parameter :math:`J`, representing the number of atoms which will be used for the reconstruction of the matrix.
+        
+    lambda_range : array_like
+        All possible values for the :math:`\lambda` parameter.
+    
+    mu_range : array_like
+        All possible values for the :math:`\mu` parameter.
+    
+    tau_range : array_like
+        All possible values for the :math:`\tau` parameter.
+    
+    theta_bound : float, optional (default: ``1.0``)
+        The value with which each entry of the :math:`\Theta` matrix will be initialized if it is not provided.
+    
+    tvw : array_like, optional (default: ``None``)
+        An array containing the weights for the total variation term (when present).
+    
+    maxK : int, optional (default: 200)
+        The maximum number of external iterations.
+    
+    maxN : int, optional (default: 100)
+        The maximum number of internal iterations.
+    
+    eps : float, optional (default: 1e-3)
+        The value used to stop the external iterations if neither of the two matrices changes more then this threshold.
+    
+    eps_gap : string, optional (default: ``"auto"``)
+        The value used to stop the internal iterations when the solution does not change more than a fixed threshold between two iterations.
+    
+    step : float, optional (default: 1.0)
+        A parameter controlling the step of internal iterations.
+    
+    eps_jumps : float, optional (default: 1e-3)
+        The tolerance when computing the penalty for jumps in atoms.
+    
+    callback, function, optional (default: ``None``)
+        If different from ``None``, the function is called at the end of each iteration and does something with the result obtained.
+    """
     
     import algorithm as alg 
 

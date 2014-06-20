@@ -27,8 +27,12 @@ Data synthesis
 CGHNormaliter
 ==============
 
+.. autofunction:: pycgh.analysis.cghnormaliter
+
 eFLLAT
 ======
+
+.. autofunction:: pycgh.analysis.eFLLAT.bic.BIC_search
 
 Utilities
 =========

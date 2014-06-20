@@ -19,7 +19,7 @@ segmented = robjects.r['segmented']
 
 def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
     """
-    Performs a normalization of the **acgh** signal using the CGHnormaliter algorithm
+    Performs a normalization of the **aCGH** signal using the CGHnormaliter algorithm
     (available at http://www.bioconductor.org/packages/2.12/bioc/html/CGHnormaliter.html)
     implemented in R.
     
@@ -27,8 +27,8 @@ def cghnormaliter(acgh, nchrom=None, cellularity=1.0):
     ----------
     acgh : :py:class:`~pycgh.datatypes.ArrayCGH`
         The aCGH to be normalized.
-    nchrom : int or None (TODO)
-        TODO
+    nchrom : int, optional (default: ``None``)
+        The number of chromosomes.
     cellularity : float
         TODO
     """
