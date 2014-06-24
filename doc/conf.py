@@ -225,7 +225,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PyCGH.tex', u'PyCGH Documentation',
-   u'Salvatore Masecchia', 'manual'),
+   u'Salvatore Masecchia, Matteo Barbieri', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
