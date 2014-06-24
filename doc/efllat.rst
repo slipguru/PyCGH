@@ -14,12 +14,12 @@ The algorithm uses a Dictionary Learning (DL) approach to identify common struct
 
 .. math::
 
-    {\bm B}, {\bm \Theta} = \argmin \| {\bm Y} - {\bm B} {\bm \Theta} \|_F^2 + \tau \sum_{s=1}^S \| {\bm \Theta}(:,s) \|_1^2 + \lambda \sum_{j=1}^J \| {\bm B}(:, j) \|_1^2 + \mu \sum_{j=1}^J TV_w ({\bm B}(:, j))
+    \bm{B}, \bm{\Theta} = \argmin \| {Y} - \bm{B} \bm{\Theta} \|_F^2 + \tau \sum_{s=1}^S \| \bm{\Theta}(:,s) \|_1^2 + \lambda \sum_{j=1}^J \| \bm{B}(:, j) \|_1^2 + \mu \sum_{j=1}^J TV_w (\bm{B}(:, j))
 
-* Term :math:`\| {\bm Y} - {\bm B} {\bm \Theta} \|_F^2` minimizes the reconstruction error.
-* Term :math:`\tau \sum \limits_{s=1}^S \| {\bm \Theta}(:,s) \|_1^2` induces sparsity in the columns of :math:`{\bm \Theta}`, thus forcing the reconstruction of original signals using just few atoms.
-* Term :math:`\lambda \sum \limits_{j=1}^J \| {\bm B}(:, j) \|_1^2` induces sparsity in the columns of :math:`{\bm B}`, thus forcing the atoms to have only few components different from 0.
-* The **weighted total variation** term :math:`\mu \sum \limits_{j=1}^J TV_w ({\bm B}(:, j))` limits the number of *jumps*, i.e. enforces the piecewise constant structure in the signal which is expected in this kind of data. Weights are used to relax this condition in correspondence of the ends of chromosomes, where this constraint would have no biological meaning.
+* Term :math:`\| \bm{Y} - \bm{B} \bm{\Theta} \|_F^2` minimizes the reconstruction error.
+* Term :math:`\tau \sum \limits_{s=1}^S \| \bm{\Theta}(:,s) \|_1^2` induces sparsity in the columns of :math:`\bm{\Theta}`, thus forcing the reconstruction of original signals using just few atoms.
+* Term :math:`\lambda \sum \limits_{j=1}^J \| \bm{B}(:, j) \|_1^2` induces sparsity in the columns of :math:`\bm{B}`, thus forcing the atoms to have only few components different from 0.
+* The **weighted total variation** term :math:`\mu \sum \limits_{j=1}^J TV_w (\bm{B}(:, j))` limits the number of *jumps*, i.e. enforces the piecewise constant structure in the signal which is expected in this kind of data. Weights are used to relax this condition in correspondence of the ends of chromosomes, where this constraint would have no biological meaning.
 
 The name of this algorithm is **eFLLAT** which stands for *enhanced* FLLAT, and is an extension of the work described in [Nowak11]_. The main difference with that approach is the ability to inspect the whole genome at once instead of having to analyze one chromosome at a time, thus failing to detect patterns which only emerge when looking at the whole genome. For more details on the implementation and the theory behind **eFLLAT** see [masecchia13]_.
 
@@ -27,7 +27,7 @@ To perform this analysis, first a **configuration file** must be created; an exa
 
 Once the configuration file has been created, it is sufficient to launch a script which takes care of running the optimization algorithm and creating plots for each possible choice of parameters: an example of such a script is file ``pycgh/analysis/eFLLAT/main_eFLLAT.py``. This script takes two arguments as input: the first one must be a file containing all aCGH samples arranged in a matrix (a ``numpy`` array), the second one a string identifying the chosen algorithm (besides **eFLLAT**, this package contains the implementation of other algorithms for the segmentation of aCGH data):
 
-.. code-block:: shell
+.. code-block:: bash
 
     $ python main_eFLLAT.py dataset.npz efllat
     
@@ -53,7 +53,7 @@ The three plots relative to the best reconstruction (according to the BIC value)
 
     The original aCGH signals (above) and the reconstruction (below): the 5 groups of samples are each represented by one of the atoms. The denoising is a side-effect of the dictionary learning approach.
 
-
+.. rubric:: References
 
 .. [masecchia13] S\. Masecchia, S. Salzo, A. Barla and A. Verri. A dictionary learning based method for aCGH segmentation. *Proceedings of the European Symposium on Artificial Neural Networks, Computational Intelligence and Machine Learning*, 2013.
 

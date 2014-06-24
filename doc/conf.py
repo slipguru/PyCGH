@@ -193,6 +193,8 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'PyCGHdoc'
 
+pngmath_dvipng_args = ['-gamma 1.5', '-D 110', '-bg', 'Transparent']
+pngmath_latex_preamble = r"\newcommand{\argmin}{\operatornamewithlimits{argmin}}"
 
 # -- Options for LaTeX output --------------------------------------------------
 
@@ -201,7 +203,10 @@ _PREAMBLE = r"""
 \usepackage{amsfonts}
 \usepackage{bm}
 
-\DeclareMathOperator*{\argmin}{arg\,min}
+%\DeclareMathOperator*{\argmin}{arg\,min}
+
+\newcommand{\argmin}{\operatornamewithlimits{argmin}}
+
 """
 
 latex_elements = {

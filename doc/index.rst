@@ -11,9 +11,9 @@ PyCGH - a Comparative Genomic Hybridization toolkit
 |project_name| is a Python library for the analysis of aCGH data.
 It consists mainly of three components:
 
- * A script which creates synthetic aCGH data, for testing purposes.
- * A python wrapper for the *CGHNormaliter* algorithm [CGHNormaliter]_, a preprocessing step required to normalizeCGH signals.
- * eFLLat, an algorithm which uses a dictionary learning approach to discover common patterns in aCGH data.
+ * Synthetic data generation: a script which creates synthetic aCGH data, for testing purposes.
+ * CGHNormaliter: A python wrapper for the *CGHNormaliter* algorithm [CGHNormaliter]_, a preprocessing step required to normalizeCGH signals.
+ * E-FLLat: an algorithm which uses a dictionary learning approach to discover common patterns in aCGH data.
 
 |project_name| requires the following python libraries:
 
@@ -21,7 +21,7 @@ It consists mainly of three components:
   * `matplotlib <http://matplotlib.org/>`_ : a plotting library.
   * `rpy2 <http://rpy.sourceforge.net/>`_ : a library to include and use **R** code in a python program.
 
-Since the function implementing the *CGHNormaliter* algorithm is actually a wrapper for the implementation in the **R** language, an appropriate interpreter for that language is required, as well as the library containing the implementation of the algorithm itself, which can be found at `this link <http://www.bioconductor.org/packages/release/bioc/html/CGHnormaliter.html>`_.
+.. note:: Since the function implementing the *CGHNormaliter* algorithm is actually a wrapper for the implementation in the **R** language, an appropriate interpreter for that language is required, as well as the library containing the implementation of the algorithm itself, which can be found at `this link <http://www.bioconductor.org/packages/release/bioc/html/CGHnormaliter.html>`_.
 
 User Documentation
 ==================
@@ -44,11 +44,13 @@ PyCGH API
 
    api.rst
 
+:ref:`genindex`
 
 .. Quick Reference
 .. ---------------
 .. currentmodule:: pycgh
 
 
+.. rubric:: References
 
 .. [CGHNormaliter] B\. van Houte, T. Binsl, H. Hettling, W. Pirovano and J. Heringa. CGHnormaliter: an iterative strategy to enhance normalization of array CGH data with imbalanced aberrations. *BMC Genomics*, 2009.

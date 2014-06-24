@@ -3,7 +3,8 @@
 # Author: Salvatore Masecchia <salvatore.masecchia@disi.unige.it>
 # License: New BSD
 
-"""Insert module description
+"""
+The module containing the definition of classes which represent different structures such as chromosomes and their regions (bands).
 """
 
 from .dataset import DataTable
