@@ -29,7 +29,7 @@ CGHNormaliter
 
 .. autofunction:: pycgh.analysis.cghnormaliter
 
-eFLLAT
+E-FLLat
 ======
 
 .. autofunction:: pycgh.analysis.eFLLAT.bic.BIC_search

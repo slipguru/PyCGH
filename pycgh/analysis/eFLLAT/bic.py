@@ -39,7 +39,7 @@ def BIC_search(Y, J_range, lambda_range, mu_range, tau_range,
                eps_jumps=1e-3, callback=None):
 
     """
-    This function runs the **eFLLAT** algorithm for all possible combination of parameters and selects the best model (i.e. tuple of parameters) using the Bayesian information criterion (BIC).
+    This function runs the **E-FLLat** algorithm for all possible combination of parameters and selects the best model (i.e. tuple of parameters) using the Bayesian information criterion (BIC).
     
     Parameters
     ----------

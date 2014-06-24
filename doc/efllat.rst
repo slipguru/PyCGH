@@ -1,4 +1,4 @@
-eFLLAT
+E-FLLat
 ------
 
 Copy number variations (CNVs) are alterations of the DNA that result in the cell having an abnormal number of copies of one or more sections of the DNA. Recurrent aberrations across samples may indicate an oncogene or a tumor suppressor gene, but the functional mechanisms that link altered copy numbers to pathogenesis are still to be explained. Array-based Comparative Genomic Hybridization (aCGH) is a modern whole-genome measuring technique that evaluates the occurrence of copy variants across the genome of samples (patients) versus references (controls) on the entire genome, extending the original CGH technology.
@@ -21,11 +21,11 @@ The algorithm uses a Dictionary Learning (DL) approach to identify common struct
 * Term :math:`\lambda \sum \limits_{j=1}^J \| \bm{B}(:, j) \|_1^2` induces sparsity in the columns of :math:`\bm{B}`, thus forcing the atoms to have only few components different from 0.
 * The **weighted total variation** term :math:`\mu \sum \limits_{j=1}^J TV_w (\bm{B}(:, j))` limits the number of *jumps*, i.e. enforces the piecewise constant structure in the signal which is expected in this kind of data. Weights are used to relax this condition in correspondence of the ends of chromosomes, where this constraint would have no biological meaning.
 
-The name of this algorithm is **eFLLAT** which stands for *enhanced* FLLAT, and is an extension of the work described in [Nowak11]_. The main difference with that approach is the ability to inspect the whole genome at once instead of having to analyze one chromosome at a time, thus failing to detect patterns which only emerge when looking at the whole genome. For more details on the implementation and the theory behind **eFLLAT** see [masecchia13]_.
+The name of this algorithm is **E-FLLat** which stands for *enhanced* FLLat, and is an extension of the work described in [Nowak11]_. The main difference with that approach is the ability to inspect the whole genome at once instead of having to analyze one chromosome at a time, thus failing to detect patterns which only emerge when looking at the whole genome. For more details on the implementation and the theory behind **E-FLLat** see [masecchia13]_.
 
 To perform this analysis, first a **configuration file** must be created; an example is contained in folder ``pycgh/analysis/eFLLAT``: the actual parameters are defined by the ``params`` variable, whose values determine the parameter space (i.e. the different choices for :math:`\tau, \lambda, \mu`), stopping criteria and more.
 
-Once the configuration file has been created, it is sufficient to launch a script which takes care of running the optimization algorithm and creating plots for each possible choice of parameters: an example of such a script is file ``pycgh/analysis/eFLLAT/main_eFLLAT.py``. This script takes two arguments as input: the first one must be a file containing all aCGH samples arranged in a matrix (a ``numpy`` array), the second one a string identifying the chosen algorithm (besides **eFLLAT**, this package contains the implementation of other algorithms for the segmentation of aCGH data):
+Once the configuration file has been created, it is sufficient to launch a script which takes care of running the optimization algorithm and creating plots for each possible choice of parameters: an example of such a script is file ``pycgh/analysis/eFLLAT/main_eFLLAT.py``. This script takes two arguments as input: the first one must be a file containing all aCGH samples arranged in a matrix (a ``numpy`` array), the second one a string identifying the chosen algorithm (besides **E-FLLat**, this package contains the implementation of other algorithms for the segmentation of aCGH data):
 
 .. code-block:: bash
 
