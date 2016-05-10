@@ -7,6 +7,6 @@
 The module containing the definition of classes which represent different structures such as chromosomes and their regions (bands).
 """
 
-from .dataset import DataTable
+#from .dataset import DataTable
 from .arraycgh import ArrayCGH
 from .cytobands import ChromosomeStructure, CytoStructure

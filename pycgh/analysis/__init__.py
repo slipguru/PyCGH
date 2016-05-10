@@ -8,7 +8,8 @@ Insert module description
 """
 
 #from .cghdl import cghDL, cghDL_BIC
-from .eFLLAT import bic, cghdl
+# from .eFLLAT import bic, cghdl
+from .eFLLAT import bic, efllat
 
 
 from .cghnormaliter import cghnormaliter

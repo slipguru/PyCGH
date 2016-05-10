@@ -11,7 +11,7 @@ ALGORITHMS = ['fllat_nowak',     # 0
               'l12_B',           # 2
               'tvw_B',           # 3
               'boxpos_Theta',    # 4
-              'cghdl']           # 5
+              'efllat']           # 5
 ALGORITHM = sys.argv[2]          # <--
 if not ALGORITHM in ALGORITHMS:
     raise Exception('Algorithm %s not recognized!' % ALGORITHM)
@@ -52,7 +52,7 @@ elif ALGORITHM == 'boxpos_Theta':
     params['tvw'] = 'auto'              # based on dataset infos
     params['theta_bound'] = 1.0         # BOX bound
     params['tau_range'] = [0.0]         # **Ignored**
-elif ALGORITHM == 'cghdl':
+elif ALGORITHM == 'efllat':
     params['tvw'] = 'auto'              # based on dataset infos
     params['theta_bound'] = 1.0         # BOX bound
     params['tau_range'] = [1e-3, 1e-2]

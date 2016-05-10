@@ -136,7 +136,10 @@ def _file_handle(file_ref, mode='r'):
     return fh
 
 # Splitting algoritm ----------------------------------------------------------
-from .datatypes.arraycgh import ArrayCGH
+#from .datatypes.arraycgh import ArrayCGH
+
+### WORKAROUND
+ACGH_MISSING_INT = -1
 
 def location_normalization(chr, start, end):
     # in some files the range is swapped :-/
@@ -152,22 +155,35 @@ def location_normalization(chr, start, end):
         try:
             chr = int(chr)
             if chr <= 0 or chr > 24:
-                return (ArrayCGH.MISSING_INT,
-                        ArrayCGH.MISSING_INT,
-                        ArrayCGH.MISSING_INT, True)
+                # return (ArrayCGH.MISSING_INT,
+                #         ArrayCGH.MISSING_INT,
+                #         ArrayCGH.MISSING_INT, True)
+            
+                return (ACGH_MISSING_INT,
+                        ACGH_MISSING_INT,
+                        ACGH_MISSING_INT, True)
+            
             return chr, start, end, False
         except ValueError: # unplaceable probe eg chrUn
-            return (ArrayCGH.MISSING_INT,
-                    ArrayCGH.MISSING_INT,
-                    ArrayCGH.MISSING_INT, True)
+            # return (ArrayCGH.MISSING_INT,
+            #         ArrayCGH.MISSING_INT,
+            #         ArrayCGH.MISSING_INT, True)
+        
+            return (ACGH_MISSING_INT,
+                    ACGH_MISSING_INT,
+                    ACGH_MISSING_INT, True)
 
 def split_location(location):
     try:
         chr, interval = location.split(':')
         start, end = (int(x) for x in interval.split('-'))
     except ValueError: # unmapped/control probe
-        return (ArrayCGH.MISSING_INT,
-                ArrayCGH.MISSING_INT,
-                ArrayCGH.MISSING_INT, True)
-
+        # return (ArrayCGH.MISSING_INT,
+        #         ArrayCGH.MISSING_INT,
+        #         ArrayCGH.MISSING_INT, True)
+        
+        return (ACGH_MISSING_INT,
+                ACGH_MISSING_INT,
+                ACGH_MISSING_INT, True)
+    
     return location_normalization(chr, start, end)
