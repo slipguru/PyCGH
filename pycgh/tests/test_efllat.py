@@ -2,7 +2,7 @@ import numpy as np
 from numpy.testing import *
 
 # CGHDL utils -----------------------------------------------------------------
-from ..analysis.cghdl import (prox_squared_l1_bycol,
+from ..analysis.efllat import (prox_squared_l1_bycol,
                               discrete_derivate, discrete_derivate_conj)
 
 def test_prox_squared_l1():
@@ -32,7 +32,7 @@ def test_discrete_derivate_conj():
     assert_equal(OUT, discrete_derivate_conj(X, Y))
 
 # CGHDL prox functions --------------------------------------------------------
-from ..analysis.cghdl import prox_psi, prox_phi
+from ..analysis.efllat import prox_psi, prox_phi
 
 def setup():
     return {'B': np.ones((100, 3)),
@@ -66,7 +66,7 @@ def test_phi():
 # CGHDL main  algorithm -------------------------------------------------------
 from ..analysis import cghDL
 
-def setup_cghdl():
+def setup_efllat():
     return {'Y': np.ones((100, 10)),
 
             'mu': 1.0,
@@ -81,10 +81,10 @@ def setup_cghdl():
             'initB': 'pca',
             'initTheta': None}
 
-def test_cghdl():
+def test_efllat():
     params = cghDL.func_code.co_varnames[:cghDL.func_code.co_argcount]
 
-    out = cghDL(*(setup_cghdl()[p] for p in params))
+    out = cghDL(*(setup_efllat()[p] for p in params))
 
     assert_almost_equal(10.0, out['Theta'].sum(), 3)
     assert_almost_equal(13.212, out['B'].sum(), 3)
@@ -96,7 +96,7 @@ def test_cghdl():
 # CGHDL parameter selection ---------------------------------------------------
 from ..analysis import cghDL_BIC
 
-from ..analysis.cghdl import atoms_jumps
+from ..analysis.efllat import atoms_jumps
 def test_atoms_jumps():
                 #  1       2      2
     B = np.array([[1,      2,     3],
@@ -105,7 +105,7 @@ def test_atoms_jumps():
 
     assert_equal(5, atoms_jumps(B, eps=1e-1))
 
-def setup_cghdl_bic():
+def setup_efllat_bic():
     # Order J, lambda_, mu, tau (sorted)
     import itertools as it
     expected_params = it.product([1, 3], [1e-2, 1e-1], [1.0, 2.0], [1e-2, 1e-1])
@@ -129,7 +129,7 @@ def setup_cghdl_bic():
             'initB': 'pca',
             'callback': cb}
 
-def test_cghdl_bic():
+def test_efllat_bic():
     params = cghDL_BIC.func_code.co_varnames[:cghDL_BIC.func_code.co_argcount]
     out = cghDL_BIC(*(setup_cghdl_bic()[p] for p in params))
 

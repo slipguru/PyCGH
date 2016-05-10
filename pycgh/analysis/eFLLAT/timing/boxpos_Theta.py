@@ -7,7 +7,7 @@ import numpy as np
 from utils import positive_box_projection
 
 # Unchanged functions ---------------------------------------------------------
-from cghdl import c_psi, prox_psi
+from efllat import c_psi, prox_psi
 
 ## Auxiliary functions --------------------------------------------------------
 def c_phi(Y, Theta0, B0, tau_ignored, eta, theta_bound): # TAU ignored
